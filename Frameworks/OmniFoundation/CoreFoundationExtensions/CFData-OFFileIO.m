@@ -51,8 +51,8 @@ static int _CFData_writefn(void *_ctx, const char *buf, int nbytes)
     // Might be in the middle of a the file if a seek has been done so we can't just append naively!
     if (ctx->position + nbytes > ctx->length) {
         ctx->length = ctx->position + nbytes;
-        [(NSMutableData *)ctx->data setLength:ctx->length];
-        ctx->bytes = [(NSMutableData *)ctx->data mutableBytes]; // Might have moved after size change
+        [(__bridge NSMutableData *)ctx->data setLength:ctx->length];
+        ctx->bytes = [(__bridge NSMutableData *)ctx->data mutableBytes]; // Might have moved after size change
     }
     
     memcpy(ctx->bytes + ctx->position, buf, nbytes);

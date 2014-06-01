@@ -58,7 +58,8 @@ id OFReadNSPropertyListFromURL(NSURL *fileURL, NSError **outError)
         return nil;
     
     id plist = [NSPropertyListSerialization propertyListWithData:data options:NSPropertyListImmutable format:NULL error:outError];
-    [data release];
+//    [data release];
+	data = nil;
     return plist;
 }
 

@@ -27,7 +27,7 @@ RCS_ID("$Id$")
         [NSException raise:NSInternalInconsistencyException format:@"Unable to extract bytes of URL (%@)", furl];
     }
     
-    NSAppleEventDescriptor *result = [self descriptorWithDescriptorType:typeFileURL data:(NSData *)urlBytes];
+    NSAppleEventDescriptor *result = [self descriptorWithDescriptorType:typeFileURL data:(__bridge NSData *)urlBytes];
     
     CFRelease(urlBytes);
     

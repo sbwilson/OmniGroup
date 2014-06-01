@@ -18,27 +18,33 @@ int main(int argc, char *argv[])
     }
     
     for (int argi = 1; argi < argc; argi++) {
-        NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+        // NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
         
-        NSString *path = [[NSFileManager defaultManager] stringWithFileSystemRepresentation:argv[argi] length:strlen(argv[argi])];
-        NSBundle *bundle = [NSBundle bundleWithPath:path];
-        if (!bundle) {
-            NSLog(@"Unable to create bundle from '%@'!", path);
-            continue;
+		@autoreleasepool {
+
+			NSString *path = [[NSFileManager defaultManager] stringWithFileSystemRepresentation:argv[argi] length:strlen(argv[argi])];
+			NSBundle *bundle = [NSBundle bundleWithPath:path];
+			if (!bundle) {
+				NSLog(@"Unable to create bundle from '%@'!", path);
+				continue;
+			}
+			
+			if (![bundle load]) {
+				NSLog(@"Unable to load bundle %@", bundle);
+				continue;
+			}
+        
         }
-        
-        if (![bundle load]) {
-            NSLog(@"Unable to load bundle %@", bundle);
-            continue;
-        }
-        
-        [pool drain];
     }
     
     // Run our ABI checks
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-    [OBPostLoader processClasses];
-    [pool drain];
+    // NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+	
+	@autoreleasepool {
+		[OBPostLoader processClasses];
+	}
+    
+    // [pool drain];
 
     return 0;
 }

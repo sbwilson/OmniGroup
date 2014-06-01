@@ -78,7 +78,7 @@ static void *_OFCompressionError(CFErrorRef *outError, NSInteger code, NSString 
     
     if (outError) {
         // CFErrorRef is toll-free bridged; but CF APIs return retained instances.
-        OFError((NSError **)outError, OFUnableToDecompressData, description, reason);
+        OFError((__bridge NSError **)outError, OFUnableToDecompressData, description, reason);
         CFRetain(*outError); // OBError creates an autoreleased instance, but this is a CF API
     }
     
@@ -341,7 +341,7 @@ static Boolean readNullTerminatedString(FILE *fp,
     *runningCRC = crc32(*runningCRC, CFDataGetBytePtr(buffer), (int)bufferSize);
     
     if (into) {
-        *into = [[[NSString alloc] initWithData:(NSData *)buffer encoding:encoding] autorelease];
+        *into = [[NSString alloc] initWithData:(__bridge NSData *)buffer encoding:encoding];
     }
     
     CFRelease(buffer);

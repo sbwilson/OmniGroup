@@ -25,7 +25,7 @@ STRIP_INSTALLED_PRODUCT = NO
 COPY_PHASE_STRIP = NO
 
 // Enable Bitcode
-ENABLE_BITCODE = YES
+ENABLE_BITCODE = NO
 STRIP_BITCODE_FROM_COPIED_FILES = NO
 
 // Keep shared precompiled headers in our build area so we can clean them up. Without this, Xcode will put them in its own place and won't purge them reliably.
@@ -167,5 +167,5 @@ GCC_VERSION = com.apple.compilers.llvm.clang.1_0
 //CLANG_ENABLE_MODULE_DEBUGGING = NO // ToT clang doesn't understand -gmodules
 // ENABLE_BITCODE = NO // ToT clang doesn't know bitcode
 
-RUN_CLANG_STATIC_ANALYZER = YES
+RUN_CLANG_STATIC_ANALYZER = NO
 CLANG_STATIC_ANALYZER_MODE = deep

@@ -72,7 +72,7 @@ This method makes several passes, each time invoking a different selector.  On t
         [self _becomingMultiThreaded:nil];
 
 #ifdef OMNI_ASSERTIONS_ON
-    OBPerformRuntimeChecks();
+//    OBPerformRuntimeChecks();
 #endif
 }
 

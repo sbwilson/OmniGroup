@@ -206,6 +206,8 @@
 		4268E9300DBD5319002F30B1 /* OAColorProfile-Deprecated.m in Sources */ = {isa = PBXBuildFile; fileRef = 4268E92E0DBD5319002F30B1 /* OAColorProfile-Deprecated.m */; settings = {COMPILER_FLAGS = "-Wno-deprecated-declarations -fno-objc-arc"; }; };
 		4268E9CC0DBE6B03002F30B1 /* OAColorProfile-Deprecated.h in Headers */ = {isa = PBXBuildFile; fileRef = 4268E9990DBE52D2002F30B1 /* OAColorProfile-Deprecated.h */; };
 		42B9CE4D197871B700FDB1E6 /* OADocumentSubclass.h in Headers */ = {isa = PBXBuildFile; fileRef = 42B9CE4C197871B700FDB1E6 /* OADocumentSubclass.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		4980AFE11BBC9DF1002B43FE /* OAConstraintBasedStackView.h in Headers */ = {isa = PBXBuildFile; fileRef = 4980AFDF1BBC9DF0002B43FE /* OAConstraintBasedStackView.h */; settings = {ASSET_TAGS = (); }; };
+		4980AFE21BBC9DF1002B43FE /* OAConstraintBasedStackView.m in Sources */ = {isa = PBXBuildFile; fileRef = 4980AFE01BBC9DF1002B43FE /* OAConstraintBasedStackView.m */; settings = {ASSET_TAGS = (); }; };
 		49B035B0161D02CE0097E384 /* OAGearTemplate.tiff in Resources */ = {isa = PBXBuildFile; fileRef = 49B035AE161D02CE0097E384 /* OAGearTemplate.tiff */; };
 		49B035B1161D02CE0097E384 /* OAGearTemplate@2x.tiff in Resources */ = {isa = PBXBuildFile; fileRef = 49B035AF161D02CE0097E384 /* OAGearTemplate@2x.tiff */; };
 		49EF503D15F6EAD000254849 /* OALabelField.h in Headers */ = {isa = PBXBuildFile; fileRef = 49EF503B15F6EAD000254849 /* OALabelField.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -392,7 +394,7 @@
 		4AA1E7AB08AA764600E2FF6B /* NSWindow-OAExtensions.m in Sources */ = {isa = PBXBuildFile; fileRef = 00E51F33FE8AB2E911C9CC38 /* NSWindow-OAExtensions.m */; settings = {ATTRIBUTES = (Optimize, ); COMPILER_FLAGS = "-fno-objc-arc"; }; };
 		4AA1E7AD08AA764600E2FF6B /* OAPreferenceClient.m in Sources */ = {isa = PBXBuildFile; fileRef = 00E51F69FE8AB2E911C9CC38 /* OAPreferenceClient.m */; settings = {ATTRIBUTES = (Optimize, ); COMPILER_FLAGS = "-fno-objc-arc"; }; };
 		4AA1E7AE08AA764600E2FF6B /* OAPreferenceClientRecord.m in Sources */ = {isa = PBXBuildFile; fileRef = 00E51F6AFE8AB2E911C9CC38 /* OAPreferenceClientRecord.m */; settings = {ATTRIBUTES = (Optimize, ); COMPILER_FLAGS = "-fno-objc-arc"; }; };
-		4AA1E7AF08AA764600E2FF6B /* OAPreferenceController.m in Sources */ = {isa = PBXBuildFile; fileRef = 00E51F6BFE8AB2E911C9CC38 /* OAPreferenceController.m */; settings = {ATTRIBUTES = (Optimize, ); COMPILER_FLAGS = "-fno-objc-arc"; }; };
+		4AA1E7AF08AA764600E2FF6B /* OAPreferenceController.m in Sources */ = {isa = PBXBuildFile; fileRef = 00E51F6BFE8AB2E911C9CC38 /* OAPreferenceController.m */; settings = {ATTRIBUTES = (Optimize, ); }; };
 		4AA1E7B008AA764600E2FF6B /* OAPreferencesIconView.m in Sources */ = {isa = PBXBuildFile; fileRef = 01563697FFE9F5FAC697A14E /* OAPreferencesIconView.m */; settings = {ATTRIBUTES = (); COMPILER_FLAGS = "-fno-objc-arc"; }; };
 		4AA1E7B108AA764600E2FF6B /* OAPreferencesToolbar.m in Sources */ = {isa = PBXBuildFile; fileRef = 6620D67B01335CA00097A13E /* OAPreferencesToolbar.m */; settings = {COMPILER_FLAGS = "-fno-objc-arc"; }; };
 		4AA1E7B208AA764600E2FF6B /* OAPreferencesWindow.m in Sources */ = {isa = PBXBuildFile; fileRef = 6620D674013359840097A13E /* OAPreferencesWindow.m */; settings = {COMPILER_FLAGS = "-fno-objc-arc"; }; };
@@ -902,6 +904,8 @@
 		42D8B5981A37C35C002453BD /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/OACrayonNames.strings"; sourceTree = "<group>"; };
 		42D8B5991A37C36D002453BD /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/OACrayonNames.strings; sourceTree = "<group>"; };
 		42D8B59A1A37C37A002453BD /* nl */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = nl; path = nl.lproj/OACrayonNames.strings; sourceTree = "<group>"; };
+		4980AFDF1BBC9DF0002B43FE /* OAConstraintBasedStackView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OAConstraintBasedStackView.h; sourceTree = "<group>"; };
+		4980AFE01BBC9DF1002B43FE /* OAConstraintBasedStackView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OAConstraintBasedStackView.m; sourceTree = "<group>"; };
 		49B035AE161D02CE0097E384 /* OAGearTemplate.tiff */ = {isa = PBXFileReference; lastKnownFileType = image.tiff; path = OAGearTemplate.tiff; sourceTree = "<group>"; };
 		49B035AF161D02CE0097E384 /* OAGearTemplate@2x.tiff */ = {isa = PBXFileReference; lastKnownFileType = image.tiff; path = "OAGearTemplate@2x.tiff"; sourceTree = "<group>"; };
 		49EF503B15F6EAD000254849 /* OALabelField.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OALabelField.h; sourceTree = "<group>"; };
@@ -1654,6 +1658,8 @@
 				5BEAF23F01FF6D7D0297A15C /* OADocumentPositioningView.m */,
 				00EB4311FEF05391C697A12D /* OAGridView.h */,
 				00EB4312FEF05391C697A12D /* OAGridView.m */,
+				4980AFDF1BBC9DF0002B43FE /* OAConstraintBasedStackView.h */,
+				4980AFE01BBC9DF1002B43FE /* OAConstraintBasedStackView.m */,
 				00EC5D5DFF141372C697A12F /* OAStackView.h */,
 				00EC5D5EFF141372C697A12F /* OAStackView.m */,
 				00E51F98FE8AB2E911C9CC38 /* OAThumbnailView.h */,
@@ -2589,6 +2595,7 @@
 				2730CF3B144E205B007C3A99 /* OADocument.h in Headers */,
 				271A9DA01533DA2800A78CCB /* OAAnimation.h in Headers */,
 				346A98A215903B0F00CA3359 /* NSAnimationContext-OAExtensions.h in Headers */,
+				4980AFE11BBC9DF1002B43FE /* OAConstraintBasedStackView.h in Headers */,
 				27AC122D15BA295400B726A7 /* NSView-OALayerBackedFix.h in Headers */,
 				E235B46415CC771600E162D6 /* OATrackingLoop.h in Headers */,
 				E235B69F15CC836000E162D6 /* OAToolbarButton.h in Headers */,
@@ -3135,6 +3142,7 @@
 				34F0990209322B800001D0D5 /* OAAboutPanelController.m in Sources */,
 				340DD56209AD38E900E8A437 /* NSFileWrapper-OAExtensions.m in Sources */,
 				3425E49109C5F2A3003140C9 /* NSLayoutManager-OAExtensions.m in Sources */,
+				4980AFE21BBC9DF1002B43FE /* OAConstraintBasedStackView.m in Sources */,
 				34471AC209D31320004C9DBA /* OAConstructionTitlebarAccessoryViewController.m in Sources */,
 				0AE262161AD49B3800C449C4 /* OAColorSpaceManager.m in Sources */,
 				342B41180A4C6B62002BFC4B /* NSWindowController-OAExtensions.m in Sources */,

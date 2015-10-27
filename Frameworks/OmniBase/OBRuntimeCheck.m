@@ -742,6 +742,7 @@ void OBPerformRuntimeChecks(void)
 {
     NSString *executableName = [[[NSBundle mainBundle] executablePath] lastPathComponent];
     BOOL shouldCheck = ![@"ibtool" isEqualToString:executableName] && ![@"Interface Builder" isEqualToString:executableName] && ![@"IBCocoaSimulator" isEqualToString:executableName];
+	shouldCheck &= (getenv("OBASSERT_NO_RUNTIME_CHECKS") == NULL);
     if (shouldCheck) {
         _validateMethodSignatures();
         _checkForMethodsInDeprecatedProtocols();

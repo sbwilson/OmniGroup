@@ -748,6 +748,7 @@ void OBPerformRuntimeChecks(void)
 {
     NSString *executableName = [[[NSBundle mainBundle] executablePath] lastPathComponent];
     BOOL shouldCheck = ![@"ibtool" isEqualToString:executableName] && ![@"Interface Builder" isEqualToString:executableName] && ![@"IBCocoaSimulator" isEqualToString:executableName];
+	shouldCheck &= (getenv("OBASSERT_NO_RUNTIME_CHECKS") == NULL);
     if (shouldCheck) {
         NSTimeInterval runtimeChecksStart = [NSDate timeIntervalSinceReferenceDate];
         _validateMethodSignatures();
@@ -763,8 +764,7 @@ static void OBPerformRuntimeChecksOnLoad(void) __attribute__((constructor));
 static void OBPerformRuntimeChecksOnLoad(void)
 {
     OBReportWarningsInSystemLibraries = (getenv("OBReportWarningsInSystemLibraries") != NULL);
-    
-    if (atoi(getenv("OBPerformRuntimeChecksOnLoad")) != 0) {
+    if(atoi(getenv("OBPerformRuntimeChecksOnLoad")) != 0) {
         @autoreleasepool {
             OBPerformRuntimeChecks();
         }

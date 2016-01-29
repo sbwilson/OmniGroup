@@ -206,8 +206,8 @@
 		4268E9300DBD5319002F30B1 /* OAColorProfile-Deprecated.m in Sources */ = {isa = PBXBuildFile; fileRef = 4268E92E0DBD5319002F30B1 /* OAColorProfile-Deprecated.m */; settings = {COMPILER_FLAGS = "-Wno-deprecated-declarations -fno-objc-arc"; }; };
 		4268E9CC0DBE6B03002F30B1 /* OAColorProfile-Deprecated.h in Headers */ = {isa = PBXBuildFile; fileRef = 4268E9990DBE52D2002F30B1 /* OAColorProfile-Deprecated.h */; };
 		42B9CE4D197871B700FDB1E6 /* OADocumentSubclass.h in Headers */ = {isa = PBXBuildFile; fileRef = 42B9CE4C197871B700FDB1E6 /* OADocumentSubclass.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		4980AFE11BBC9DF1002B43FE /* OAConstraintBasedStackView.h in Headers */ = {isa = PBXBuildFile; fileRef = 4980AFDF1BBC9DF0002B43FE /* OAConstraintBasedStackView.h */; settings = {ASSET_TAGS = (); }; };
-		4980AFE21BBC9DF1002B43FE /* OAConstraintBasedStackView.m in Sources */ = {isa = PBXBuildFile; fileRef = 4980AFE01BBC9DF1002B43FE /* OAConstraintBasedStackView.m */; settings = {ASSET_TAGS = (); }; };
+		4980AFE11BBC9DF1002B43FE /* OAConstraintBasedStackView.h in Headers */ = {isa = PBXBuildFile; fileRef = 4980AFDF1BBC9DF0002B43FE /* OAConstraintBasedStackView.h */; };
+		4980AFE21BBC9DF1002B43FE /* OAConstraintBasedStackView.m in Sources */ = {isa = PBXBuildFile; fileRef = 4980AFE01BBC9DF1002B43FE /* OAConstraintBasedStackView.m */; };
 		49B035B0161D02CE0097E384 /* OAGearTemplate.tiff in Resources */ = {isa = PBXBuildFile; fileRef = 49B035AE161D02CE0097E384 /* OAGearTemplate.tiff */; };
 		49B035B1161D02CE0097E384 /* OAGearTemplate@2x.tiff in Resources */ = {isa = PBXBuildFile; fileRef = 49B035AF161D02CE0097E384 /* OAGearTemplate@2x.tiff */; };
 		49EF503D15F6EAD000254849 /* OALabelField.h in Headers */ = {isa = PBXBuildFile; fileRef = 49EF503B15F6EAD000254849 /* OALabelField.h */; settings = {ATTRIBUTES = (Public, ); }; };

@@ -1,4 +1,4 @@
-// Copyright 1997-2008, 2010, 2013-2014 Omni Development, Inc. All rights reserved.
+// Copyright 1997-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -74,6 +74,18 @@ RCS_ID("$Id$")
     }
 }
 
+- (void)removeObjectsSatisfyingPredicate:(BOOL (^)(id))predicate;
+{
+    // Index based iteration since we'll be altering the array (and fast enumeration / block based enumeration will assert in that case).
+    NSUInteger objectIndex = [self count];
+    while (objectIndex--) {
+        if (predicate(self[objectIndex])) {
+            [self removeObjectAtIndex:objectIndex];
+        }
+    }
+}
+
+
 - (BOOL)addObjectIfAbsent:(id)anObject;
 {
     if (![self containsObject:anObject]) {
@@ -117,14 +129,9 @@ RCS_ID("$Id$")
     }
 }
 
-#ifdef OMNI_ASSERTIONS_ON
-static void  __attribute__((constructor)) check_sizes(void)
-{
-    /* If these are not true, the routines which store integer values in CFDictionaries here and elsewhere clobber memory */
-    assert(sizeof(NSUInteger) == sizeof(uintptr_t));
-    assert(sizeof(void *) == sizeof(NSUInteger));
-}
-#endif
+/* If these are not true, the routines which store integer values in CFDictionaries here and elsewhere clobber memory */
+_Static_assert(sizeof(NSUInteger) == sizeof(uintptr_t), "");
+_Static_assert(sizeof(void *) == sizeof(NSUInteger), "");
 
 - (void)sortBasedOnOrderInArray:(NSArray *)ordering identical:(BOOL)usePointerEquality unknownAtFront:(BOOL)putUnknownObjectsAtFront;
 {

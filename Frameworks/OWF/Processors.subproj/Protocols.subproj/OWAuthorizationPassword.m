@@ -1,19 +1,16 @@
-// Copyright 2001-2005 Omni Development, Inc.  All rights reserved.
+// Copyright 2001-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
 // distributed with this project and can also be found at
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
 
-#import "OWAuthorizationPassword.h"
+#import <OWF/OWAuthorizationPassword.h>
 
 #import <Foundation/Foundation.h>
 #import <OmniBase/rcsid.h>
 
 RCS_ID("$Id$")
-
-@interface OWAuthorizationPassword (Private)
-@end
 
 @implementation OWAuthorizationPassword
 
@@ -21,45 +18,36 @@ RCS_ID("$Id$")
 {
     self = [super initForRequest:req realm:authRealm];
     
-    if (!self)
+    if (self == nil)
         return nil;
     
-    if (!user || !pass) {
-        [super dealloc];
+    if (user == nil || pass == nil) {
+        self = nil;
         return nil;
     }
     
-    username = [user retain];
-    password = [pass retain];
+    username = user;
+    password = pass;
     
     return self;
 }
 
 - initAsCopyOf:otherInstance
 {
-    OWAuthorizationPassword *other;
-    
-    if (!(self = [super initAsCopyOf:otherInstance]))
+    self = [super initAsCopyOf:otherInstance];
+    if (self == nil)
         return nil;
         
     if (![otherInstance isKindOfClass:[OWAuthorizationPassword class]]) {
-        [super dealloc];
+        self = nil;
         return nil;
     }
     
-    other = otherInstance;
+    OWAuthorizationPassword *other = otherInstance;
     username = [other->username copy];
     password = [other->password copy];
         
     return self;
-}
-
-
-- (void)dealloc
-{
-    [username release];
-    [password release];
-    [super dealloc];
 }
 
 - (int)compareToNewCredential:(OWAuthorizationCredential *)other
@@ -88,7 +76,4 @@ RCS_ID("$Id$")
     return debugDictionary;
 }
 
-@end
-
-@implementation OWAuthorizationPassword (Private)
 @end

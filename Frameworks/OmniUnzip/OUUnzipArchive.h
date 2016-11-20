@@ -1,4 +1,4 @@
-// Copyright 2008-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2008-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -11,9 +11,14 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@class NSArray, NSData, NSError;
+@class NSArray;
+@class NSData;
+@class NSError;
+@class NSFileWrapper;
+@class NSInputStream;
 @class OUUnzipEntry;
 @protocol OFByteProvider;
+@protocol OFByteStream;
 
 @interface OUUnzipArchive : NSObject
 
@@ -23,17 +28,24 @@ NS_ASSUME_NONNULL_BEGIN
 @property (readonly, nonatomic) NSString *path;
 @property (readonly, nonatomic) NSArray <OUUnzipEntry *> *entries;
 
-- (OUUnzipEntry * _Nullable)entryNamed:(NSString *)name;
+- (nullable OUUnzipEntry *)entryNamed:(NSString *)name;
 - (NSArray <OUUnzipEntry *> *)entriesWithNamePrefix:(NSString * _Nullable)prefix;
 
-- (NSData * _Nullable)dataForEntry:(OUUnzipEntry *)entry raw:(BOOL)raw error:(NSError **)outError;
-- (NSData * _Nullable)dataForEntry:(OUUnzipEntry *)entry error:(NSError **)outError;
+- (nullable NSData *)dataForEntry:(OUUnzipEntry *)entry raw:(BOOL)raw error:(NSError **)outError;
+- (nullable NSData *)dataForEntry:(OUUnzipEntry *)entry error:(NSError **)outError;
+
+- (nullable NSInputStream *)inputStreamForEntry:(OUUnzipEntry *)entry raw:(BOOL)raw error:(NSError **)outError;
+- (nullable NSInputStream *)inputStreamForEntry:(OUUnzipEntry *)entry error:(NSError **)outError;
 
 // Convenience methods for unarchiving to disk
 - (BOOL)unzipArchiveToURL:(NSURL *)targetURL error:(NSError **)outError;
 
 // Writes all entries prefixed with "name" to temp.
-- (NSURL * _Nullable)URLByWritingTemporaryCopyOfTopLevelEntryNamed:(NSString *)name error:(NSError **)outError;
+- (nullable NSURL *)URLByWritingTemporaryCopyOfTopLevelEntryNamed:(NSString *)name error:(NSError **)outError;
+
+// Creates an NSFileWrapper representing the zip archive
+- (nullable NSFileWrapper *)fileWrapperWithError:(NSError **)outError;
+- (nullable NSFileWrapper *)fileWrapperWithTopLevelWrapper:(BOOL)shouldIncludeTopLevelWrapper error:(NSError **)outError;
 
 @end
 

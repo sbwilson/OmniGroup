@@ -5,9 +5,10 @@
 // distributed with this project and can also be found at
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
 
-#import "NSWindowController-OAExtensions.h"
+#import <OmniAppKit/NSWindowController-OAExtensions.h>
 
 #import <Cocoa/Cocoa.h>
+#import <Quartz/Quartz.h>
 #import <OmniBase/OmniBase.h>
 #import <OmniFoundation/OmniFoundation.h>
 
@@ -326,7 +327,7 @@ static NSWindow * _Nullable RootlessProgressWindow = nil;
         [self performSelector:@selector(finishedLongOperation) withObject:nil afterDelay:0.0f inModes:[NSArray arrayWithObjects:NSDefaultRunLoopMode, NSModalPanelRunLoopMode, nil]];
 }
 
-+ (NSWindow *)startingLongOperation:(NSString *)operationDescription controlSize:(NSControlSize)controlSize progressStyle:(NSProgressIndicatorStyle)progressStyle automaticallyEnds:(BOOL)shouldAutomaticallyEnd;
++ (nullable NSWindow *)startingLongOperation:(NSString *)operationDescription controlSize:(NSControlSize)controlSize progressStyle:(NSProgressIndicatorStyle)progressStyle automaticallyEnds:(BOOL)shouldAutomaticallyEnd;
 {
     if (!LongOperationIndicatorEnabledForWindow(nil))
         return nil;
@@ -365,7 +366,7 @@ static NSWindow * _Nullable RootlessProgressWindow = nil;
 
 // Public API is unchanged for now, we haven't spent enough time testing the progress bar style and what happens when someone tries to switch between the two in the same window
 
-+ (NSWindow *)startingLongOperation:(NSString *)operationDescription controlSize:(NSControlSize)controlSize;
++ (nullable NSWindow *)startingLongOperation:(NSString *)operationDescription controlSize:(NSControlSize)controlSize;
 {
     return [self startingLongOperation:operationDescription controlSize:controlSize progressStyle:NSProgressIndicatorSpinningStyle automaticallyEnds:YES];
 }
@@ -496,6 +497,11 @@ static NSWindow * _Nullable RootlessProgressWindow = nil;
                 pool = [[NSAutoreleasePool alloc] init];
 
                 [operationWindow setAlphaValue:MIN(MAX_ALPHA, MAX_ALPHA*(elapsedTime/FADE_IN_TIME))];
+                
+                // Per feedback from Apple Engineering in <bug:///126185>
+                // -setAlphaValue: makes an implicit layer modification (on modern OS releases which have more pervasive use of CALayer.
+                // Since we did this on a background thread, we opened an implicit transaction, and it is our job to flush it.
+                [CATransaction flush];
 
                 // Check the lock to see if we've been told to buzz off
                 if ([indicatorLock lockWhenCondition:IndicatorStopping beforeDate:[NSDate dateWithTimeIntervalSinceNow:TIME_PER_FRAME]]) {

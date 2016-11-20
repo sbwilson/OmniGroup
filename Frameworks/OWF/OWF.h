@@ -1,4 +1,4 @@
-// Copyright 1997-2015 Omni Development, Inc. All rights reserved.
+// Copyright 1997-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -7,7 +7,6 @@
 //
 // $Id$
 
-#import <OWF/FrameworkDefines.h>
 #import <OWF/NSDate-OWExtensions.h>
 #import <OWF/NSException-OWConcreteCacheEntry.h>
 #import <OWF/NSString-OWSGMLString.h>
@@ -42,8 +41,6 @@
 #import <OWF/OWFTPListingProcessor.h>
 #import <OWF/OWFTPProcessor.h>
 #import <OWF/OWFTPSession.h>
-#import <OWF/OWFWeakRetainConcreteImplementation.h>
-#import <OWF/OWFWeakRetainProtocol.h>
 #import <OWF/OWFileDataStream.h>
 #import <OWF/OWFileInfo.h>
 #import <OWF/OWFileProcessor.h>

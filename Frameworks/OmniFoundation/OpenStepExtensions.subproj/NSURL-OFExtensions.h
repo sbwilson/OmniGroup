@@ -1,4 +1,4 @@
-// Copyright 2010-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -8,6 +8,10 @@
 // $Id$
 
 #import <Foundation/NSURL.h>
+
+#import <OmniFoundation/NSString-OFURLEncoding.h>
+
+NS_ASSUME_NONNULL_BEGIN
 
 @class NSFileManager;
 
@@ -26,8 +30,6 @@ extern BOOL OFURLEqualToURLIgnoringTrailingSlash(NSURL *URL1, NSURL *URL2);
 extern NSString *OFStandardizedPathForFileURL(NSURL *url, BOOL followFinalSymlink);
 extern BOOL OFURLContainsURL(NSURL *containerURL, NSURL *url);
 extern NSString *OFFileURLRelativePath(NSURL *baseURL, NSURL *fileURL);
-
-#import <OmniFoundation/NSString-OFURLEncoding.h>
 
 extern BOOL OFGetBoolResourceValue(NSURL *url, NSString *key, BOOL *outValue, NSError **outError);
 
@@ -49,7 +51,7 @@ static inline NSURL *OFFileURLRelativeToDirectoryURL(NSURL *baseURL, NSString *n
 }
 
 /* Modifies the last path segment of the given URL by appending a suffix string to it (the suffix must already contain any necessary %-escapes). If addSlash=YES, the returned URL will end in a slash; if removeSlash=YES, the returned URL will not end in a slash; otherwise its trailing slash (or lack of same) is left alone. */
-extern NSURL *OFURLWithNameAffix(NSURL *baseURL, NSString *quotedSuffix, BOOL addSlash, BOOL removeSlash);
+extern NSURL * _Nullable OFURLWithNameAffix(NSURL *baseURL, NSString *quotedSuffix, BOOL addSlash, BOOL removeSlash);
 
 /* Finds the range of the last path component of a URL. Returns NO if it can't find it for some reason. The returned range will not include the trailing slash, if it existed in the source URL; the length of any trailing slash is returned in *andTrailingSlash. */
 extern BOOL OFURLRangeOfLastPathComponent(NSString *urlString, NSRange *lastComponentRange, unsigned *andTrailingSlash);
@@ -66,11 +68,12 @@ typedef BOOL (^OFScanPathExtensionIsPackage)(NSString *pathExtension);
 typedef void (^OFScanDirectoryItemHandler)(NSFileManager *fileManager, NSURL *fileURL);
 typedef BOOL (^OFScanErrorHandler)(NSURL *fileURL, NSError *error); // Return YES to continue scan, NO to stop.
 extern void OFScanDirectory(NSURL *directoryURL, BOOL shouldRecurse,
-                            OFScanDirectoryFilter filterBlock,
+                            _Nullable OFScanDirectoryFilter filterBlock,
                             OFScanPathExtensionIsPackage pathExtensionIsPackage,
                             OFScanDirectoryItemHandler itemHandler,
                             OFScanErrorHandler errorHandler);
 
 // Returns a new block that will report the given extensions as packages and use OFUTI functions to determine the others (caching them). The block returned should be used for only a short period (like a call to OFScanDirectory) since the set of known package extensions may change based on what other clients know about (in OmniFileExchange, anyway).
-extern OFScanPathExtensionIsPackage OFIsPackageWithKnownPackageExtensions(NSSet *packageExtensions);
+extern OFScanPathExtensionIsPackage OFIsPackageWithKnownPackageExtensions(NSSet * _Nullable packageExtensions);
 
+NS_ASSUME_NONNULL_END

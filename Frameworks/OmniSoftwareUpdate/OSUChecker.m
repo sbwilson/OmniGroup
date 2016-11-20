@@ -5,7 +5,7 @@
 // distributed with this project and can also be found at
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
 
-#import "OSUChecker.h"
+#import <OmniSoftwareUpdate/OSUChecker.h>
 
 #if !defined(TARGET_OS_IPHONE) || !TARGET_OS_IPHONE
 #import <OmniFoundation/OFController.h>
@@ -27,18 +27,18 @@
 #import "OSUFeatures.h"
 
 #if OSU_FULL
-    #import "OSUController.h"
+    #import <OmniSoftwareUpdate/OSUController.h>
     #import "OSUItem.h"
 #elif (!defined(TARGET_OS_IPHONE) || !TARGET_OS_IPHONE)
     #import "OSUPrivacyAlertWindowController.h"
 #endif
-#import "OSUPreferences.h"
-#import "OSURunTime.h"
-#import "OSUCheckOperation.h"
+#import <OmniSoftwareUpdate/OSUPreferences.h>
+#import <OmniSoftwareUpdate/OSURunTime.h>
+#import <OmniSoftwareUpdate/OSUCheckOperation.h>
 #import "OSUErrors.h"
 #import "OSUAppcastSignature.h"
 #import "InfoPlist.h"
-#import "OSUCheckerTarget.h"
+#import <OmniSoftwareUpdate/OSUCheckerTarget.h>
 #import "OSUSettings.h"
 #import "OSURunOperation.h"
 #import "OSUPartialItem.h"
@@ -62,7 +62,7 @@ static OFDeclareDebugLogLevel(OSUDebug);
 
 #define VERIFY_APPCAST 1
 
-#if 0 && defined(DEBUG_correia)
+#if 0 && (defined(DEBUG_correia) || defined(DEBUG_kilodelta))
     #undef VERIFY_APPCAST
     #define VERIFY_APPCAST 0
 #endif
@@ -83,7 +83,7 @@ static OFDeclareDebugLogLevel(OSUDebug);
 #endif
 
 // Strings of interest
-static NSString * const OSUDefaultCurrentVersionsURLString = @"http://update.omnigroup.com/appcast/";  // Must end in '/' for the path appending to not replace the last component
+static NSString * const OSUDefaultCurrentVersionsURLString = @"https://update.omnigroup.com/appcast/";  // Must end in '/' for the path appending to not replace the last component
 
 // Info.plist keys
 static NSString * const OSUBundleCheckAtLaunchKey = @"OSUSoftwareUpdateAtLaunch";
@@ -94,6 +94,9 @@ static NSString * const OSUBundleLicenseTypeKey = @"OSUSoftwareUpdateLicenseType
 // Preferences keys
 static NSString * const OSUCurrentVersionsURLKey = @"OSUCurrentVersionsURL";
 static NSString * const OSUNewestVersionNumberLaunchedKey = @"OSUNewestVersionNumberLaunched";
+
+NSString * const OSUNewsAnnouncementNotification = @"OSUNewsAnnouncement";
+NSString * const OSUNewsAnnouncementHasBeenReadNotification = @"OSUNewsAnnouncementHasBeenRead";
 
 // We used to have this be the bundle version, but when using a Copy Files build phase to install a framework into an app, codesign would get called with .../Versions/A instead of ..Versions/2009A (which was what we had FRAMEWORK_VERSION set to). Instead, just define this here and don't try to grab it out of the framework version (which isn't useful now anyway since we bundle frameworks inside the app).
 #define OSU_VERSION_NUMBER 2009A
@@ -124,6 +127,7 @@ NSString * const OSULicenseTypeAppStore = @"appstore";
 
 @interface OSUChecker ()
 @property(nonatomic,retain) id <OSUCheckerTarget> target;
+@property(nonatomic,retain) NSDateFormatter *dateFormatter;
 @end
 
 @implementation OSUChecker
@@ -152,8 +156,7 @@ NSString * const OSULicenseTypeAppStore = @"appstore";
     OSUCheckOperation *_currentCheckOperation;
     
     // Track info updates
-    NSURLConnection *_refreshingTrackInfo;
-    NSMutableData *_refreshingTrackData;
+    NSURLSessionDataTask *_refreshingTrackInfoTask;
 }
 
 static inline BOOL _hasScheduledCheck(OSUChecker *self)
@@ -490,6 +493,63 @@ static NSString *OSUBundleVersionForBundle(NSBundle *bundle)
     return (_currentCheckOperation != nil)? YES : NO; 
 }
 
+- (BOOL)unreadNewsAvailable
+{
+    return [[OSUPreferences unreadNews] boolValue];
+}
+
+- (void)setUnreadNewsAvailable:(BOOL)unreadNewsAvailable
+{
+    BOOL originalUnreadValue = self.unreadNewsAvailable;
+    if (unreadNewsAvailable != originalUnreadValue) {
+        [[OSUPreferences unreadNews] setBoolValue:unreadNewsAvailable];
+        
+        if (originalUnreadValue == YES) {
+            // the news was read by the user, and is no longer considered unread.
+            [[NSNotificationCenter defaultCenter] postNotificationName:OSUNewsAnnouncementHasBeenReadNotification object:nil];
+        }
+    }
+}
+
+- (NSURL *)currentNewsURL
+{
+    NSString *urlString = [[OSUPreferences currentNewsURL] stringValue];
+    if (urlString) {
+        return [NSURL URLWithString:urlString];
+    }
+    return nil;
+}
+
+- (void)setCurrentNewsURL:(NSURL *)currentNewsURL
+{
+    if (currentNewsURL != self.currentNewsURL) {
+        [[OSUPreferences currentNewsURL] setStringValue:[currentNewsURL absoluteString]];
+        self.unreadNewsAvailable = YES;
+        [[NSNotificationCenter defaultCenter] postNotificationName:OSUNewsAnnouncementNotification
+                                                            object:self
+                                                          userInfo:@{@"OSUNewsAnnouncementURL":currentNewsURL}];
+    }
+}
+
+- (void)handleNewsURL:(NSURL *)url withPublishDate:(NSDate *)publishDate
+{
+    OBPRECONDITION(publishDate);
+    OBPRECONDITION(url);
+    if (publishDate == nil || url == nil) {
+        // if we didn't get a valid url or publish date, we need to bail and not try to show news.
+        return;
+    }
+    
+    NSDate *currentNewsDate = [[OSUPreferences newsPublishDate] objectValue];
+    // only publish that we have a new news item, if the publishDate is later than the last news item publish date we received.
+    if (currentNewsDate == nil || [currentNewsDate compare:publishDate] == NSOrderedAscending) {
+#if defined(DEBUG_kilodelta)
+        NSLog(@"news item with a date later than: %@ -- new date: %@", currentNewsDate, publishDate);
+#endif
+        [[OSUPreferences newsPublishDate] setObjectValue:publishDate];
+        self.currentNewsURL = url;
+    }
+}
 // API
 
 - (BOOL)checkSynchronously;
@@ -562,71 +622,7 @@ static NSString *OSUBundleVersionForBundle(NSBundle *bundle)
     }
 }
 
-#pragma mark - NSURLConnection delegates
-
-// On iOS/MAS we don't download track information from the update feed since we ignore the result items anyway.
-#if OSU_FULL
-
-/* Zero or more connection:didReceiveResponse: messages will be sent to the delegate before receiving a connection:didReceiveData: message. */
-- (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response
-{
-    if (connection == _refreshingTrackInfo) {
-        BOOL satisfactory;
-        if ([response isKindOfClass:[NSHTTPURLResponse class]]) {
-            satisfactory = ( [(NSHTTPURLResponse *)response statusCode] <= 399 ) &&
-            ( [[response MIMEType] containsString:@"xml"] ) ;
-        } else {
-            // No way to distinguish successful from unsuccessful responses for non-HTTP protocols? Presumably we'll just get -didFailWithError: for other protocols.
-            satisfactory = YES;
-        }
-        
-        _refreshingTrackData = nil;
-        if (satisfactory)
-            _refreshingTrackData = [[NSMutableData alloc] init];
-    }
-}
-
-/* Zero or more connection:didReceiveData: messages will be sent */
-- (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data
-{
-    /* It's a pity that Apple has no easy to use push- or stream- parser interface */
-    if (connection == _refreshingTrackInfo && nil != _refreshingTrackData)
-        [_refreshingTrackData appendData:data];
-}
-
-/* Unless a NSURLConnection receives a cancel message, the delegate will receive one and only one of connectionDidFinishLoading:, or connection:didFailWithError: message, but never both. */
-
-- (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error
-{
-    if (connection == _refreshingTrackInfo) {
-        _refreshingTrackInfo = nil;
-        _refreshingTrackData = nil;
-        
-        NSLog(@"Couldn't fetch track text: %@", [error description]);
-    }
-}
-
-- (void)connectionDidFinishLoading:(NSURLConnection *)connection
-{
-    if (connection == _refreshingTrackInfo) {
-        _refreshingTrackInfo = nil;
-        
-        __autoreleasing NSError *xmlError = nil;
-        NSXMLDocument *document = [[NSXMLDocument alloc] initWithData:_refreshingTrackData options:NSXMLNodeOptionsNone error:&xmlError];
-        _refreshingTrackData = nil;
-        
-        if (!document) {
-            NSLog(@"Can't parse track text: %@", [xmlError description]);
-        } else {
-            [OSUItem processTrackInformation:document];
-        }
-    }
-}
-
-#endif
-
-#pragma mark -
-#pragma mark Private
+#pragma mark - Private
 
 @synthesize target = _checkTarget;
 - (void)setTarget:(id <OSUCheckerTarget>)target;
@@ -660,6 +656,20 @@ static NSString *OSUBundleVersionForBundle(NSBundle *bundle)
         [OFPreference removeObserver:self forPreference:[OSUPreferences automaticSoftwareUpdateCheckEnabled]];
         [OFPreference removeObserver:self forPreference:[OSUPreferences checkInterval]];
     }
+}
+
+- (NSDateFormatter *)dateFormatter
+{
+    if (_dateFormatter == nil) {
+        NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+        NSLocale *us = [[NSLocale alloc] initWithLocaleIdentifier:@"en_US"];
+        [formatter setLocale:us];
+        // Formatter needs to follow RFC 822 for RSS version 2.0
+        formatter.dateFormat = @"EEE, dd MMM yyyy HH:mm:ss zzz";
+        _dateFormatter = formatter;
+    }
+    
+    return _dateFormatter;
 }
 
 - (BOOL)_shouldCheckAtLaunch;
@@ -713,6 +723,10 @@ static NSString *OSUBundleVersionForBundle(NSBundle *bundle)
 
 - (void)_scheduleNextCheck;
 {
+    
+#if IPAD_RETAIL_DEMO
+    return;
+#endif
     // Make sure we haven't been disabled
     if (![[OSUPreferences automaticSoftwareUpdateCheckEnabled] boolValue])
         _flags.shouldCheckAutomatically = 0;
@@ -812,6 +826,13 @@ static NSString *OSUBundleVersionForBundle(NSBundle *bundle)
     
     // The fetch subprocess has completed.
     NSDictionary *output = _currentCheckOperation.output;
+#if defined(DEBUG)
+    // This is helpful when you need to test the behavior when a software update check fails. (Specifically, this only mimics the kind of failure you get if the server can be reached but never actually responds.)
+    if ((output != nil) && [[NSUserDefaults standardUserDefaults] boolForKey:@"OSUTestCheckFailure"]) {
+        NSLog(@"OSUTestCheckFailure: pretending that we got no check operation output");
+        output = nil;
+    }
+#endif
     __autoreleasing NSError *error = nil;
     if (!output) {
         error = _currentCheckOperation.error;
@@ -909,7 +930,7 @@ static NSString *OSUBundleVersionForBundle(NSBundle *bundle)
         OSU_DEBUG(1, @"Using %@", trust);
 
         NSArray *verifiedPortions = OSUGetSignedPortionsOfAppcast(data, trust, outError);
-        if (!verifiedPortions || ![verifiedPortions count]) {
+        if (!data || !verifiedPortions || ![verifiedPortions count]) {
             if (outError) {
                 NSString *description = NSLocalizedStringFromTableInBundle(@"Unable to authenticate the response from the software update server.", @"OmniSoftwareUpdate", OMNI_BUNDLE, @"error description - we have some update information but it doesn't look authentic");
                 NSMutableDictionary *userInfo = [NSMutableDictionary dictionaryWithObject:description forKey:NSLocalizedDescriptionKey];
@@ -945,7 +966,7 @@ static NSString *OSUBundleVersionForBundle(NSBundle *bundle)
     NSLog(@"OSU: Verification has been disabled in this configuration. Unauthentic updates may be accepted.");
 #endif
     
-    NSXMLDocument *document = [[NSXMLDocument alloc] initWithData:data options:NSXMLNodeOptionsNone error:outError];
+    NSXMLDocument *document =  data ? [[NSXMLDocument alloc] initWithData:data options:NSXMLNodeOptionsNone error:outError] : nil;
     if (!document) {
         if (outError) {
             NSString *description = NSLocalizedStringFromTableInBundle(@"Unable to parse response from the software update server.", @"OmniSoftwareUpdate", OMNI_BUNDLE, @"error description");
@@ -972,9 +993,11 @@ static NSString *OSUBundleVersionForBundle(NSBundle *bundle)
     NSError *firstError = nil;
     NSMutableArray *items = [NSMutableArray array];
     NSUInteger nodeIndex = [nodes count];
+ 
     while (nodeIndex--) {
         __autoreleasing NSError *itemError = nil;
         OSUItem *item = [[OSUItem alloc] initWithRSSElement:[nodes objectAtIndex:nodeIndex] error:&itemError];
+        
         if (!item) {
             ITEM_DEBUG(@"Unable to interpret node %@ as a software update: %@", [nodes objectAtIndex:nodeIndex], itemError);
             if (!firstError)
@@ -1002,6 +1025,7 @@ static NSString *OSUBundleVersionForBundle(NSBundle *bundle)
         }
     }
     
+    
     // If we had some matching nodes, but none were usable, return the error for the first
     if ([nodes count] > 0 && [items count] == 0 && firstError) {
         if (outError)
@@ -1009,19 +1033,50 @@ static NSString *OSUBundleVersionForBundle(NSBundle *bundle)
         return NO;
     }
 
+    // from the feed items we have, check if we have a news item.
+    OSUItem *newsItem = nil;
+    for (OSUItem *item in items) {
+        if (item.isNewsItem) {
+            newsItem = item;
+            break;
+        }
+    }
+    
+    if (newsItem != nil) {
+        NSDate *publishDate = [self _convertRFC822DateString:newsItem.publishDateString];
+        [self handleNewsURL:newsItem.releaseNotesURL withPublishDate:publishDate];
+#if defined(DEBUG_kilodelta)
+        NSLog(@"------- Got a new news item: %@ for date: %@", newsItem.releaseNotesURL, publishDate);
+#endif
+        // take this item out of the feed so we don't show it.
+        [items removeObject:newsItem];
+        
+        //Note: What should happen if we have a news feed item and an update? Currently we badge the UI for news, but show the update panel.
+    }
+    
     // If it looks like we'll display anything, retrieve the track descriptions and up-to-date orderings
-    if ([items count] > 0 && !_refreshingTrackInfo) {
+    if (items.count != 0 && _refreshingTrackInfoTask == nil) {
         NSArray *trackInfoAttributes = [document objectsForXQuery:[NSString stringWithFormat:@"declare namespace oac = \"%@\";\n /rss/channel/attribute::oac:trackinfo", OSUAppcastTrackInfoNamespace] error:NULL];
-        if ([trackInfoAttributes count]) {
-            NSURL *trackInfoURL = [NSURL URLWithString:[[trackInfoAttributes objectAtIndex:0] stringValue]];
-            if (trackInfoURL) {
-                NSMutableURLRequest *infoRequest = [NSMutableURLRequest requestWithURL:trackInfoURL];
-                [infoRequest setValue:[[operation url] absoluteString] forHTTPHeaderField:@"Referer" /* sic */];
-                _refreshingTrackInfo = [[NSURLConnection alloc] initWithRequest:infoRequest delegate:self];
-                OBASSERT(_refreshingTrackData == nil); 
+        if (trackInfoAttributes.count != 0) {
+            NSURLComponents *trackInfoURLComponents = [[NSURLComponents alloc] initWithString:[[trackInfoAttributes objectAtIndex:0] stringValue]];
+            if (trackInfoURLComponents != nil) {
+                if (OFISEQUAL(trackInfoURLComponents.scheme, @"http") && [trackInfoURLComponents.host hasSuffix:@".omnigroup.com"]) {
+                    trackInfoURLComponents.scheme = @"https";
+                }
+                NSURL *trackInfoURL = trackInfoURLComponents.URL;
+                if (trackInfoURL != nil) {
+                    NSMutableURLRequest *infoRequest = [NSMutableURLRequest requestWithURL:trackInfoURL];
+                    [infoRequest setValue:[[operation url] absoluteString] forHTTPHeaderField:@"Referer" /* sic */];
+
+                    _refreshingTrackInfoTask = [[NSURLSession sharedSession] dataTaskWithRequest:infoRequest completionHandler:^(NSData * _Nullable trackData, NSURLResponse * _Nullable response, NSError * _Nullable error){
+                        [self _trackInfoDataTaskFinished: trackData];
+                    }];
+                    [_refreshingTrackInfoTask resume];
+                }
             }
         }
     }
+    
     
     [items makeObjectsPerformSelector:@selector(setAvailablityBasedOnSystemVersion:) withObject:[OFVersionNumber userVisibleOperatingSystemVersionNumber]];
     [OSUItem setSupersededFlagForItems:items];
@@ -1032,6 +1087,42 @@ static NSString *OSUBundleVersionForBundle(NSBundle *bundle)
     
     return YES;
 }
+
+- (void)_trackInfoDataTaskFinished:(NSData *)trackData;
+{
+    OBPRECONDITION(![NSThread isMainThread], "We are called on a NSURLSession worker queue.");
+
+    NSError *error = _refreshingTrackInfoTask.error;
+    if (error) {
+        [error log:@"Couldn't fetch track info"];
+        _refreshingTrackInfoTask = nil;
+        return;
+    }
+    NSURLResponse *response = _refreshingTrackInfoTask.response;
+    _refreshingTrackInfoTask = nil;
+
+    if (![[response MIMEType] containsString:@"xml"]) {
+        NSLog(@"Ignoring track data with unknown MIME type %@", [response MIMEType]);
+        return;
+    }
+
+    if (!trackData) {
+        OBASSERT(trackData);
+        return;
+    }
+
+    __autoreleasing NSError *xmlError = nil;
+    NSXMLDocument *document = [[NSXMLDocument alloc] initWithData:trackData options:NSXMLNodeOptionsNone error:&xmlError];
+
+    if (!document) {
+        [xmlError log: @"Can't parse track info"];
+    } else {
+        [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+            [OSUItem processTrackInformation:document];
+        }];
+    }
+}
+
 #else
 - (void)_checkForMessageInSoftwareUpdateData:(NSData *)data
 {
@@ -1043,6 +1134,10 @@ static NSString *OSUBundleVersionForBundle(NSBundle *bundle)
             [appController showNewsURLString:oneItem.releaseNotesURLString evenIfShownAlready:NO];
         }
 #endif
+        // MAS Build.
+        NSURL *newsURL = [NSURL URLWithString:oneItem.releaseNotesURLString];
+        NSDate *publishDate = [self _convertRFC822DateString:oneItem.publishDateString];
+        [self handleNewsURL:newsURL withPublishDate:publishDate];
     }
 }
 
@@ -1129,4 +1224,25 @@ static NSString *OSUBundleVersionForBundle(NSBundle *bundle)
 }
 #endif
 
+- (NSDate *)_convertRFC822DateString:(NSString *)dateString
+{
+    // Guard against some possible bad date formats in the OSU publish date string.
+    
+    if ([dateString rangeOfCharacterFromSet:[NSCharacterSet characterSetWithCharactersInString:@"-"]].location != NSNotFound) {
+        // guard against a possibly poorly formated date string.
+        dateString = [dateString stringByReplacingOccurrencesOfString:@"-" withString:@" "];
+    }
+    
+    if ([dateString rangeOfCharacterFromSet:[NSCharacterSet characterSetWithCharactersInString:@","]].location == NSNotFound) {
+        // use a format that doesn't include the day abrev.
+        self.dateFormatter.dateFormat = @"dd MMM yyyy HH:mm:ss zzz";
+    }
+    
+    NSDate *date = [self.dateFormatter dateFromString:dateString];
+    OBASSERT(date);
+    if (! date) {
+        OSU_DEBUG(1, @"failed to convert: %@ into a RFC822 date", dateString);
+    }
+    return date;
+}
 @end

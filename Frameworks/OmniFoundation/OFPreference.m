@@ -1,4 +1,4 @@
-// Copyright 2001-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2001-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -7,11 +7,13 @@
 
 #import <OmniFoundation/OFPreference.h>
 
-#import <OmniBase/OBObject.h> // For -shortDescription
 #import <OmniFoundation/OFEnumNameTable.h>
 #import <OmniFoundation/OFNull.h>
 #import <OmniFoundation/NSDate-OFExtensions.h> // For -initWithXMLString:
 #import <OmniFoundation/OFErrors.h>
+#import <OmniFoundation/OFBindingPoint.h>
+#import <OmniFoundation/OFMultiValueDictionary.h>
+#import <OmniFoundation/NSString-OFURLEncoding.h>
 
 #if !defined(TARGET_OS_IPHONE) || !TARGET_OS_IPHONE
 #import <OmniFoundation/NSUserDefaults-OFExtensions.h>
@@ -20,17 +22,18 @@
 #endif
 
 #import <Foundation/Foundation.h>
-
 #import <OmniBase/OmniBase.h>
 
 RCS_ID("$Id$");
+
+NS_ASSUME_NONNULL_BEGIN
 
 //#define DEBUG_PREFERENCES
 
 static NSUserDefaults *standardUserDefaults;
 static NSMutableDictionary <NSString *, OFPreference *> *preferencesByKey;
 static NSLock *preferencesLock;
-static NSSet <NSString *> *registeredKeysCache;
+static NSSet <NSString *> * _Nullable registeredKeysCache;
 static NSObject *unset = nil;
 static volatile unsigned registrationGeneration = 1;
 static NSNotificationCenter *preferenceNotificationCenter = nil;
@@ -100,7 +103,7 @@ static inline id _objectValue(OFPreference *self, id const *_value, NSString *ke
     return result;
 }
 
-static void _setValueUnderlyingValue(OFPreference *self, id controller, NSString *keyPath, NSString *key, id value)
+static void _setValueUnderlyingValue(OFPreference *self, id _Nullable controller, NSString * _Nullable keyPath, NSString *key, id _Nullable value)
 {
     // Per discussion with tjw in <bug:///122290> (Bug: OFPreference deadlock), we should avoid writing to OFPreference from a background thread/queue.
     // The original design of OFPreference was that it would be readable in a thread-safe way from any queue, but that writing to it should happen on the main queue.
@@ -137,7 +140,7 @@ static void _setValueUnderlyingValue(OFPreference *self, id controller, NSString
     }
 }
 
-static void _setValue(OFPreference *self, OB_STRONG id *_value, NSString *key, id value)
+static void _setValue(OFPreference *self, OB_STRONG id *_value, NSString *key, _Nullable id value)
 {
     @synchronized(self) {
         // If this preference is created & used by a OAPreferenceClient, or other NSController, use KVC on the controller to set the preference so that other observers of the controller will get notified via KVO.
@@ -225,17 +228,28 @@ static void _setValue(OFPreference *self, OB_STRONG id *_value, NSString *key, i
     [preferencesLock unlock];
 }
 
-+ (void)addObserver:(id)anObserver selector:(SEL)aSelector forPreference:(OFPreference *)aPreference;
++ (void)addObserver:(id)anObserver selector:(SEL)aSelector forPreference:(OFPreference * _Nullable)aPreference;
 {
     [preferenceNotificationCenter addObserver:anObserver selector:aSelector name:OFPreferenceDidChangeNotification object:aPreference];
 }
 
-+ (void)removeObserver:(id)anObserver forPreference:(OFPreference *)aPreference;
++ (id)addObserverForPreference:(nullable OFPreference *)preference usingBlock:(void (^)(OFPreference *preference))block;
+{
+    id result = [preferenceNotificationCenter addObserverForName:OFPreferenceDidChangeNotification object:preference queue:nil usingBlock:^(NSNotification * _Nonnull note) {
+        OFPreference *changedPreference = note.object;
+        if ([changedPreference isKindOfClass:[OFPreference class]]) {
+            block(changedPreference);
+        }
+    }];
+    return result;
+}
+
++ (void)removeObserver:(id)anObserver forPreference:(OFPreference * _Nullable)aPreference;
 {
     [preferenceNotificationCenter removeObserver:anObserver name:OFPreferenceDidChangeNotification object:aPreference];
 }
 
-+ (id)coerceStringValue:(NSString *)stringValue toTypeOfPropertyListValue:(id)propertyListValue;
++ (nullable id)coerceStringValue:(nullable NSString *)stringValue toTypeOfPropertyListValue:(id)propertyListValue;
 {
     if (stringValue == nil || [stringValue isNull]) { // null
         return [NSNull null];
@@ -243,8 +257,10 @@ static void _setValue(OFPreference *self, OB_STRONG id *_value, NSString *key, i
         return stringValue;
     } else if ([propertyListValue isKindOfClass:[NSNumber class]]) { // <real> or <integer> or <true/> or <false/>
         const char *objCType = [(NSNumber *)propertyListValue objCType];
-        if (strcmp(objCType, @encode(int)) == 0) // <integer>
+        if (strcmp(objCType, @encode(int)) == 0) // <integer> on 32-bit platform
             return [NSNumber numberWithInt:[stringValue intValue]];
+        else if (strcmp(objCType, @encode(long)) == 0) // <integer> on 64-bit platform
+            return [NSNumber numberWithInteger:[stringValue integerValue]];
         else if (strcmp(objCType, @encode(double)) == 0) // <real>
             return [NSNumber numberWithDouble:[stringValue doubleValue]];
         else if (strcmp(objCType, @encode(char)) == 0) // <true/> or <false/>
@@ -328,7 +344,7 @@ static void _setValue(OFPreference *self, OB_STRONG id *_value, NSString *key, i
     return [self preferenceForKey:key enumeration:nil];
 }
 
-+ (OFPreference *)preferenceForKey:(NSString *)key enumeration:(OFEnumNameTable *)enumeration;
++ (OFPreference *)preferenceForKey:(NSString *)key enumeration:(OFEnumNameTable * _Nullable)enumeration;
 {
     OFPreference *preference;
     
@@ -366,7 +382,7 @@ static void _setValue(OFPreference *self, OB_STRONG id *_value, NSString *key, i
     return _key;
 }
 
-- (OFEnumNameTable *) enumeration
+- (OFEnumNameTable * _Nullable) enumeration
 {
     return nil;
 }
@@ -447,29 +463,56 @@ static void _setValue(OFPreference *self, OB_STRONG id *_value, NSString *key, i
     return NO;
 }
 
-- (id) objectValue;
+- (_Nullable id) objectValue;
 {
     return _objectValue(self, &_value, _key, @"NSObject");
 }
 
-- (NSString *) stringValue;
+- (NSString * _Nullable) stringValue;
 {
     return [[self objectValue] description];
 }
 
-- (NSArray *) arrayValue;
+- (NSArray * _Nullable) arrayValue;
 {
     return _objectValue(self, &_value, _key, @"NSArray");
 }
 
-- (NSDictionary *) dictionaryValue;
+- (NSDictionary * _Nullable) dictionaryValue;
 {
     return _objectValue(self, &_value, _key, @"NSDictionary");
 }
 
-- (NSData *) dataValue;
+- (NSData * _Nullable) dataValue;
 {
     return _objectValue(self, &_value, _key, @"NSData");
+}
+
+- (NSURL * _Nullable) bookmarkURLValue;
+{
+    NSData *bookmarkData = [self dataValue];
+    if (bookmarkData.length == 0)
+        return nil;
+    
+    BOOL isStale = NO;
+#if !defined(TARGET_OS_IPHONE) || !TARGET_OS_IPHONE
+    NSURLBookmarkResolutionOptions resolutionOptions = NSURLBookmarkResolutionWithSecurityScope;
+#else
+    NSURLBookmarkResolutionOptions resolutionOptions = 0;
+#endif
+    NSURL *bookmarkURL = [NSURL URLByResolvingBookmarkData:bookmarkData options:resolutionOptions relativeToURL:nil bookmarkDataIsStale:&isStale error:NULL];
+    return bookmarkURL;
+}
+
+- (void)setBookmarkURLValue:(NSURL * _Nullable)bookmarkURL;
+{
+#if !defined(TARGET_OS_IPHONE) || !TARGET_OS_IPHONE
+    NSURLBookmarkCreationOptions creationOptions = NSURLBookmarkCreationWithSecurityScope;
+#else
+    NSURLBookmarkCreationOptions creationOptions = 0;
+#endif
+    NSData *bookmarkData = bookmarkURL != nil ? [bookmarkURL bookmarkDataWithOptions:creationOptions includingResourceValuesForKeys:nil relativeToURL:nil error:NULL] : nil;
+    [self setDataValue:bookmarkData];
 }
 
 - (int) intValue;
@@ -605,7 +648,7 @@ static void _setValue(OFPreference *self, OB_STRONG id *_value, NSString *key, i
     return result;
 }
 
-- (NSArray *) stringArrayValue;
+- (NSArray <NSString *> * _Nullable)stringArrayValue;
 {
     return [self arrayValue];
 }
@@ -616,30 +659,30 @@ static void _setValue(OFPreference *self, OB_STRONG id *_value, NSString *key, i
     return INT_MIN; // unreached; and unlikely to be a valid enumeration value
 }
 
-- (void) setObjectValue: (id) value;
+- (void)setObjectValue:(id _Nullable)value;
 {
     _setValue(self, &_value, _key, value);
 }
 
-- (void) setStringValue: (NSString *) value;
+- (void)setStringValue:(NSString * _Nullable)value;
 {
     OBPRECONDITION(!value || [value isKindOfClass: [NSString class]]);
     _setValue(self, &_value, _key, value);
 }
 
-- (void) setArrayValue: (NSArray *) value;
+- (void)setArrayValue:(NSArray * _Nullable)value;
 {
     OBPRECONDITION(!value || [value isKindOfClass: [NSArray class]]);
     _setValue(self, &_value, _key, value);
 }
 
-- (void) setDictionaryValue: (NSDictionary *) value;
+- (void)setDictionaryValue:(NSDictionary * _Nullable)value;
 {
     OBPRECONDITION(!value || [value isKindOfClass: [NSDictionary class]]);
     _setValue(self, &_value, _key, value);
 }
 
-- (void) setDataValue: (NSData *) value;
+- (void)setDataValue:(NSData * _Nullable)value;
 {
     OBPRECONDITION(!value || [value isKindOfClass: [NSData class]]);
     _setValue(self, &_value, _key, value);
@@ -704,7 +747,7 @@ static void _setValue(OFPreference *self, OB_STRONG id *_value, NSString *key, i
 
 #if !defined(TARGET_OS_IPHONE) || !TARGET_OS_IPHONE
 
-- (NSScriptObjectSpecifier *)objectSpecifier;
+- (NSScriptObjectSpecifier * _Nullable)objectSpecifier;
 {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wundeclared-selector"
@@ -719,7 +762,7 @@ static void _setValue(OFPreference *self, OB_STRONG id *_value, NSString *key, i
     return _key;
 }
 
-- (id)scriptValue;
+- (_Nullable id)scriptValue;
 {
     id value = [self objectValue];
     if ([value isKindOfClass:[NSArray class]] || [value isKindOfClass:[NSDictionary class]] || [value isKindOfClass:[NSData class]])
@@ -728,7 +771,7 @@ static void _setValue(OFPreference *self, OB_STRONG id *_value, NSString *key, i
         return value;
 }
 
-- (void)setScriptValue:(id)value;
+- (void)setScriptValue:(_Nullable id)value;
 {
     // TODO: Make sure this is a plist type?
     // Cocoa Scripting should do this for us, or reject the apple event, before we are ever called.
@@ -810,8 +853,11 @@ static void _setValue(OFPreference *self, OB_STRONG id *_value, NSString *key, i
 
 // no -dealloc: we are never deallocated
 
-- (OFEnumNameTable *) enumeration
+- (OFEnumNameTable * _Nullable) enumeration
 {
+    // API-wise, this has to be nullable, but for our instances it never should be.
+    OBPRECONDITION(names != nil);
+
     return names;
 }
 
@@ -826,10 +872,10 @@ static void _setValue(OFPreference *self, OB_STRONG id *_value, NSString *key, i
 
 #define BAD_TYPE_IMPL(x) { [NSException raise:NSInvalidArgumentException format:@"-%@ called on enumerated %@ (%@)", NSStringFromSelector(_cmd), [self shortDescription], _key]; x; }
 
-- (NSString *)stringValue;            BAD_TYPE_IMPL(return nil)
-- (NSArray *)arrayValue;              BAD_TYPE_IMPL(return nil)
-- (NSDictionary *)dictionaryValue;    BAD_TYPE_IMPL(return nil)
-- (NSData *)dataValue;                BAD_TYPE_IMPL(return nil)
+- (NSString * _Nullable)stringValue;            BAD_TYPE_IMPL(return nil)
+- (NSArray * _Nullable)arrayValue;              BAD_TYPE_IMPL(return nil)
+- (NSDictionary * _Nullable)dictionaryValue;    BAD_TYPE_IMPL(return nil)
+- (NSData * _Nullable)dataValue;                BAD_TYPE_IMPL(return nil)
 - (int)intValue;                      BAD_TYPE_IMPL(return 0)
 - (NSInteger)integerValue             BAD_TYPE_IMPL(return 0)
 - (unsigned int)unsignedIntValue;     BAD_TYPE_IMPL(return 0)
@@ -858,10 +904,10 @@ static void _setValue(OFPreference *self, OB_STRONG id *_value, NSString *key, i
     return result;
 }
 
-- (void)setStringValue:(NSString *)value;            BAD_TYPE_IMPL(;)
-- (void)setArrayValue:(NSArray *)value;              BAD_TYPE_IMPL(;)
-- (void)setDictionaryValue:(NSDictionary *)value;    BAD_TYPE_IMPL(;)
-- (void)setDataValue:(NSData *)value;                BAD_TYPE_IMPL(;)
+- (void)setStringValue:(NSString * _Nullable)value;            BAD_TYPE_IMPL(;)
+- (void)setArrayValue:(NSArray * _Nullable)value;              BAD_TYPE_IMPL(;)
+- (void)setDictionaryValue:(NSDictionary * _Nullable)value;    BAD_TYPE_IMPL(;)
+- (void)setDataValue:(NSData * _Nullable)value;                BAD_TYPE_IMPL(;)
 - (void)setIntValue:(int)value;                      BAD_TYPE_IMPL(;)
 - (void)setIntegerValue:(NSInteger)value;            BAD_TYPE_IMPL(;)
 - (void)setFloatValue:(float)value;                  BAD_TYPE_IMPL(;)
@@ -900,22 +946,22 @@ static void _setValue(OFPreference *self, OB_STRONG id *_value, NSString *key, i
 #pragma clang diagnostic pop
 }
 
-- (id)objectForKey:(NSString *)defaultName;
+- (nullable id)objectForKey:(NSString *)defaultName;
 {
     return [[OFPreference preferenceForKey: defaultName] objectValue];
 }
 
-- (void)setObject:(id)value forKey:(NSString *)defaultName;
+- (void)setObject:(nullable id)value forKey:(NSString *)defaultName;
 {
     [[OFPreference preferenceForKey: defaultName] setObjectValue: value];
 }
 
-- (id)valueForKey:(NSString *)aKey;
+- (nullable id)valueForKey:(NSString *)aKey;
 {
     return [[OFPreference preferenceForKey: aKey] objectValue];
 }
 
-- (void)setValue:(id)value forKey:(NSString *)aKey;
+- (void)setValue:(nullable id)value forKey:(NSString *)aKey;
 {
     [[OFPreference preferenceForKey: aKey] setObjectValue: value];
 }
@@ -925,27 +971,32 @@ static void _setValue(OFPreference *self, OB_STRONG id *_value, NSString *key, i
     [[OFPreference preferenceForKey: defaultName] restoreDefaultValue];
 }
 
-- (NSString *)stringForKey:(NSString *)defaultName;
+- (nullable NSString *)stringForKey:(NSString *)defaultName;
 {
     return [[OFPreference preferenceForKey: defaultName] stringValue];
 }
 
-- (NSArray *)arrayForKey:(NSString *)defaultName;
+- (nullable NSArray *)arrayForKey:(NSString *)defaultName;
 {
     return [[OFPreference preferenceForKey: defaultName] arrayValue];
 }
 
-- (NSDictionary *)dictionaryForKey:(NSString *)defaultName;
+- (nullable NSDictionary *)dictionaryForKey:(NSString *)defaultName;
 {
     return [[OFPreference preferenceForKey: defaultName] dictionaryValue];
 }
 
-- (NSData *)dataForKey:(NSString *)defaultName;
+- (nullable NSData *)dataForKey:(NSString *)defaultName;
 {
     return [[OFPreference preferenceForKey: defaultName] dataValue];
 }
 
-- (NSArray *)stringArrayForKey:(NSString *)defaultName;
+- (nullable NSURL *)bookmarkURLForKey:(NSString *)defaultName;
+{
+    return [[OFPreference preferenceForKey: defaultName] bookmarkURLValue];
+}
+
+- (nullable NSArray *)stringArrayForKey:(NSString *)defaultName;
 {
     return [[OFPreference preferenceForKey: defaultName] stringArrayValue];
 }
@@ -1012,10 +1063,6 @@ static void _setValue(OFPreference *self, OB_STRONG id *_value, NSString *key, i
 
 @end
 
-#import <OmniFoundation/OFBindingPoint.h>
-#import <OmniFoundation/OFMultiValueDictionary.h>
-#import <OmniFoundation/NSString-OFURLEncoding.h>
-
 static NSMutableDictionary *ConfigurationValueRegistrations = nil;
 static id UserDefaultsObserver = nil;
 
@@ -1023,15 +1070,16 @@ NSString * const OFChangeConfigurationValueURLPath = @"/change-configuration-val
 
 @interface OFConfigurationValue ()
 
-- initWithKey:(NSString *)key objcType:(const char *)objcType pointer:(void *)pointer defaultValue:(double)defaultValue minimumValue:(double)minimumValue maximumValue:(double)maximumValue;
-
-@property(nonatomic,readonly) void *pointer;
+@property(nonatomic,readonly) BOOL integral;
 
 - (void)update;
 
 @end
 
 @implementation OFConfigurationValue
+{
+    NSMutableArray <OFConfigurationValueObserver> *_observers;
+}
 
 + (void)initialize;
 {
@@ -1128,18 +1176,20 @@ static NSString *ConfigurationValuesURLScheme = nil;
     }];
 }
 
-- initWithKey:(NSString *)key objcType:(const char *)objcType pointer:(void *)pointer defaultValue:(double)defaultValue minimumValue:(double)minimumValue maximumValue:(double)maximumValue;
+- initWithKey:(NSString *)key integral:(BOOL)integral defaultValue:(double)defaultValue minimumValue:(double)minimumValue maximumValue:(double)maximumValue;
 {
     OBPRECONDITION(defaultValue >= minimumValue);
     OBPRECONDITION(defaultValue <= maximumValue);
-    
+    OBASSERT_IF(integral, defaultValue == floor(defaultValue));
+    OBASSERT_IF(integral, minimumValue == floor(minimumValue));
+    OBASSERT_IF(integral, maximumValue == floor(maximumValue));
+
     if (!(self = [super init])) {
         return nil;
     }
     
     _key = [key copy];
-    _objcType = objcType;
-    _pointer = pointer;
+    _integral = integral;
     _defaultValue = defaultValue;
     _minimumValue = minimumValue;
     _maximumValue = maximumValue;
@@ -1149,18 +1199,21 @@ static NSString *ConfigurationValuesURLScheme = nil;
     return self;
 }
 
-- (double)currentValue;
+- (void)dealloc;
 {
-    if (strcmp(_objcType, @encode(NSInteger)) == 0) {
-        NSInteger *levelPointer = _pointer;
-        return *levelPointer;
-    }
-    if (strcmp(_objcType, @encode(NSTimeInterval)) == 0) {
-        NSTimeInterval *intervalPointer = (NSTimeInterval *)_pointer;
-        return *intervalPointer;
-    }
-    NSLog(@"%@: Unknown encoding '%s'", NSStringFromClass([self class]), _objcType);
-    return 0;
+    [_key release];
+    [_observers release];
+    [super dealloc];
+}
+
+- (void)addValueObserver:(OFConfigurationValueObserver)observer;
+{
+    if (!_observers)
+        _observers = [[NSMutableArray alloc] init];
+
+    observer = [observer copy];
+    [_observers addObject:observer];
+    [observer release];
 }
 
 - (BOOL)hasNonDefaultValue;
@@ -1175,20 +1228,18 @@ static NSString *ConfigurationValuesURLScheme = nil;
 
 - (void)setValueFromString:(NSString *)stringValue;
 {
-    if (strcmp(_objcType, @encode(NSInteger)) == 0) {
+    if (_integral) {
         NSInteger level = [stringValue integerValue];
         [[NSUserDefaults standardUserDefaults] setObject:@(level) forKey:_key];
-    } else if (strcmp(_objcType, @encode(NSTimeInterval)) == 0) {
-        NSTimeInterval value = [stringValue doubleValue];
-        [[NSUserDefaults standardUserDefaults] setObject:@(value) forKey:_key];
     } else {
-        NSLog(@"%s: Unknown encoding '%s'", __func__, _objcType);
+        double value = [stringValue doubleValue];
+        [[NSUserDefaults standardUserDefaults] setObject:@(value) forKey:_key];
     }
 }
 
 - (void)setValueFromDouble:(double)value;
 {
-    // -update does the clamping and snapping to integer values when needed.
+    // -update does the clamping and snapping to integral values when needed.
     [[NSUserDefaults standardUserDefaults] setObject:@(value) forKey:_key];
 }
 
@@ -1196,53 +1247,44 @@ static NSString *ConfigurationValuesURLScheme = nil;
 {
     OBPRECONDITION([NSThread isMainThread]);
     
-    if (strcmp(_objcType, @encode(NSInteger)) == 0) {
-        NSInteger level = _defaultValue;
+    double level = _defaultValue;
+    if (_integral) {
         const char *env = getenv([_key UTF8String]); /* easier for command line tools */
         if (env)
             level = strtoul(env, NULL, 0);
         else if ([[NSUserDefaults standardUserDefaults] objectForKey:_key])
             level = [[NSUserDefaults standardUserDefaults] integerForKey:_key];
-        
-        level = CLAMP(level, _minimumValue, _maximumValue);
-        
-        // Log if the value is getting set to something non-zero the first time around, or if its changing the second time around.
-        NSInteger *levelPointer = (NSInteger *)_pointer;
-        if (*levelPointer != level) {
-            if ((*levelPointer == _defaultValue && level != _defaultValue) || (*levelPointer != _defaultValue && level != *levelPointer))
-                NSLog(@"DEBUG LEVEL %@ = %ld", _key, level);
-            [self willChangeValueForKey:OFValidateKeyPath(self, currentValue)];
-            *levelPointer = level;
-            [self didChangeValueForKey:OFValidateKeyPath(self, currentValue)];
-        }
-    } else if (strcmp(_objcType, @encode(NSTimeInterval)) == 0) {
-        NSTimeInterval value = _defaultValue;
-        
+    } else {
         const char *env = getenv([_key UTF8String]); /* easier for command line tools */
         if (env)
-            value = strtod(env, NULL);
+            level = strtod(env, NULL);
         else if ([[NSUserDefaults standardUserDefaults] objectForKey:_key])
-            value = [[NSUserDefaults standardUserDefaults] doubleForKey:_key];
-        
-        value = CLAMP(value, _minimumValue, _maximumValue);
-        
-        // Log if the value is getting set to something non-zero the first time around, or if its changing the second time around.
-        NSTimeInterval *intervalPointer = (NSTimeInterval *)_pointer;
-        if (*intervalPointer != value) {
-            if ((*intervalPointer == _defaultValue && value != _defaultValue) || (*intervalPointer != _defaultValue && value != *intervalPointer))
-                NSLog(@"TIME INTERVAL %@ = %lf", _key, value);
-            [self willChangeValueForKey:OFValidateKeyPath(self, currentValue)];
-            *intervalPointer = value;
-            [self didChangeValueForKey:OFValidateKeyPath(self, currentValue)];
+            level = [[NSUserDefaults standardUserDefaults] doubleForKey:_key];
+    }
+
+    level = CLAMP(level, _minimumValue, _maximumValue);
+
+    // Log if the value is getting set to something non-zero the first time around, or if its changing the second time around.
+    if (_currentValue != level) {
+        if ((_currentValue == _defaultValue && level != _defaultValue) || (_currentValue != _defaultValue && level != _currentValue))
+            NSLog(@"CONFIGURATION %@ = %g", _key, level);
+
+        [self willChangeValueForKey:OFValidateKeyPath(self, currentValue)];
+        _currentValue = level;
+        [self didChangeValueForKey:OFValidateKeyPath(self, currentValue)];
+
+        // Fire block based observers too
+        NSArray <OFConfigurationValueObserver> *observers = [_observers copy];
+        for (OFConfigurationValueObserver observer in observers) {
+            observer(self);
         }
-    } else {
-        NSLog(@"%@: Unknown encoding '%s'", NSStringFromClass([self class]), _objcType);
+        [observers release];
     }
 }
 
 - (NSString *)debugDescription;
 {
-    return [NSString stringWithFormat:@"<%@:%p %@ '%s' at %p>", NSStringFromClass([self class]), self, _key, _objcType, _pointer];
+    return [NSString stringWithFormat:@"<%@:%p %@ integral:%d>", NSStringFromClass([self class]), self, _key, _integral];
 }
 
 @end
@@ -1334,7 +1376,15 @@ void _OFRegisterIntegerConfigurationValue(NSInteger *outLevel, NSString *name, d
     OBPRECONDITION([NSThread isMainThread]);
     
     @autoreleasepool {
-        OFConfigurationValue *configurationValue = [[OFConfigurationValue alloc] initWithKey:name objcType:@encode(typeof(*outLevel)) pointer:outLevel defaultValue:defaultValue minimumValue:minimumValue maximumValue:maximumValue];
+        OBASSERT(ConfigurationValueRegistrations[name] == nil);
+
+        OFConfigurationValue *configurationValue = [[OFConfigurationValue alloc] initWithKey:name integral:YES defaultValue:defaultValue minimumValue:minimumValue maximumValue:maximumValue];
+
+        [configurationValue addValueObserver:^(OFConfigurationValue *value){
+            *outLevel = (NSInteger)value.currentValue;
+        }];
+        *outLevel = (NSInteger)configurationValue.currentValue; // Initial value
+
         ConfigurationValueRegistrations[name] = configurationValue;
         [configurationValue release];
     }
@@ -1344,10 +1394,17 @@ void _OFRegisterTimeIntervalConfigurationValue(NSTimeInterval *outInterval, NSSt
     OBPRECONDITION([NSThread isMainThread]);
     
     @autoreleasepool {
-        OFConfigurationValue *configurationValue = [[OFConfigurationValue alloc] initWithKey:name objcType:@encode(typeof(*outInterval)) pointer:outInterval defaultValue:defaultValue minimumValue:minimumValue maximumValue:maximumValue];
+        OBASSERT(ConfigurationValueRegistrations[name] == nil);
+
+        OFConfigurationValue *configurationValue = [[OFConfigurationValue alloc] initWithKey:name integral:NO defaultValue:defaultValue minimumValue:minimumValue maximumValue:maximumValue];
+        [configurationValue addValueObserver:^(OFConfigurationValue *value){
+            *outInterval = value.currentValue;
+        }];
+        *outInterval = configurationValue.currentValue; // Initial value
+
         ConfigurationValueRegistrations[name] = configurationValue;
         [configurationValue release];
     }
 }
 
-
+NS_ASSUME_NONNULL_END

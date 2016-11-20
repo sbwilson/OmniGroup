@@ -1,4 +1,4 @@
-// Copyright 1997-2015 Omni Development, Inc. All rights reserved.
+// Copyright 1997-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -27,6 +27,7 @@ RCS_ID("$Id$")
 
 static void _fixPreferences(void) __attribute__((constructor));
 static void _fixPreferences(void) {
+  @autoreleasepool {
     NSDictionary *environment = [[NSProcessInfo processInfo] environment];
     NSString *prefix = environment[@"OBFixXcodeBustedEnvironment"];
     if (!prefix)
@@ -57,6 +58,7 @@ static void _fixPreferences(void) {
 
     // No public setter, but this is just a hack...
     [[NSProcessInfo processInfo] setValue:environment forKey:@"environment"];
+  };
 }
 
 // Call this from main() to fix arguments...
@@ -147,6 +149,11 @@ static void _NSToCG(char *p)
 
 const char *_OBGeometryAdjustedSignature(const char *sig)
 {
+    if (sig == NULL) {
+        // This happens for @objc Swift classes that defined index/key subscripts https://bugs.swift.org/browse/SR-970
+        return NULL;
+    }
+
     // Convert _NS{Point,Size,Rect} to CG{Point,Size,Rect}
     char *adj = strdup(sig);
     char *p;
@@ -257,6 +264,12 @@ Class OBClassImplementingMethod(Class cls, SEL sel)
     
     return cls;
 }
+
+BOOL OBObjectIsKindOfClass(id object, Class cls)
+{
+    return [object isKindOfClass:cls];
+}
+
 
 /*"
  This method returns a basic description for anObject, like implemented on NSObject. This allows you to get the basic description even if the normal description methods have been overridden.
@@ -385,7 +398,13 @@ void _OBStopInDebugger(const char *file, unsigned int line, const char *function
     BOOL isBeingDebugged = OBIsBeingDebugged();
     OBASSERT(isBeingDebugged);
     if (isBeingDebugged) {
+#if __x86_64__
+        asm("\tint3");
+#elif __arm__
+        asm("\tbkpt");
+#else
         kill(getpid(), SIGTRAP);
+#endif
     }
 }
 

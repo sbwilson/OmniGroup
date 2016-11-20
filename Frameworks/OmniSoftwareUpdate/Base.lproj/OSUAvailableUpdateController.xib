@@ -1,8 +1,9 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="9531" systemVersion="15C50" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES">
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="11198.2" systemVersion="16A313a" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES">
     <dependencies>
-        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="9531"/>
-        <plugIn identifier="com.apple.WebKitIBPlugin" version="9531"/>
+        <deployment identifier="macosx"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="11198.2"/>
+        <plugIn identifier="com.apple.WebKitIBPlugin" version="11198.2"/>
     </dependencies>
     <objects>
         <customObject id="-2" userLabel="File's Owner" customClass="OSUAvailableUpdateController">
@@ -14,7 +15,6 @@
                 <outlet property="_itemAlertMessage" destination="251" id="269"/>
                 <outlet property="_messageTextField" destination="234" id="273"/>
                 <outlet property="_releaseNotesWebView" destination="258" id="274"/>
-                <outlet property="_spinner" destination="261" id="275"/>
                 <outlet property="_titleTextField" destination="232" id="276"/>
                 <outlet property="actionButtonsView" destination="gHf-s1-M6k" id="ZDh-W5-9OJ"/>
                 <outlet property="appIconImageView" destination="259" id="qqb-Tu-ymk"/>
@@ -43,7 +43,7 @@
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
             <rect key="contentRect" x="424" y="252" width="480" height="550"/>
-            <rect key="screenRect" x="0.0" y="0.0" width="2560" height="1417"/>
+            <rect key="screenRect" x="0.0" y="0.0" width="2560" height="1418"/>
             <view key="contentView" verticalHuggingPriority="750" verticalCompressionResistancePriority="1000" id="226" userLabel="Content View">
                 <rect key="frame" x="0.0" y="0.0" width="480" height="550"/>
                 <autoresizingMask key="autoresizingMask"/>
@@ -51,73 +51,6 @@
                     <customView translatesAutoresizingMaskIntoConstraints="NO" id="hUu-Yc-s2c" userLabel="Stack View" customClass="OAConstraintBasedStackView">
                         <rect key="frame" x="20" y="20" width="440" height="510"/>
                         <subviews>
-                            <customView verticalCompressionResistancePriority="1000" translatesAutoresizingMaskIntoConstraints="NO" id="Pca-T5-ppY" userLabel="Status View">
-                                <rect key="frame" x="0.0" y="438" width="440" height="72"/>
-                                <subviews>
-                                    <imageView verticalCompressionResistancePriority="1000" translatesAutoresizingMaskIntoConstraints="NO" id="259">
-                                        <rect key="frame" x="0.0" y="8" width="64" height="64"/>
-                                        <constraints>
-                                            <constraint firstAttribute="width" constant="64" id="cAW-NY-07A"/>
-                                            <constraint firstAttribute="height" constant="64" id="hES-Pv-mWB"/>
-                                        </constraints>
-                                        <imageCell key="cell" refusesFirstResponder="YES" alignment="left" animates="YES" imageScaling="axesIndependently" image="NSApplicationIcon" id="260"/>
-                                    </imageView>
-                                    <textField horizontalHuggingPriority="249" verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" verticalCompressionResistancePriority="1000" preferredMaxLayoutWidth="336" translatesAutoresizingMaskIntoConstraints="NO" id="232" customClass="OSUAvailableUpdateControllerMessageTextField">
-                                        <rect key="frame" x="82" y="55" width="340" height="17"/>
-                                        <constraints>
-                                            <constraint firstAttribute="width" relation="greaterThanOrEqual" constant="300" id="9vq-V8-8Xe"/>
-                                        </constraints>
-                                        <textFieldCell key="cell" sendsActionOnEndEditing="YES" id="233">
-                                            <font key="font" metaFont="systemBold"/>
-                                            <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
-                                            <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
-                                        </textFieldCell>
-                                        <connections>
-                                            <binding destination="-2" name="value" keyPath="message" id="321"/>
-                                            <outlet property="nextKeyView" destination="234" id="281"/>
-                                        </connections>
-                                    </textField>
-                                    <textField horizontalHuggingPriority="249" verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" preferredMaxLayoutWidth="308" translatesAutoresizingMaskIntoConstraints="NO" id="234" customClass="OSUAvailableUpdateControllerMessageTextField">
-                                        <rect key="frame" x="82" y="9" width="312" height="27"/>
-                                        <constraints>
-                                            <constraint firstAttribute="height" relation="greaterThanOrEqual" constant="27" id="FhK-Mw-dJf"/>
-                                        </constraints>
-                                        <textFieldCell key="cell" controlSize="small" selectable="YES" sendsActionOnEndEditing="YES" allowsEditingTextAttributes="YES" id="235">
-                                            <font key="font" metaFont="smallSystemBold"/>
-                                            <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
-                                            <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
-                                        </textFieldCell>
-                                        <connections>
-                                            <binding destination="-2" name="value" keyPath="details" id="320"/>
-                                            <outlet property="delegate" destination="-2" id="282"/>
-                                        </connections>
-                                    </textField>
-                                    <progressIndicator wantsLayer="YES" horizontalHuggingPriority="750" verticalHuggingPriority="750" minValue="16" maxValue="100" doubleValue="16" bezeled="NO" indeterminate="YES" style="spinning" translatesAutoresizingMaskIntoConstraints="NO" id="261">
-                                        <rect key="frame" x="400" y="24" width="32" height="32"/>
-                                        <connections>
-                                            <binding destination="-2" name="hidden" keyPath="checkInProgress" id="303">
-                                                <dictionary key="options">
-                                                    <string key="NSValueTransformerName">NSNegateBoolean</string>
-                                                </dictionary>
-                                            </binding>
-                                            <binding destination="-2" name="animate" keyPath="checkInProgress" id="304"/>
-                                        </connections>
-                                    </progressIndicator>
-                                </subviews>
-                                <constraints>
-                                    <constraint firstItem="234" firstAttribute="leading" secondItem="232" secondAttribute="leading" id="FLO-Kv-vCm"/>
-                                    <constraint firstItem="234" firstAttribute="top" secondItem="232" secondAttribute="bottom" constant="19" id="Fe7-w1-J29"/>
-                                    <constraint firstItem="261" firstAttribute="centerY" secondItem="259" secondAttribute="centerY" id="IqT-Ny-zk3"/>
-                                    <constraint firstAttribute="bottom" secondItem="234" secondAttribute="bottom" constant="9" id="JYT-GT-QNP"/>
-                                    <constraint firstItem="259" firstAttribute="top" secondItem="Pca-T5-ppY" secondAttribute="top" id="PHQ-ta-gyv"/>
-                                    <constraint firstItem="261" firstAttribute="leading" secondItem="234" secondAttribute="trailing" constant="8" id="kj4-rH-qCh"/>
-                                    <constraint firstItem="232" firstAttribute="top" secondItem="Pca-T5-ppY" secondAttribute="top" id="rCa-4L-DkV"/>
-                                    <constraint firstAttribute="trailing" secondItem="261" secondAttribute="trailing" constant="8" id="upg-If-oBQ"/>
-                                    <constraint firstAttribute="trailing" secondItem="232" secondAttribute="trailing" constant="20" id="xuu-y9-4j3"/>
-                                    <constraint firstItem="259" firstAttribute="leading" secondItem="Pca-T5-ppY" secondAttribute="leading" id="z27-Xi-Dbe"/>
-                                    <constraint firstItem="232" firstAttribute="leading" secondItem="259" secondAttribute="trailing" constant="20" id="zKE-qF-nAL"/>
-                                </constraints>
-                            </customView>
                             <scrollView autohidesScrollers="YES" horizontalLineScroll="19" horizontalPageScroll="0.0" verticalLineScroll="19" verticalPageScroll="0.0" hasHorizontalScroller="NO" usesPredominantAxisScrolling="NO" translatesAutoresizingMaskIntoConstraints="NO" id="Lhr-8J-d7a" userLabel="Available Updates View">
                                 <rect key="frame" x="0.0" y="372" width="440" height="66"/>
                                 <clipView key="contentView" id="Qss-8H-zeV">
@@ -131,7 +64,7 @@
                                             <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                                             <color key="gridColor" name="gridColor" catalog="System" colorSpace="catalog"/>
                                             <tableColumns>
-                                                <tableColumn editable="NO" width="287" minWidth="40" maxWidth="1000" id="d2J-rT-upW">
+                                                <tableColumn editable="NO" width="267" minWidth="40" maxWidth="1000" id="d2J-rT-upW">
                                                     <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" alignment="left">
                                                         <font key="font" metaFont="smallSystem"/>
                                                         <color key="textColor" name="headerTextColor" catalog="System" colorSpace="catalog"/>
@@ -172,7 +105,7 @@
                                                         </binding>
                                                     </connections>
                                                 </tableColumn>
-                                                <tableColumn identifier="" editable="NO" width="60" minWidth="40" maxWidth="1000" id="Hp4-Xd-pwp">
+                                                <tableColumn identifier="" editable="NO" width="80" minWidth="40" maxWidth="1000" id="Hp4-Xd-pwp">
                                                     <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" alignment="right">
                                                         <font key="font" metaFont="smallSystem"/>
                                                         <color key="textColor" name="headerTextColor" catalog="System" colorSpace="catalog"/>
@@ -200,24 +133,23 @@
                                             </connections>
                                         </tableView>
                                     </subviews>
-                                    <color key="backgroundColor" name="controlBackgroundColor" catalog="System" colorSpace="catalog"/>
                                 </clipView>
                                 <constraints>
                                     <constraint firstAttribute="height" priority="725" constant="66" identifier="item-tableview-height" id="Ki9-vv-1Zg"/>
                                 </constraints>
-                                <scroller key="horizontalScroller" hidden="YES" wantsLayer="YES" verticalHuggingPriority="750" horizontal="YES" id="odA-Jr-aQL">
+                                <scroller key="horizontalScroller" hidden="YES" verticalHuggingPriority="750" horizontal="YES" id="odA-Jr-aQL">
                                     <rect key="frame" x="-100" y="-100" width="223" height="15"/>
                                     <autoresizingMask key="autoresizingMask"/>
                                 </scroller>
-                                <scroller key="verticalScroller" hidden="YES" wantsLayer="YES" verticalHuggingPriority="750" horizontal="NO" id="dPc-Yf-2vr">
+                                <scroller key="verticalScroller" hidden="YES" verticalHuggingPriority="750" horizontal="NO" id="dPc-Yf-2vr">
                                     <rect key="frame" x="-14" y="1" width="15" height="0.0"/>
                                     <autoresizingMask key="autoresizingMask"/>
                                 </scroller>
                             </scrollView>
-                            <customView horizontalCompressionResistancePriority="1000" translatesAutoresizingMaskIntoConstraints="NO" id="248">
+                            <customView horizontalCompressionResistancePriority="1000" ambiguous="YES" translatesAutoresizingMaskIntoConstraints="NO" id="248">
                                 <rect key="frame" x="0.0" y="282" width="440" height="90"/>
                                 <subviews>
-                                    <imageView horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="Kv0-Sz-fmN">
+                                    <imageView horizontalHuggingPriority="251" verticalHuggingPriority="251" ambiguous="YES" translatesAutoresizingMaskIntoConstraints="NO" id="Kv0-Sz-fmN">
                                         <rect key="frame" x="3" y="23" width="64" height="64"/>
                                         <constraints>
                                             <constraint firstAttribute="width" constant="64" id="2eo-WK-vUN"/>
@@ -225,7 +157,7 @@
                                         </constraints>
                                         <imageCell key="cell" refusesFirstResponder="YES" alignment="left" imageScaling="proportionallyUpOrDown" image="NSCaution" id="s9K-Ar-e7f"/>
                                     </imageView>
-                                    <button verticalHuggingPriority="750" tag="2" translatesAutoresizingMaskIntoConstraints="NO" id="255">
+                                    <button verticalHuggingPriority="750" ambiguous="YES" tag="2" translatesAutoresizingMaskIntoConstraints="NO" id="255">
                                         <rect key="frame" x="151" y="30" width="121" height="19"/>
                                         <buttonCell key="cell" type="roundRect" title="(DNL) Ignore Track" bezelStyle="roundedRect" alignment="center" state="on" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="256">
                                             <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
@@ -241,7 +173,7 @@
                                             </binding>
                                         </connections>
                                     </button>
-                                    <button horizontalHuggingPriority="249" verticalHuggingPriority="750" tag="3" translatesAutoresizingMaskIntoConstraints="NO" id="253">
+                                    <button horizontalHuggingPriority="249" verticalHuggingPriority="750" ambiguous="YES" tag="3" translatesAutoresizingMaskIntoConstraints="NO" id="253">
                                         <rect key="frame" x="299" y="30" width="121" height="19"/>
                                         <buttonCell key="cell" type="roundRect" title="Ignore All but Final" bezelStyle="roundedRect" alignment="center" state="on" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="254">
                                             <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
@@ -251,7 +183,7 @@
                                             <action selector="ignoreCertainTracks:" target="-2" id="299"/>
                                         </connections>
                                     </button>
-                                    <textField autoresizesSubviews="NO" horizontalHuggingPriority="249" verticalHuggingPriority="1000" horizontalCompressionResistancePriority="250" preferredMaxLayoutWidth="355" translatesAutoresizingMaskIntoConstraints="NO" id="251" customClass="OSUAvailableUpdateControllerMessageTextField">
+                                    <textField autoresizesSubviews="NO" horizontalHuggingPriority="249" verticalHuggingPriority="1000" horizontalCompressionResistancePriority="250" ambiguous="YES" preferredMaxLayoutWidth="355" translatesAutoresizingMaskIntoConstraints="NO" id="251" customClass="OSUAvailableUpdateControllerMessageTextField">
                                         <rect key="frame" x="71" y="53" width="359" height="34"/>
                                         <constraints>
                                             <constraint firstAttribute="height" relation="greaterThanOrEqual" constant="34" id="sfq-v4-UVU"/>
@@ -281,14 +213,12 @@
                                     <constraint firstItem="255" firstAttribute="top" secondItem="251" secondAttribute="bottom" constant="4" id="szE-F1-CLX"/>
                                 </constraints>
                             </customView>
-                            <customView placeholderIntrinsicWidth="440" placeholderIntrinsicHeight="176" translatesAutoresizingMaskIntoConstraints="NO" id="257" userLabel="Release Notes View" customClass="OSUThinBorderView">
+                            <customView ambiguous="YES" placeholderIntrinsicWidth="440" placeholderIntrinsicHeight="176" translatesAutoresizingMaskIntoConstraints="NO" id="257" userLabel="Release Notes View" customClass="OSUThinBorderView">
                                 <rect key="frame" x="0.0" y="82" width="440" height="200"/>
                                 <subviews>
-                                    <webView translatesAutoresizingMaskIntoConstraints="NO" id="258">
+                                    <webView ambiguous="YES" translatesAutoresizingMaskIntoConstraints="NO" id="258">
                                         <rect key="frame" x="1" y="1" width="438" height="198"/>
-                                        <webPreferences key="preferences" defaultFontSize="12" defaultFixedFontSize="12">
-                                            <nil key="identifier"/>
-                                        </webPreferences>
+                                        <webPreferences key="preferences" identifier="com.omnigroup.framework.OmniSoftwareUpdate.releaseNotes" defaultFontSize="12" defaultFixedFontSize="12"/>
                                         <connections>
                                             <outlet property="UIDelegate" destination="-2" id="285"/>
                                             <outlet property="downloadDelegate" destination="-2" id="286"/>
@@ -395,6 +325,7 @@ Gw
                                         </buttonCell>
                                         <connections>
                                             <action selector="performClose:" target="225" id="Rrm-OA-FKd"/>
+                                            <binding destination="-2" name="title" keyPath="dismissButtonTitle" id="fmc-0N-Qlf"/>
                                         </connections>
                                     </button>
                                 </subviews>
@@ -403,6 +334,65 @@ Gw
                                     <constraint firstItem="nle-bX-KMt" firstAttribute="leading" relation="greaterThanOrEqual" secondItem="Wuy-P1-dsf" secondAttribute="leading" constant="20" symbolic="YES" id="LVE-H7-x4z"/>
                                     <constraint firstAttribute="bottom" secondItem="nle-bX-KMt" secondAttribute="bottom" priority="725" id="geh-9y-Llo"/>
                                     <constraint firstAttribute="trailing" secondItem="nle-bX-KMt" secondAttribute="trailing" id="vGT-tk-n8F"/>
+                                </constraints>
+                            </customView>
+                            <customView verticalCompressionResistancePriority="1000" translatesAutoresizingMaskIntoConstraints="NO" id="Pca-T5-ppY" userLabel="Status View">
+                                <rect key="frame" x="0.0" y="438" width="440" height="72"/>
+                                <subviews>
+                                    <imageView verticalCompressionResistancePriority="1000" translatesAutoresizingMaskIntoConstraints="NO" id="259">
+                                        <rect key="frame" x="0.0" y="8" width="64" height="64"/>
+                                        <constraints>
+                                            <constraint firstAttribute="width" constant="64" id="cAW-NY-07A"/>
+                                            <constraint firstAttribute="height" constant="64" id="hES-Pv-mWB"/>
+                                        </constraints>
+                                        <imageCell key="cell" refusesFirstResponder="YES" alignment="left" animates="YES" imageScaling="axesIndependently" image="NSApplicationIcon" id="260"/>
+                                    </imageView>
+                                    <textField horizontalHuggingPriority="249" verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" verticalCompressionResistancePriority="1000" preferredMaxLayoutWidth="336" translatesAutoresizingMaskIntoConstraints="NO" id="232" customClass="OSUAvailableUpdateControllerMessageTextField">
+                                        <rect key="frame" x="82" y="55" width="340" height="17"/>
+                                        <constraints>
+                                            <constraint firstAttribute="width" relation="greaterThanOrEqual" constant="300" id="9vq-V8-8Xe"/>
+                                        </constraints>
+                                        <textFieldCell key="cell" sendsActionOnEndEditing="YES" id="233">
+                                            <font key="font" metaFont="systemBold"/>
+                                            <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                            <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                        </textFieldCell>
+                                        <connections>
+                                            <binding destination="-2" name="value" keyPath="message" id="321"/>
+                                            <outlet property="nextKeyView" destination="234" id="281"/>
+                                        </connections>
+                                    </textField>
+                                    <textField horizontalHuggingPriority="249" verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" preferredMaxLayoutWidth="308" translatesAutoresizingMaskIntoConstraints="NO" id="234" customClass="OSUAvailableUpdateControllerMessageTextField">
+                                        <rect key="frame" x="82" y="9" width="312" height="27"/>
+                                        <constraints>
+                                            <constraint firstAttribute="height" relation="greaterThanOrEqual" constant="27" id="FhK-Mw-dJf"/>
+                                        </constraints>
+                                        <textFieldCell key="cell" controlSize="small" selectable="YES" sendsActionOnEndEditing="YES" allowsEditingTextAttributes="YES" id="235">
+                                            <font key="font" metaFont="smallSystemBold"/>
+                                            <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                                            <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                        </textFieldCell>
+                                        <connections>
+                                            <binding destination="-2" name="value" keyPath="details" id="320"/>
+                                            <outlet property="delegate" destination="-2" id="282"/>
+                                        </connections>
+                                    </textField>
+                                    <progressIndicator wantsLayer="YES" horizontalHuggingPriority="750" verticalHuggingPriority="750" minValue="16" maxValue="100" doubleValue="16" bezeled="NO" indeterminate="YES" style="spinning" translatesAutoresizingMaskIntoConstraints="NO" id="261">
+                                        <rect key="frame" x="400" y="24" width="32" height="32"/>
+                                    </progressIndicator>
+                                </subviews>
+                                <constraints>
+                                    <constraint firstItem="234" firstAttribute="leading" secondItem="232" secondAttribute="leading" id="FLO-Kv-vCm"/>
+                                    <constraint firstItem="234" firstAttribute="top" secondItem="232" secondAttribute="bottom" constant="19" id="Fe7-w1-J29"/>
+                                    <constraint firstItem="261" firstAttribute="centerY" secondItem="259" secondAttribute="centerY" id="IqT-Ny-zk3"/>
+                                    <constraint firstAttribute="bottom" secondItem="234" secondAttribute="bottom" constant="9" id="JYT-GT-QNP"/>
+                                    <constraint firstItem="259" firstAttribute="top" secondItem="Pca-T5-ppY" secondAttribute="top" id="PHQ-ta-gyv"/>
+                                    <constraint firstItem="261" firstAttribute="leading" secondItem="234" secondAttribute="trailing" constant="8" id="kj4-rH-qCh"/>
+                                    <constraint firstItem="232" firstAttribute="top" secondItem="Pca-T5-ppY" secondAttribute="top" id="rCa-4L-DkV"/>
+                                    <constraint firstAttribute="trailing" secondItem="261" secondAttribute="trailing" constant="8" id="upg-If-oBQ"/>
+                                    <constraint firstAttribute="trailing" secondItem="232" secondAttribute="trailing" constant="20" id="xuu-y9-4j3"/>
+                                    <constraint firstItem="259" firstAttribute="leading" secondItem="Pca-T5-ppY" secondAttribute="leading" id="z27-Xi-Dbe"/>
+                                    <constraint firstItem="232" firstAttribute="leading" secondItem="259" secondAttribute="trailing" constant="20" id="zKE-qF-nAL"/>
                                 </constraints>
                             </customView>
                         </subviews>

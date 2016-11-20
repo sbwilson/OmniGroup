@@ -1,11 +1,11 @@
-// Copyright 2001-2005 Omni Development, Inc.  All rights reserved.
+// Copyright 2001-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
 // distributed with this project and can also be found at
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
 
-#import "OWAuthorizationCredential.h"
+#import <OWF/OWAuthorizationCredential.h>
 
 #import <Foundation/Foundation.h>
 #import <OmniBase/rcsid.h>
@@ -36,17 +36,17 @@ NSTimeInterval OWAuthDistantPast;
 - initForRequest:(OWAuthorizationRequest *)req realm:(NSString *)authRealm
 {
     self = [super init];
-    if (!self)
+    if (self == nil)
         return nil;
     
-    if (!req) {
-        [super dealloc];
+    if (req == nil) {
+        self = nil;
         return nil;
     }
     
-    realm = [authRealm retain];
+    realm = authRealm;
     port = 0;
-    hostname = [[req hostname] retain];
+    hostname = [req hostname];
     port = [req port];
     type = [req type];
     lastSucceededTimeInterval = OWAuthDistantPast;
@@ -55,7 +55,7 @@ NSTimeInterval OWAuthDistantPast;
     return self;
 }
 
-- initAsCopyOf:otherInstance
+- (instancetype)initAsCopyOf:(id)otherInstance;
 {
     OWAuthorizationCredential *other;
     
@@ -63,7 +63,7 @@ NSTimeInterval OWAuthDistantPast;
         return nil;
         
     if (![otherInstance isKindOfClass:[OWAuthorizationCredential class]]) {
-        [super dealloc];
+        self = nil;
         return nil;
     }
     
@@ -77,14 +77,6 @@ NSTimeInterval OWAuthDistantPast;
     lastFailedTimeInterval = OWAuthDistantPast;
     
     return self;
-}
-
-- (void)dealloc
-{
-    [hostname release];
-    [realm release];
-    [keychainTag release];
-    [super dealloc];
 }
 
 - (NSString *)hostname
@@ -125,8 +117,7 @@ NSTimeInterval OWAuthDistantPast;
 
 - (void)setKeychainTag:newTag
 {
-    [keychainTag release];  // shouldn't ever change, but we might as well be safe
-    keychainTag = [newTag retain];
+    keychainTag = newTag;
 }
 
 - (int)compareToNewCredential:(OWAuthorizationCredential *)other

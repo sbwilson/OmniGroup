@@ -1,4 +1,4 @@
-// Copyright 1997-2015 Omni Development, Inc. All rights reserved.
+// Copyright 1997-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -24,7 +24,7 @@
 RCS_ID("$Id$")
 
 #warning correctly make use of OWWebPipelineReferringContentInfoKey when applied to an OWAddress by OmniWebKit
-NSString *OWWebPipelineReferringContentInfoKey = @"OWWebPipelineReferringContentInfoKey";
+NSString * const OWWebPipelineReferringContentInfoKey = @"OWWebPipelineReferringContentInfoKey";
 
 @implementation OWWebPipeline
 
@@ -37,7 +37,7 @@ OFCharacterSet *CacheControlValueDelimiterSet;
 {
     OBINITIALIZE;
 
-    refreshScheduler = [[[OFScheduler mainScheduler] subscheduler] retain];
+    refreshScheduler = [[OFScheduler mainScheduler] subscheduler];
 
     WhitespaceSet = [[OFCharacterSet alloc] initWithCharacterSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
 
@@ -49,7 +49,7 @@ OFCharacterSet *CacheControlValueDelimiterSet;
     [CacheControlValueDelimiterSet addCharacter:','];
 }
 
-- initWithContent:(OWContent *)aContent target:(id <OWTarget, OWFWeakRetain, NSObject>)aTarget;
+- initWithContent:(OWContent *)aContent target:(id <OWTarget, NSObject>)aTarget;
 {
     if (!(self = [super initWithContent:aContent target:aTarget]))
         return nil;

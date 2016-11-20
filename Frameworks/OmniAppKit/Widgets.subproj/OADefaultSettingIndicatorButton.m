@@ -5,13 +5,13 @@
 // distributed with this project and can also be found at
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
 
-#import "OADefaultSettingIndicatorButton.h"
+#import <OmniAppKit/OADefaultSettingIndicatorButton.h>
 
 #import <AppKit/AppKit.h>
 #import <OmniBase/OmniBase.h>
 #import <OmniFoundation/OmniFoundation.h>
-#import "NSImage-OAExtensions.h"
-#import "OAVersion.h"
+#import <OmniAppKit/NSImage-OAExtensions.h>
+#import <OmniAppKit/OAVersion.h>
 
 RCS_ID("$Id$")
 
@@ -249,7 +249,7 @@ const static CGFloat horizontalSpaceFromSnuggleView = 2.0f;
     return ([self state] == 1 || _flags.displaysEvenInDefaultState);
 }
 
-- (id)_objectValue;
+- (nullable id)_objectValue;
 {
     if ([delegate respondsToSelector:@selector(objectValueForSettingIndicatorButton:)])
         return [delegate objectValueForSettingIndicatorButton:self];
@@ -257,7 +257,7 @@ const static CGFloat horizontalSpaceFromSnuggleView = 2.0f;
         return nil;
 }
 
-- (id)_defaultObjectValue;
+- (nullable id)_defaultObjectValue;
 {
     if ([delegate respondsToSelector:@selector(defaultObjectValueForSettingIndicatorButton:)])
         return [delegate defaultObjectValueForSettingIndicatorButton:self];

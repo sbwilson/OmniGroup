@@ -1,4 +1,4 @@
-// Copyright 1997-2005 Omni Development, Inc.  All rights reserved.
+// Copyright 1997-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -12,9 +12,9 @@
 #import <OmniBase/OmniBase.h>
 #import <OmniFoundation/OmniFoundation.h>
 
-#import "OWAddress.h"
-#import "OWURL.h"
-#import "OWContentType.h"
+#import <OWF/OWAddress.h>
+#import <OWF/OWURL.h>
+#import <OWF/OWContentType.h>
 
 RCS_ID("$Id$")
 
@@ -47,26 +47,20 @@ static NSNotificationCenter *notificationCenter;
 
 + (NSString *)titleForAddress:(OWAddress *)address;
 {
-    NSString *cacheKey;
-    NSString *title;
-
-    cacheKey = [address cacheKey];
+    NSString *cacheKey = [address cacheKey];
     [cacheLock lock];
-    title = [[guessedTitles objectForKey:cacheKey] retain];
+    NSString *title = [guessedTitles objectForKey:cacheKey];
     [cacheLock unlock];
-    return [title autorelease];
+    return title;
 }
 
 + (void)cacheRealTitle:(NSString *)aTitle forAddress:(OWAddress *)anAddress;
 {
-    NSString *cacheKey;
-    NSString *cacheValue;
-
     if (anAddress == nil)
 	return;
 
-    cacheKey = [anAddress cacheKey];
-    cacheValue = [aTitle copy];
+    NSString *cacheKey = [anAddress cacheKey];
+    NSString *cacheValue = [aTitle copy];
     [cacheLock lock];
     if (![NSString isEmptyString:aTitle]) {
         [realTitles setObject:cacheValue forKey:cacheKey];
@@ -75,7 +69,6 @@ static NSNotificationCenter *notificationCenter;
         [realTitles removeObjectForKey:cacheKey];
     }
     [cacheLock unlock];
-    [cacheValue release];
 
     // Give the UI a chance to respond
     [self postNotificationForAddress:anAddress];
@@ -83,32 +76,25 @@ static NSNotificationCenter *notificationCenter;
 
 + (void)cacheGuessTitle:(NSString *)aTitle forAddress:(OWAddress *)anAddress;
 {
-    NSString *cacheKey;
-    NSString *cacheValue;
-
     if (anAddress == nil || aTitle == nil || [aTitle isEqualToString:@""])
 	return;
     
-    cacheKey = [anAddress cacheKey];
-    cacheValue = [aTitle copy];
+    NSString *cacheKey = [anAddress cacheKey];
+    NSString *cacheValue = [aTitle copy];
     [cacheLock lock];
     if ([realTitles objectForKey:cacheKey] == nil)
         [guessedTitles setObject:cacheValue forKey:cacheKey];
     [cacheLock unlock];
-    [cacheValue release];
 }
 
 + (void)invalidateGuessTitleForAddress:(OWAddress *)anAddress;
 {
-    NSString *cacheKey;
-    NSString *title;
-
     if (anAddress == nil)
         return;
 
-    cacheKey = [anAddress cacheKey];
+    NSString *cacheKey = [anAddress cacheKey];
     [cacheLock lock];
-    title = [realTitles objectForKey:cacheKey];
+    NSString *title = [realTitles objectForKey:cacheKey];
     if (title != nil)
         [guessedTitles setObject:title forKey:cacheKey];
     else if ([guessedTitles objectForKey:cacheKey] != nil)

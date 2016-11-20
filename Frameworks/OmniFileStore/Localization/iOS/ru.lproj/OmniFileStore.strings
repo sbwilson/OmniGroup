@@ -2,6 +2,21 @@
 "An error has occurred." = "Произошла ошибка.";
 
 /* error description */
+"Cannot create directory." = "Не удается создать каталог.";
+
+/* error description */
+"Cannot delete file." = "Не удается удалить файл.";
+
+/* error description */
+"Cannot move file." = "Не удается переместить файл.";
+
+/* bad password error reason */
+"Could not decode encryption document key." = "Не удалось декодировать ключ шифрования документа.";
+
+/* error description */
+"Could not decrypt file." = "Не удается расшифровать файл.";
+
+/* error description */
 "Could not find \"%@\"." = "Не удалось найти «%@».";
 
 /* error description */
@@ -16,15 +31,27 @@
 /* error reason */
 "Failed to move \"%@\" to \"%@\"." = "Сбой при перемещении «%1$@» в «%2$@».";
 
+/* bad password error description */
+"Incorrect encryption password." = "Неверный пароль шифрования.";
+
+/* error description */
+"Internal error updating keychain" = "Внутренняя ошибка при обновлении связки ключей";
+
 /* error reason - listing a directory that doesn't exist
    error reason - listing contents of a nonexistent directory */
 "No document exists at \"%@\"." = "Документ отсутствует в «%@».";
+
+/* error reason */
+"No such directory \"%@\"" = "Каталог «%@» отсутствует";
 
 /* error reason */
 "No such file \"%@\"." = "Файл %@ не найден.";
 
 /* error reason */
 "Please make sure that the destination folder exists." = "Убедитесь, что папка назначения существует.";
+
+/* keychain item description - used in keychain access control prompt */
+"Sync Encryption Key" = "Ключ шифрования синхронизации";
 
 /* error description */
 "Unable to delete file." = "Не удается удалить файл.";
@@ -34,3 +61,12 @@
 
 /* error description */
 "Unable to read document." = "Не удается прочитать документ.";
+
+/* error description */
+"Unable to read file." = "Не удается прочитать файл.";
+
+/* error description */
+"Unable to write file." = "Не удается записать файл.";
+
+/* error detail */
+"Unrecognized settings in encryption header" = "Нераспознанные параметры шифрования в заголовке";

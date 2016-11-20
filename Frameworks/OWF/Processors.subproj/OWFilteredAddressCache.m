@@ -1,23 +1,23 @@
-// Copyright 2003-2005, 2010-2011 Omni Development, Inc. All rights reserved.
+// Copyright 2003-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
 // distributed with this project and can also be found at
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
 
-#import "OWFilteredAddressCache.h"
+#import <OWF/OWFilteredAddressCache.h>
 
 #import <Foundation/Foundation.h>
 #import <OmniBase/OmniBase.h>
 #import <OmniFoundation/OmniFoundation.h>
 
-#import "NSException-OWConcreteCacheEntry.h"
-#import "OWAddress.h"
-#import "OWContent.h"
-#import "OWContentCacheProtocols.h"
-#import "OWContentType.h"
-#import "OWProcessor.h"
-#import "OWPipeline.h"
+#import <OWF/NSException-OWConcreteCacheEntry.h>
+#import <OWF/OWAddress.h>
+#import <OWF/OWContent.h>
+#import <OWF/OWContentCacheProtocols.h>
+#import <OWF/OWContentType.h>
+#import <OWF/OWProcessor.h>
+#import <OWF/OWPipeline.h>
 
 RCS_ID("$Id$");
 
@@ -53,7 +53,6 @@ RCS_ID("$Id$");
 
     arc = [[OWFilteredAddressArc alloc] initWithSubject:anEntry];
     result = [NSArray arrayWithObject:arc];
-    [arc release];
 
     return result;
 }
@@ -77,8 +76,6 @@ static OWContent *filteredAddressResult = nil;
     NSException *filteredNotice = [[NSException alloc] initWithName:OWFilteredAddressErrorName reason:filterMessage userInfo:nil];
     filteredAddressResult = [[OWContent alloc] initWithContent:filteredNotice];
     [filteredAddressResult markEndOfHeaders];
-
-    [filteredNotice release];
 }
 
 - initWithSubject:(OWContent *)anEntry
@@ -86,17 +83,10 @@ static OWContent *filteredAddressResult = nil;
     if (!(self = [super init]))
         return nil;
 
-    subject = [anEntry retain];
+    subject = anEntry;
     created = [[NSDate alloc] init];
 
     return self;
-}
-
-- (void)dealloc
-{
-    [subject release];
-    [created release];
-    [super dealloc];
 }
 
 - (NSArray *)entriesWithRelation:(OWCacheArcRelationship)relation
@@ -108,7 +98,7 @@ static OWContent *filteredAddressResult = nil;
     if (relation & OWCacheArcObject)
         [result addObject:filteredAddressResult];
 
-    return [result autorelease];
+    return result;
 }
 
 - (OWCacheArcType)arcType { return OWCacheArcDerivedContent; }

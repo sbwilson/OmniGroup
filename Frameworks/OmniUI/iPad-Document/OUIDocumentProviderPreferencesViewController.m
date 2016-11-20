@@ -1,4 +1,4 @@
-// Copyright 2015 Omni Development, Inc. All rights reserved.
+// Copyright 2015-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -77,18 +77,27 @@ typedef NS_ENUM(NSUInteger, OUIDocumentProviderPreferencesSection) {
 }
 
 - (IBAction)shouldEnableDocumentProvidersSwitchValueChanged:(id)sender {
-    if ([[self class] shouldEnableDocumentProvidersPreference].boolValue != self.shouldEnableDocumentProvidersSwitch.on) {        
-        [[[self class] shouldEnableDocumentProvidersPreference] setBoolValue:self.shouldEnableDocumentProvidersSwitch.on];
-        if (!self.shouldEnableDocumentProvidersSwitch.on) {
-            [[NSNotificationCenter defaultCenter] postNotificationName:OUIDocumentProviderPreferencesCloudDocumentsPreferenceTurnedOffNotification object:nil];
+    OUIAppController *appDelegate = (OUIAppController *)[[UIApplication sharedApplication] delegate];
+    if ([appDelegate isRunningRetailDemo]) {
+        [appDelegate showFeatureDisabledForRetailDemoAlertFromViewController:self];
+        if ([sender isKindOfClass:[UISwitch class]]) {
+            [(UISwitch *)sender setOn:NO animated:YES];
+        }
+    } else {
+        if ([[self class] shouldEnableDocumentProvidersPreference].boolValue != self.shouldEnableDocumentProvidersSwitch.on) {
+            [[[self class] shouldEnableDocumentProvidersPreference] setBoolValue:self.shouldEnableDocumentProvidersSwitch.on];
+            if (!self.shouldEnableDocumentProvidersSwitch.on) {
+                [[NSNotificationCenter defaultCenter] postNotificationName:OUIDocumentProviderPreferencesCloudDocumentsPreferenceTurnedOffNotification object:nil];
+            }
         }
     }
 }
 
 - (IBAction)moreInfoButtonTapped:(id)sender {
     NSURL *moreInfoURL = [[OUIDocumentAppController controller] documentProviderMoreInfoURL];
+    NSDictionary *emptyOptions = [NSDictionary dictionary];
     if (moreInfoURL != nil) {
-        [[UIApplication sharedApplication] openURL:moreInfoURL];
+        [[UIApplication sharedApplication] openURL:moreInfoURL options:emptyOptions completionHandler:nil];
     }
 }
 

@@ -1,4 +1,4 @@
-// Copyright 1998-2005, 2013 Omni Development, Inc. All rights reserved.
+// Copyright 1998-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -6,7 +6,7 @@
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
 
 
-#import "OALabelField.h"
+#import <OmniAppKit/OALabelField.h>
 #import <Foundation/Foundation.h>
 #import <AppKit/AppKit.h>
 
@@ -35,6 +35,11 @@ RCS_ID("$Id$")
 {
     // No-one should be trying to change our text color - we're managing it automatically. Block any attempts and assert so that we'll know if anyone tries, rather than possibly overlooking some obscure bugs.
     OBASSERT_NOT_REACHED("Don't tell us to change our text color - we're managing it based on our enabled state");
+}
+
+- (BOOL)allowsVibrancy
+{
+    return NO;
 }
 
 #pragma mark - Private

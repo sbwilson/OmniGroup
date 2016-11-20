@@ -1,4 +1,4 @@
-// Copyright 2008-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2008-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -9,29 +9,39 @@
 
 #import <Foundation/NSObject.h>
 
-@class NSURLCredential, NSURLAuthenticationChallenge;
-@class ODAVFileInfo, OFSFileManager, OFSDocumentKey;
+@class NSOperation, NSURLCredential, NSURLAuthenticationChallenge;
+@class ODAVFileInfo, OFSFileManager, OFSDocumentKey, OFSMutableDocumentKey;
+@protocol OFCredentialChallengeDisposition, OFCertificateTrustDisposition;
+
+NS_ASSUME_NONNULL_BEGIN
 
 @protocol OFSFileManagerDelegate <NSObject>
 @optional
 
-// Invoked from our -[NSURLConnectionDelegate connectionShouldUseCredentialStorage:] implementation, which isn't called any more (especially since we've moved from NSURLConnection to NSURLSession), so this is never called either
-- (BOOL)fileManagerShouldUseCredentialStorage:(OFSFileManager * __nonnull)manager;
+// These are called to satisfy NSURLSession's authentication delegate methods. See ODAVConnection's documentation for details.
+- (NSOperation <OFCredentialChallengeDisposition> * _Nullable)fileManager:(OFSFileManager *)manager findCredentialsForChallenge:(NSURLAuthenticationChallenge *)challenge;
+- (NSURLCredential * _Nullable)fileManager:(OFSFileManager *)manager validateCertificateForChallenge:(NSURLAuthenticationChallenge *)challenge;
 
-// These are called to satisfy NSURLSession's authentication delegate methods
-- (NSURLCredential * __nullable)fileManager:(OFSFileManager * __nonnull)manager findCredentialsForChallenge:(NSURLAuthenticationChallenge * __nonnull)challenge;
-- (void)fileManager:(OFSFileManager * __nonnull)manager validateCertificateForChallenge:(NSURLAuthenticationChallenge * __nonnull)challenge;
+/// This is called to determine whether it's okay to silently accept an encrypted database when we were expecting an unencrypted database. (Defaults to NO if not implemented.)
+- (BOOL)shouldAllowUnexpectedEncryptionForURL:(NSURL *)documentURL;
+
+/// This is called after silently accepting an encrypted database was successful when we were expecting an unencrypted database. <code>-shouldAllowUnexpectedEncryptionForURL:</code> must have given prior consent for this to be a possibility.
+- (void)didAllowUnexpectedEncryptionForURL:(NSURL *)documentURL;
+@property (nonatomic, copy, readonly) NSURL  * _Nullable proposedXMLSyncURLAfterAddingTrailingEncryptionMarker;
 
 // This is called to satisfy client-side-encryption challenges
-- (OFSDocumentKey * __nullable)fileManager:(OFSFileManager * __nonnull)fileManager
-                                    getKey:(ODAVFileInfo * __nonnull)encryptionInfo
-                                withChange:(BOOL)promptForChangedPassword
-                                     error:(NSError * __nullable * __nullable)outError;
-- (OFSDocumentKey * __nullable)fileManager:(OFSFileManager * __nonnull)underlyingFileManager initialKeyWithError:(NSError * __nullable * __nullable)outError;
-- (void)fileManagerDidStore:(NSURL * __nonnull )where key:(OFSDocumentKey * __nullable )keyStore data:(NSData * __nonnull)d;
+- (OFSDocumentKey * _Nullable)fileManager:(OFSFileManager *)fileManager
+                                   getKey:(ODAVFileInfo *)encryptionInfo
+                             refreshCache:(BOOL)refreshing
+                                    error:(NSError **)outError;
+- (BOOL)fileManager:(OFSFileManager *)fileManager verifyKey:(OFSDocumentKey *)derivation originURL:(NSURL *)originURL error:(NSError **)outError;
+- (BOOL)fileManager:(OFSFileManager *)fileManager changePasswordOfKey:(OFSMutableDocumentKey *)derivation originURL:(NSURL *)originURL error:(NSError **)outError;
+- (OFSMutableDocumentKey * _Nullable)fileManager:(OFSFileManager *)underlyingFileManager initialKeyWithError:(NSError **)outError;
+- (void)fileManagerDidStore:(NSURL *)where key:(OFSDocumentKey * _Nullable)keyStore data:(NSData *)d;
 
 // For keeping track of key slot usage
-- (void)fileManager:(OFSFileManager * __nonnull)fileManager usedSlot:(unsigned)keyslot URL:(NSURL * __nonnull)location flags:(NSUInteger)fileManagerSlotUsageFlags;
+- (void)fileManager:(OFSFileManager *)fileManager usedSlot:(unsigned)keyslot URL:(NSURL *)location flags:(NSUInteger)fileManagerSlotUsageFlags;
 
 @end
 
+NS_ASSUME_NONNULL_END

@@ -2,6 +2,21 @@
 "An error has occurred." = "Ein Fehler ist aufgetreten.";
 
 /* error description */
+"Cannot create directory." = "Verzeichnis kann nicht erstellt werden.";
+
+/* error description */
+"Cannot delete file." = "Datei kann nicht gelöscht werden.";
+
+/* error description */
+"Cannot move file." = "Datei kann nicht bewegt werden.";
+
+/* bad password error reason */
+"Could not decode encryption document key." = "Verschlüsselungsdokumentschlüssel konnte nicht decodiert werden.";
+
+/* error description */
+"Could not decrypt file." = "Die Datei konnte nicht entschlüsselt werden.";
+
+/* error description */
 "Could not find \"%@\"." = "„%@“ wurde nicht gefunden.";
 
 /* error description */
@@ -16,14 +31,26 @@
 /* error reason */
 "Failed to move \"%@\" to \"%@\"." = "„%1$@“ konnte nicht nach „%2$@“ bewegt werden.";
 
+/* bad password error description */
+"Incorrect encryption password." = "Falsches Verschlüsselungskennwort.";
+
+/* error description */
+"Internal error updating keychain" = "Interner Fehler beim Aktualisieren des Schlüsselbunds";
+
 /* error reason - listing a directory that doesn't exist */
 "No document exists at \"%@\"." = "Kein Dokument unter „%@“ vorhanden.";
+
+/* error reason */
+"No such directory \"%@\"" = "Verzeichnis „%@“ ist nicht vorhanden.";
 
 /* error reason */
 "No such file \"%@\"." = "Datei „%@“ nicht vorhanden.";
 
 /* error reason */
 "Please make sure that the destination folder exists." = "Überprüfen Sie, ob der Zielordner vorhanden ist.";
+
+/* keychain item description - used in keychain access control prompt */
+"Sync Encryption Key" = "Synchronisierungsverschlüsselungsschlüssel";
 
 /* error description */
 "Unable to delete file." = "Datei kann nicht gelöscht werden.";
@@ -33,3 +60,12 @@
 
 /* error description */
 "Unable to read document." = "Dokument kann nicht gelesen werden.";
+
+/* error description */
+"Unable to read file." = "Datei kann nicht gelesen werden.";
+
+/* error description */
+"Unable to write file." = "Datei kann nicht geschrieben werden.";
+
+/* error detail */
+"Unrecognized settings in encryption header" = "Nicht erkannte Einstellungen im Verschlüsselungs-Header";

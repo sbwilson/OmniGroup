@@ -1,4 +1,4 @@
-// Copyright 2013-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2013-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -20,6 +20,7 @@
 #import <OmniUIDocument/OUIDocumentPicker.h>
 #import <OmniUIDocument/OUIDocumentPickerViewController.h>
 #import <OmniUIDocument/OUIDocumentAppController.h>
+#import <OmniUIDocument/OUIServerAccountSetupViewController.h>
 #import <OmniFileExchange/OFXAgent.h>
 #import <OmniFileExchange/OFXDocumentStoreScope.h>
 #import <OmniFileExchange/OFXServerAccount.h>
@@ -27,7 +28,6 @@
 
 #import "OUIDocumentParameters.h"
 #import "OUIAddCloudAccountViewController.h"
-#import "OUIServerAccountSetupViewController.h"
 #import "OUIDocumentHomeScreenAnimator.h"
 #import "OUIDocumentPickerAdaptableContainerViewController.h"
 #import "OUIDocumentPicker-Internal.h"
@@ -597,6 +597,7 @@ static BOOL _canEditScope(ODSScope <ODSConcreteScope> *scope)
         
         if ([[OUIAppController controller] showFeatureDisabledForRetailDemoAlertFromViewController:self]) {
             // Early out if we are currently in retail demo mode.
+            [tableView deselectRowAtIndexPath:indexPath animated:YES];
             return;
         }
         

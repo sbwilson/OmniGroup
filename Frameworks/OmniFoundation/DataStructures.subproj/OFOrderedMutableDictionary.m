@@ -1,4 +1,4 @@
-// Copyright 2013-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2013-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -62,14 +62,14 @@ RCS_ID("$Id$");
     [self.orderedKeys sortUsingComparator:cmptr];
 }
 
-- (void)enumerateEntriesUsingBlock:(void (^)(NSUInteger index, id<NSCopying> key, id obj, BOOL *stop))blk;
+- (void)enumerateEntriesUsingBlock:(void (^)(NSUInteger index, id key, id obj, BOOL *stop))blk;
 {
     [self.orderedKeys enumerateObjectsUsingBlock:^(id orderedKeysObject, NSUInteger orderedKeysIndex, BOOL *stop) {
         blk(orderedKeysIndex, orderedKeysObject, self[orderedKeysIndex], stop);
     }];
 }
 
-- (void)enumerateEntriesWithOptions:(NSEnumerationOptions)opts usingBlock:(void (^)(NSUInteger index, id<NSCopying> key, id obj, BOOL *stop))blk;
+- (void)enumerateEntriesWithOptions:(NSEnumerationOptions)opts usingBlock:(void (^)(NSUInteger index, id key, id obj, BOOL *stop))blk;
 {
     [self.orderedKeys enumerateObjectsWithOptions:opts usingBlock:^(id orderedKeysObject, NSUInteger orderedKeysIndex, BOOL *stop) {
         blk(orderedKeysIndex, orderedKeysObject, self[orderedKeysIndex], stop);
@@ -78,18 +78,22 @@ RCS_ID("$Id$");
 
 #pragma mark - NSMutableDictionary subclass
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wobjc-designated-initializers"
 - (id)init;
 {
     return [self initWithCapacity:0];
 }
-#pragma clang diagnostic pop
+
+- (id)initWithCoder:(NSCoder *)aDecoder;
+{
+    OBRejectInvalidCall(self, _cmd, @"%@ instances don't support NS(Secure)Coding", NSStringFromClass([self class]));
+    return [self init];
+}
 
 - (id)initWithCapacity:(NSUInteger)numItems;
 {
     // Calling [super initWithCapacity:numItems] here will throw an exception, since -initWithCapacity: is only defined on the abstract superclass in this cluster.
-    // Instead, we blithely discard the capacity and just use a default -init. See rdar://problem/14294287
+    // Instead, we blithely discard the capacity for the super call and just use a default -init. See rdar://problem/14294287
+    // This is fine because we're not actually using the superclass's storage anyway – we set up our own dictionary and array right away, using the capacity we're passed.
     
     if (!(self = [super init]))
         return nil;
@@ -118,7 +122,7 @@ RCS_ID("$Id$");
 
 - (id)initWithObjects:(NSArray *)objects forKeys:(NSArray *)keys;
 {
-    if (!(self = [super initWithObjects:objects forKeys:keys]))
+    if (!(self = [self initWithCapacity:[keys count]]))
         return nil;
     
     _dictionary = [[NSMutableDictionary alloc] initWithObjects:objects forKeys:keys];

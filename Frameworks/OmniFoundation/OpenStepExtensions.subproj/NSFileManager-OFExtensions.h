@@ -1,4 +1,4 @@
-// Copyright 1997-2015 Omni Development, Inc. All rights reserved.
+// Copyright 1997-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -31,14 +31,17 @@
 
 - (BOOL)atomicallyCreateFileAtPath:(NSString *)path contents:(NSData *)data attributes:(NSDictionary *)attr;
 
-- (BOOL)setQuarantineProperties:(NSDictionary *)quarantineDictionary forItemAtPath:(NSString *)path error:(NSError **)outError;
-- (NSDictionary *)quarantinePropertiesForItemAtPath:(NSString *)path error:(NSError **)outError;
+- (BOOL)setQuarantineProperties:(NSDictionary *)quarantineDictionary forItemAtPath:(NSString *)path error:(NSError **)outError OB_DEPRECATED_ATTRIBUTE;
+- (NSDictionary *)quarantinePropertiesForItemAtPath:(NSString *)path error:(NSError **)outError OB_DEPRECATED_ATTRIBUTE;
+
+- (BOOL)setQuarantineProperties:(NSDictionary *)quarantineDictionary forItemAtURL:(NSURL *)url error:(NSError **)outError;
+- (NSDictionary *)quarantinePropertiesForItemAtURL:(NSURL *)url error:(NSError **)outError;
 
 // File locking
 // Note: these are *not* industrial-strength robust file locks, but will do for occasional use.
 
 - (NSDictionary *)lockFileAtPath:(NSString *)path overridingExistingLock:(BOOL)override created:(BOOL *)outCreated error:(NSError **)outError;
-- (void)unlockFileAtPath:(NSString *)path;
+- (void)unlockFileAtPath:(NSString *)path  DEPRECATED_MSG_ATTRIBUTE("-unlockFileAtPath: has been nonfunctional since 2008");
 
 // Special directories
 - (NSURL *)trashDirectoryURLForURL:(NSURL *)fileURL error:(NSError **)outError;

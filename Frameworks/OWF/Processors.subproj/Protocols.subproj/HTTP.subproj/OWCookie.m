@@ -1,29 +1,29 @@
-// Copyright 1997-2005, 2008, 2010, 2013 Omni Development, Inc.  All rights reserved.
+// Copyright 1997-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
 // distributed with this project and can also be found at
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
 
-#import "OWCookie.h"
+#import <OWF/OWCookie.h>
 
 #import <Foundation/Foundation.h>
 #import <CoreFoundation/CoreFoundation.h>
 #import <OmniBase/OmniBase.h>
 #import <OmniFoundation/OmniFoundation.h>
 
-#import "NSDate-OWExtensions.h"
-#import "OWAddress.h"
-#import "OWCookieDomain.h"
-#import "OWHeaderDictionary.h"
-#import "OWHTTPProcessor.h"
-#import "OWHTTPSession.h"
-#import "OWNetLocation.h"
-#import "OWURL.h"
+#import <OWF/NSDate-OWExtensions.h>
+#import <OWF/OWAddress.h>
+#import <OWF/OWCookieDomain.h>
+#import <OWF/OWHeaderDictionary.h>
+#import <OWF/OWHTTPProcessor.h>
+#import <OWF/OWHTTPSession.h>
+#import <OWF/OWNetLocation.h>
+#import <OWF/OWURL.h>
 
 RCS_ID("$Id$")
 
-NSString *OWCookieGlobalPath = @"/";
+NSString * const OWCookieGlobalPath = @"/";
 
 @implementation OWCookie
 
@@ -44,25 +44,11 @@ NSString *OWCookieGlobalPath = @"/";
     _path = [aPath copy];
     _name = [aName copy];
     _value = [aValue copy];
-    _expirationDate = [aDate retain];
+    _expirationDate = aDate;
     _secure = isSecure;
 
     return self;
 }
-
-- (void)dealloc;
-{
-    [_domain release];
-    [_path release];
-    [_name release];
-    [_value release];
-    [_expirationDate release];
-    [_site release];
-    [_siteDomain release];
-
-    [super dealloc];
-}
-
 
 // API
 
@@ -114,10 +100,7 @@ NSString *OWCookieGlobalPath = @"/";
 - (void)setSite:(NSString *)aURL;
 {
     if (aURL != _site) {
-        [_site release];
         _site = [aURL copy];
-        
-        [_siteDomain release];
         _siteDomain = nil;
     }
 }
@@ -126,9 +109,9 @@ NSString *OWCookieGlobalPath = @"/";
 {
     if (_siteDomain == nil) {
         if ([NSString isEmptyString:_site])
-            _siteDomain = [[NSString string] retain];
+            _siteDomain = [NSString string];
         else
-            _siteDomain = [[[OWURL urlFromString:_site] domain] retain];
+            _siteDomain = [[OWURL urlFromString:_site] domain];
     }
 
     return _siteDomain;
@@ -200,17 +183,17 @@ NSString *OWCookieGlobalPath = @"/";
 - (void)appendXML:(OFDataBuffer *)xmlBuffer;
 {
     OFDataBufferAppendCString(xmlBuffer, "  <cookie name=\"");
-    OFDataBufferAppendXMLQuotedString(xmlBuffer, (CFStringRef)_name);
+    OFDataBufferAppendXMLQuotedString(xmlBuffer, (__bridge CFStringRef)_name);
     
     // Only save the path if it is a non-global value (the most common case).
     if (_path != nil && ![_path isEqualToString:OWCookieGlobalPath]) {
         OFDataBufferAppendCString(xmlBuffer, "\" path=\"");
-        OFDataBufferAppendXMLQuotedString(xmlBuffer, (CFStringRef)_path);
+        OFDataBufferAppendXMLQuotedString(xmlBuffer, (__bridge CFStringRef)_path);
     }
     
     if (_value != nil) {
         OFDataBufferAppendCString(xmlBuffer, "\" value=\"");
-        OFDataBufferAppendXMLQuotedString(xmlBuffer, (CFStringRef)_value);
+        OFDataBufferAppendXMLQuotedString(xmlBuffer, (__bridge CFStringRef)_value);
     }
     if (_expirationDate != nil) {
         char string[13]; // We want to support dates through the year 9999
@@ -230,7 +213,7 @@ NSString *OWCookieGlobalPath = @"/";
     
     if (_site != nil) {
         OFDataBufferAppendCString(xmlBuffer, "\" receivedBySite=\"");
-        OFDataBufferAppendXMLQuotedString(xmlBuffer, (CFStringRef)_site);
+        OFDataBufferAppendXMLQuotedString(xmlBuffer, (__bridge CFStringRef)_site);
     }
     
     OFDataBufferAppendCString(xmlBuffer, "\" />\n");
@@ -251,9 +234,7 @@ NSString *OWCookieGlobalPath = @"/";
 
 - (NSMutableDictionary *)debugDictionary;
 {
-    NSMutableDictionary *debugDictionary;
-
-    debugDictionary = [super debugDictionary];
+    NSMutableDictionary *debugDictionary = [super debugDictionary];
 
     if (_domain)
         [debugDictionary setObject:_domain forKey:@"domain"];
@@ -308,7 +289,6 @@ NSString *OWCookieGlobalPath = @"/";
     NSHTTPCookie *nsCookie = [NSHTTPCookie cookieWithProperties:cookieProperties];
     if (nsCookie == nil)
         NSLog(@"-[%@ %@]: nsCookie=%@, cookieProperties=%@", OBShortObjectDescription(self), NSStringFromSelector(_cmd), nsCookie, cookieProperties);
-    [cookieProperties release];
     return nsCookie;
 }
 

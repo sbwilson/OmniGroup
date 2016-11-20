@@ -1,4 +1,4 @@
-// Copyright 2008-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2008-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -62,22 +62,20 @@ static ODAVFileInfo *_createFileInfoAtPath(NSString *path)
 
 - (ODAVFileInfo *)fileInfoAtURL:(NSURL *)url error:(NSError **)outError;
 {
-    if (OFSFileManagerDebug > 0)
-        NSLog(@"FILE operation: INFO at %@", url);
+    OBLog(OFSFileManagerLogger, 2, @"FILE operation: INFO at %@", url);
 
     ODAVFileInfo *info = _createFileInfoAtPath([url path]);
 
-    if (OFSFileManagerDebug > 1)
-        NSLog(@"  --> %@", info);
+    OBLog(OFSFileManagerLogger, 1, @"    --> %@", info);
     
     return info;
 }
 
-- (NSArray *)directoryContentsAtURL:(NSURL *)url havingExtension:(NSString *)extension error:(NSError **)outError;
+- (NSArray<ODAVFileInfo *> *)directoryContentsAtURL:(NSURL *)url havingExtension:(NSString *)extension error:(NSError **)outError;
 {
     NSTimeInterval start = 0;
-    if (OFSFileManagerDebug > 0) {
-        NSLog(@"FILE operation: DIR at %@, extension '%@'", url, extension);
+    if (OFSFileManagerLogger.level > 0) {
+        OBLog(OFSFileManagerLogger, 2, @"FILE operation: DIR at %@, extension '%@'", url, extension);
         start = [NSDate timeIntervalSinceReferenceDate];
     }
 
@@ -111,7 +109,7 @@ static ODAVFileInfo *_createFileInfoAtPath(NSString *path)
         return nil;
     }
     
-    NSMutableArray *results = [NSMutableArray array];
+    NSMutableArray<ODAVFileInfo *> *results = [NSMutableArray array];
     
     for (NSString *fileName in fileNames) {
         OBASSERT([[fileName pathComponents] count] == 1);
@@ -129,27 +127,33 @@ static ODAVFileInfo *_createFileInfoAtPath(NSString *path)
         }
     }
     
-    if (OFSFileManagerDebug > 1) {
+    if (OFSFileManagerLogger.level > 0) {
         static NSTimeInterval totalWait = 0;
         NSTimeInterval operationWait = [NSDate timeIntervalSinceReferenceDate] - start;
         totalWait += operationWait;
-        NSLog(@"  ... %gs (total %g)", operationWait, totalWait);
-        if (OFSFileManagerDebug > 1)
-            NSLog(@"  --> %@", results);
+        OBLog(OFSFileManagerLogger, 1, @"    --> %gs (total %g) %@", operationWait, totalWait, results);
     }
     
     return results;
 }
 
-- (NSMutableArray *)directoryContentsAtURL:(NSURL *)url collectingRedirects:(NSMutableArray *)redirections error:(NSError **)outError;
+- (NSArray<ODAVFileInfo *> *)directoryContentsAtURL:(NSURL *)url collectingRedirects:(NSMutableArray *)redirections machineDate:(NSDate **)outMachineDate error:(NSError **)outError;
+{
+    NSArray<ODAVFileInfo *> *result = [self directoryContentsAtURL:url havingExtension:nil error:outError];
+    if (outMachineDate != NULL) {
+        *outMachineDate = [NSDate date];
+    }
+    return result;
+}
+
+- (NSMutableArray<ODAVFileInfo *> *)directoryContentsAtURL:(NSURL *)url collectingRedirects:(NSMutableArray *)redirections error:(NSError **)outError;
 {
     return (NSMutableArray *)[self directoryContentsAtURL:url havingExtension:nil error:outError];
 }
 
 - (NSData *)dataWithContentsOfURL:(NSURL *)url error:(NSError **)outError;
 {
-    if (OFSFileManagerDebug > 0)
-        NSLog(@"FILE operation: READ '%@'", url);
+    OBLog(OFSFileManagerLogger, 2, @"FILE operation: READ '%@'", url);
     
 #if 0
     // This seems to leak file descriptors at the moment
@@ -161,16 +165,14 @@ static ODAVFileInfo *_createFileInfoAtPath(NSString *path)
 
 - (NSURL *)writeData:(NSData *)data toURL:(NSURL *)url atomically:(BOOL)atomically error:(NSError **)outError;
 {
-    if (OFSFileManagerDebug > 0)
-        NSLog(@"FILE operation: WRITE %@ (data of %ld bytes)", url, [data length]);
+    OBLog(OFSFileManagerLogger, 2, @"FILE operation: WRITE %@ (data of %ld bytes)", url, [data length]);
 
     return [data writeToFile:[url path] options:(atomically ? NSDataWritingAtomic : 0) error:outError]? url : nil;
 }
 
 - (NSURL *)createDirectoryAtURL:(NSURL *)url attributes:(NSDictionary *)attributes error:(NSError **)outError;
 {
-    if (OFSFileManagerDebug > 0)
-        NSLog(@"FILE operation: MKDIR %@", url);
+    OBLog(OFSFileManagerLogger, 2, @"FILE operation: MKDIR %@", url);
 
     NSFileManager *manager = [NSFileManager defaultManager];
     
@@ -187,8 +189,7 @@ static ODAVFileInfo *_createFileInfoAtPath(NSString *path)
 
 - (NSURL *)moveURL:(NSURL *)sourceURL toURL:(NSURL *)destURL error:(NSError **)outError;
 {
-    if (OFSFileManagerDebug > 0)
-        NSLog(@"FILE operation: RENAME %@ to %@", sourceURL, destURL);
+    OBLog(OFSFileManagerLogger, 2, @"FILE operation: RENAME %@ to %@", sourceURL, destURL);
 
     NSFileManager *manager = [NSFileManager defaultManager];
 
@@ -203,8 +204,7 @@ static ODAVFileInfo *_createFileInfoAtPath(NSString *path)
 
 - (BOOL)deleteURL:(NSURL *)url error:(NSError **)outError;
 {
-    if (OFSFileManagerDebug > 0)
-        NSLog(@"FILE operation: DELETE %@", url);
+    OBLog(OFSFileManagerLogger, 2, @"FILE operation: DELETE %@", url);
 
     NSFileManager *manager = [NSFileManager defaultManager];
     if (![manager removeItemAtPath:[url path] error:outError]) {

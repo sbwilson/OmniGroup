@@ -1,11 +1,11 @@
-// Copyright 2003-2005, 2010-2011, 2013 Omni Development, Inc. All rights reserved.
+// Copyright 2003-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
 // distributed with this project and can also be found at
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
 
-#import "OWSitePreference.h"
+#import <OWF/OWSitePreference.h>
 
 #import <Foundation/Foundation.h>
 #import <OmniBase/OmniBase.h>
@@ -99,21 +99,18 @@ static NSNotificationCenter *sitePreferenceNotificationCenter;
 
 + (OWSitePreference *)preferenceForKey:(NSString *)key domain:(NSString *)domain;
 {
-    NSMutableDictionary *preferenceCache;
-    OWSitePreference *preference;
-    
     OBASSERT(domain != nil);
 
     [domainLock lock];
-    preferenceCache = [self _lockedPreferenceCacheForDomain:domain];
-    preference = [[preferenceCache objectForKey:key] retain];
+    NSMutableDictionary *preferenceCache = [self _lockedPreferenceCacheForDomain:domain];
+    OWSitePreference *preference = [preferenceCache objectForKey:key];
     if (preference == nil) {
         preference = [[OWSitePreference alloc] _initWithKey:key domain:domain];
         [preferenceCache setObject:preference forKey:key];
     }
     [domainLock unlock];
 
-    return [preference autorelease];
+    return preference;
 }
 
 + (OWSitePreference *)preferenceForKey:(NSString *)key address:(OWAddress *)address;
@@ -204,10 +201,6 @@ static NSNotificationCenter *sitePreferenceNotificationCenter;
 - (void)dealloc;
 {
     [OFPreference removeObserver:self forPreference:nil];
-    [globalPreference release];
-    [siteSpecificPreference release];
-    
-    [super dealloc];
 }
 
 // API
@@ -255,6 +248,16 @@ static NSNotificationCenter *sitePreferenceNotificationCenter;
 - (void)setStringValue:(NSString *)value;
 {
     [[self _preferenceForWriting] setStringValue:value];
+}
+
+- (NSURL *)bookmarkURLValue;
+{
+    return [[self _preferenceForReading] bookmarkURLValue];
+}
+
+- (void)setBookmarkURLValue:(NSURL *)bookmarkURL;
+{
+    [[self _preferenceForWriting] setBookmarkURLValue:bookmarkURL];
 }
 
 - (BOOL)boolValue;
@@ -331,7 +334,7 @@ static NSNotificationCenter *sitePreferenceNotificationCenter;
         return nil;
             
     // Global preference (used as a fallback)
-    globalPreference = [[OFPreference preferenceForKey:key] retain];
+    globalPreference = [OFPreference preferenceForKey:key];
         
     // Site-specific preference
     if (![NSString isEmptyString:domain]) {
@@ -340,7 +343,7 @@ static NSNotificationCenter *sitePreferenceNotificationCenter;
         domain = [domain lowercaseString];
         
         siteKey = [NSString stringWithFormat:@"SiteSpecific:%@:%@", domain, key];
-        siteSpecificPreference = [[OFPreference preferenceForKey:siteKey] retain];
+        siteSpecificPreference = [OFPreference preferenceForKey:siteKey];
     }
 
     if (globalPreference != nil)

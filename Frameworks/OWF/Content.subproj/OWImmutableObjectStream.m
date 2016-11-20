@@ -1,11 +1,11 @@
-// Copyright 2003-2005, 2010-2011 Omni Development, Inc. All rights reserved.
+// Copyright 2003-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
 // distributed with this project and can also be found at
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
 
-#import "OWImmutableObjectStream.h"
+#import <OWF/OWImmutableObjectStream.h>
 
 #import <Foundation/Foundation.h>
 #import <OmniBase/rcsid.h>
@@ -13,30 +13,26 @@
 RCS_ID("$Id$");
 
 @implementation OWImmutableObjectStream
+{
+    NSArray *objects;
+}
 
 // Init and dealloc
 
-- initWithObject:(NSObject *)anObject
+- (instancetype)initWithObject:(NSObject *)anObject
 {
-    return [self initWithArray:[NSArray arrayWithObject:anObject]];
+    return [self initWithArray:@[anObject]];
 }
 
-- initWithArray:(NSArray *)contents;
+- (instancetype)initWithArray:(NSArray *)contents;
 {
     if (!(self = [super init]))
         return nil;
 
-    objects = [contents retain];
+    objects = contents;
 
     return self;
 }
-
-- (void)dealloc;
-{
-    [objects release];
-    [super dealloc];
-}
-
 
 // API
 - (id)objectAtIndex:(NSUInteger)objectIndex;

@@ -1,19 +1,19 @@
-// Copyright 1997-2005, 2010-2013 Omni Development, Inc. All rights reserved.
+// Copyright 1997-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
 // distributed with this project and can also be found at
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
 
-#import "OWCookiePath.h"
+#import <OWF/OWCookiePath.h>
 
 #import <Foundation/Foundation.h>
 #import <CoreFoundation/CoreFoundation.h>
 #import <OmniBase/OmniBase.h>
 #import <OmniFoundation/OmniFoundation.h>
 
-#import "OWCookie.h"
-#import "OWCookieDomain.h"
+#import <OWF/OWCookie.h>
+#import <OWF/OWCookieDomain.h>
 
 RCS_ID("$Id$")
 
@@ -37,12 +37,6 @@ static NSLock *pathLock = nil;
     _cookies = [[NSMutableArray alloc] init];
     
     return self;
-}
-
-- (void)dealloc;
-{
-    [_path release];
-    [super dealloc];
 }
 
 - (NSString *)path;
@@ -83,28 +77,24 @@ static NSLock *pathLock = nil;
 
 - (NSArray *)cookies;
 {
-    NSArray *cookies;
-    
     [pathLock lock];
-    cookies = [[NSArray alloc] initWithArray:_cookies];
+    NSArray *cookies = [[NSArray alloc] initWithArray:_cookies];
     [pathLock unlock];
     
-    return [cookies autorelease];
+    return cookies;
 }
 
 - (OWCookie *)cookieNamed:(NSString *)name;
 {
-    NSUInteger cookieIndex;
     OWCookie *cookie = nil;
     BOOL found = NO;
     
     [pathLock lock];
 
-    cookieIndex = [_cookies count];
+    NSUInteger cookieIndex = [_cookies count];
     while (cookieIndex--) {
         cookie = [_cookies objectAtIndex:cookieIndex];
         if ([[cookie name] isEqualToString:name]) {
-            [[cookie retain] autorelease];
             found = YES;
             break;
         }
@@ -120,25 +110,21 @@ static NSLock *pathLock = nil;
 // For use by OWCookieDomain
 - (void)addCookie:(OWCookie *)cookie andNotify:(BOOL)shouldNotify;
 {
-    NSUInteger cookieIndex;
-    OWCookie *oldCookie;
+    // We block cookies here instead of marking them rejected in OWCookie domain because we don't want users to have to manually clear out their rejected cookies (or Quit/Restart OmniWeb) -- The whole point of Private Browsing is to prevent that!
+    if ([[OFPreference preferenceForKey:@"OWPrivateBrowsingEnabled"] boolValue]) {
+        OBRetainAutorelease(cookie); // In case someone adds the cookie with the expectation that it will be retained
+        return;
+    }
+    
+    NSString *name = [cookie name];
     BOOL needsAdding = YES;
-    NSString *name;
-    
-	// We block cookies here instead of marking them rejected in OWCookie domain because we don't want users to have to manually clear out their rejected cookies (or Quit/Restart OmniWeb) -- The whole point of Private Browsing is to prevent that!
-	if ([[OFPreference preferenceForKey:@"OWPrivateBrowsingEnabled"] boolValue]) {
-		[[cookie retain] autorelease]; // In case someone adds the cookie with the expectation that it will be retained
-		return;
-	}
-		
-    name = [cookie name];
-    
-    [pathLock lock];
 
+    [pathLock lock];
+    
     // If we have a cookie with the same name, replace it.
-    cookieIndex = [_cookies count];
+    NSUInteger cookieIndex = [_cookies count];
     while (cookieIndex--) {
-        oldCookie = [_cookies objectAtIndex:cookieIndex];
+        OWCookie *oldCookie = [_cookies objectAtIndex:cookieIndex];
         
         // Don't remove and readd the cookie if it is already there
         // since it might get deallocated.
@@ -146,13 +132,13 @@ static NSLock *pathLock = nil;
             needsAdding = NO;
             break;
         }
-
+        
         if ([[oldCookie name] isEqualToString:name]) {
             // Replace the old cookie value but preserve the current status
             // if it is more permissive than the new status
-
+            
             OWCookieStatus oldStatus = [oldCookie status];
-
+            
             // If the new cookie has no expirationDate, only promote it to
             // saved if the old cookie also had no expiration date.
             if ([cookie expirationDate] == nil && oldStatus == OWCookieSavedStatus && [oldCookie expirationDate] != nil)
@@ -169,7 +155,7 @@ static NSLock *pathLock = nil;
             break;
         }
     }
-
+    
     if (needsAdding) {
         [_cookies addObject:cookie];
     }
@@ -180,7 +166,7 @@ static NSLock *pathLock = nil;
         [OWCookieDomain didChange];
         // Should become obsolete with new cache arc validation stuff
 #warning deal with cache validation of cookie state
-//        [OWContentCache flushCachedContentMatchingCookie:cookie];
+        //        [OWContentCache flushCachedContentMatchingCookie:cookie];
     }
 }
 

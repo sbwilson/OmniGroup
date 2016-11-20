@@ -1,4 +1,4 @@
-// Copyright 2009-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2009-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -288,8 +288,8 @@ static BOOL ofErrorFromOSError(NSError **outError, OSStatus oserr, NSString *fun
     
     NSLog(@"   Retrieving external reference <%@>", [refURL absoluteString]);
     
-    NSData *remoteData = [NSURLConnection sendSynchronousRequest:[NSURLRequest requestWithURL:refURL cachePolicy:NSURLRequestReturnCacheDataElseLoad timeoutInterval:45] returningResponse:NULL error:outError];
-    if (!remoteData)  // NSURLConnection will have filled *outError for us
+    NSData *remoteData = [NSData dataWithContentsOfURL:refURL options:0 error:outError];
+    if (!remoteData)  // -dataWithContentsOfURL: will have filled *outError for us
         return NO;
     
 #ifdef DEBUG_XMLSIG_TESTS
@@ -1156,11 +1156,11 @@ static void alterSignature(xmlNode *sigNode, int delta)
     xmlNode *sigelt = OFLibXMLChildNamed(sigNode, "SignatureValue", XMLSignatureNamespace, NULL);
     
     xmlChar *contentbuf = xmlNodeGetContent(sigelt);
-    NSMutableData *dec = [[NSData dataWithBase64String:[NSString stringWithCString:(void *)contentbuf encoding:NSUTF8StringEncoding]] mutableCopy];
+    NSMutableData *dec = [[[NSData alloc] initWithBase64EncodedString:[NSString stringWithCString:(void *)contentbuf encoding:NSUTF8StringEncoding] options:NSDataBase64DecodingIgnoreUnknownCharacters] mutableCopy];
     unsigned int b0 = ((unsigned char *)[dec bytes])[6];
     b0 = ( b0 + delta ) & 0xFF;
     ((unsigned char *)[dec mutableBytes])[6] = b0;
-    NSData *enc = [[dec base64String] dataUsingEncoding:NSUTF8StringEncoding];
+    NSData *enc = [[dec base64EncodedStringWithOptions:0] dataUsingEncoding:NSUTF8StringEncoding];
     
     // NSLog(@"Alter<%d>  %s -> %.*s\n", delta, contentbuf, (int)[enc length], (char *)[enc bytes]);
     

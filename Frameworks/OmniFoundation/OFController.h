@@ -8,26 +8,27 @@
 // $Id$
 
 #import <OmniFoundation/OFObject.h>
-
 #import <Foundation/NSUserNotification.h>
+
+NS_ASSUME_NONNULL_BEGIN
 
 @class OFInvocation, OFMessageQueue;
 @class NSBundle, NSException, NSExceptionHandler, NSLock, NSMutableArray, NSMutableSet, NSNotification;
 
-typedef enum _OFControllerStatus {
-    OFControllerNotInitializedStatus,
-    OFControllerInitializedStatus,
-    OFControllerRunningStatus,
-    OFControllerRequestingTerminateStatus,
-    OFControllerPostponingTerminateStatus,
-    OFControllerTerminatingStatus
-} OFControllerStatus;
+typedef NS_ENUM(NSInteger, OFControllerStatus) {
+    OFControllerStatusNotInitialized,
+    OFControllerStatusInitialized,
+    OFControllerStatusRunning,
+    OFControllerStatusRequestingTerminate,
+    OFControllerStatusPostponingTerminate,
+    OFControllerStatusTerminating
+};
 
-typedef enum _OFControllerTerminateReply {
+typedef NS_ENUM(NSInteger, OFControllerTerminateReply) {
     OFControllerTerminateCancel,
     OFControllerTerminateNow,
     OFControllerTerminateLater
-} OFControllerTerminateReply;
+};
 
 // Support for dispatching notifications to different subsystems. +[OFController sharedController] will be the delegate of the notification center.
 @protocol OFNotificationOwner <NSUserNotificationCenterDelegate>
@@ -38,6 +39,7 @@ typedef enum _OFControllerTerminateReply {
 @interface OFController : NSObject <NSUserNotificationCenterDelegate>
 
 + (NSBundle *)controllingBundle;
++ (BOOL)isRunningUnitTests;
 
 + (instancetype)sharedController;
 - (void)becameSharedController NS_REQUIRES_SUPER;
@@ -51,6 +53,7 @@ typedef enum _OFControllerTerminateReply {
 // A simplified way to perform an action at a specific point in the app's lifecycle without going to the trouble of being an observer
 - (void)queueSelector:(SEL)message forObject:(NSObject *)receiver whenStatus:(OFControllerStatus)state;
 - (void)queueInvocation:(OFInvocation *)action whenStatus:(OFControllerStatus)state;
+- (void)performBlock:(void (^)(void))block whenStatus:(OFControllerStatus)state;
 
 - (void)didInitialize;
 - (void)startedRunning;
@@ -117,9 +120,16 @@ Called when -[OFController startedRunning] is called.  This notification is for 
 Called when -[OFController requestTermination] is called.  This notification gives objects an opportunity to save documents, etc., when an application is considering terminating.  If the application does not wish to terminate (maybe the user cancelled the terminate request), it should call -cancelTermination on the OFController.
 "*/
 
+- (void)controllerCancelledTermnation:(OFController *)controller;
+/*"
+ Called when -[OFController cancelTermniation] is called.
+ "*/
+
 - (void)controllerWillTerminate:(OFController *)controller;
 /*"
 Called when -[OFController willTerminate] is called.  This notification is posted by the OFController just before the application terminates, when there's no chance that the termination will be cancelled).  This may be used to wait for a particular activity (e.g. an asynchronous document save) before the application finally terminates.
 "*/
 
 @end
+
+NS_ASSUME_NONNULL_END

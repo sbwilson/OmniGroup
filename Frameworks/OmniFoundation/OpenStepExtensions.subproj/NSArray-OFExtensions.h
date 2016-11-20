@@ -8,6 +8,7 @@
 // $Id$
 
 #import <Foundation/NSArray.h>
+#import <Foundation/NSSortDescriptor.h>
 
 #import <CoreFoundation/CFSet.h>
 #import <OmniFoundation/OFUtilities.h>
@@ -16,8 +17,12 @@
 
 @interface NSArray <__covariant ObjectType> (OFExtensions)
 
+#define COMPARE_BLOCK NSComparisonResult(^)(ObjectType, ObjectType)
 #define PREDICATE_BLOCK BOOL(^)(ObjectType)
 #define MAP_BLOCK id(^)(ObjectType)
+
+/// Builds a new array by calling the valueAtIndex block for 0..<length. Currently always returns an immutable array since we can't do "instancetype<ObjectType>"
++ (NSArray <ObjectType> *)arrayWithCount:(NSUInteger)count valueAtIndex:(ObjectType (^)(NSUInteger))valueAtIndex;
 
 - (ObjectType)anyObject;
     // Returns any object from the array.
@@ -66,6 +71,9 @@
 
 - (NSArray *)flattenedArray;
 
+- (ObjectType)min:(COMPARE_BLOCK)comparator;
+- (ObjectType)max:(COMPARE_BLOCK)comparator;
+
 - (NSArray <ObjectType> *)select:(PREDICATE_BLOCK)predicate;
 - (NSArray <ObjectType> *)reject:(PREDICATE_BLOCK)predicate;
 
@@ -75,6 +83,7 @@
 - (ObjectType)last:(PREDICATE_BLOCK)predicate;
 - (ObjectType)lastInRange:(NSRange)range that:(PREDICATE_BLOCK)predicate;
 
+- (BOOL)any:(PREDICATE_BLOCK)predicate;
 - (BOOL)all:(PREDICATE_BLOCK)predicate;
 
 - (NSArray <ObjectType> *)objectsSatisfyingCondition:(SEL)aSelector;

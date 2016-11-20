@@ -1,4 +1,4 @@
-// Copyright 2013-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2013-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -17,6 +17,7 @@
 #import <OmniFoundation/NSURL-OFExtensions.h>
 #import <OmniFoundation/OFCredentials.h>
 #import <OmniFoundation/OFPreference.h>
+#import <sys/mount.h>
 
 RCS_ID("$Id$")
 
@@ -52,20 +53,14 @@ static OFDeclareDebugLogLevel(OFXBookmarkDebug);
     } while (0)
 
 // When running unit tests on Mac OS X 10.9, we cannot use app-scoped bookmarks. This worked in 10.8, but under 10.9 we get a generic 'cannot open' error. We don't just check -[NSProcessInfo isSandboxed] since we archive the "bookmark" in a plist. We don't want to handle archiving/unarchiving different styles of bookmarks between sandboxed/non-sandboxed.
-static BOOL IsRunningUnitTests(void)
+static BOOL CannotUseAppScopedBookmarks(void)
 {
-    static BOOL runningUnitTests;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        NSString *pathExtension = [[[OFController controllingBundle] bundlePath] pathExtension];
-        runningUnitTests = [pathExtension isEqual:@"xctest"];
-    });
-    return runningUnitTests;
+    return [OFController isRunningUnitTests];
 }
 
 static NSData *bookmarkDataWithURL(NSURL *url, NSError **outError)
 {
-    if (IsRunningUnitTests()) {
+    if (CannotUseAppScopedBookmarks()) {
         NSData *data = [[url absoluteString] dataUsingEncoding:NSUTF8StringEncoding];
         assert(data); // otherwise we need to fill out the outError
         return data;
@@ -75,7 +70,7 @@ static NSData *bookmarkDataWithURL(NSURL *url, NSError **outError)
 
 static NSURL *URLWithBookmarkData(NSData *data, BOOL *outStale, NSError **outError)
 {
-    if (IsRunningUnitTests()) {
+    if (CannotUseAppScopedBookmarks()) {
         NSString *urlString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
         NSURL *url = [NSURL URLWithString:urlString];
         assert(url); // otherwise we need to fill out the outError
@@ -104,6 +99,7 @@ static NSURL *URLWithBookmarkData(NSData *data, BOOL *outStale, NSError **outErr
 }
 
 
+#if !defined(TARGET_OS_IPHONE) || !TARGET_OS_IPHONE
 static BOOL _validateNotDropbox(NSURL *url, NSError **outError)
 {
     NSArray *components = [url pathComponents];
@@ -116,10 +112,22 @@ static BOOL _validateNotDropbox(NSURL *url, NSError **outError)
         return NO;
     }
     
+    NSString *homeDirectory = OFUnsandboxedHomeDirectory();
+    NSString *desktopFolder = [homeDirectory stringByAppendingPathComponent:@"Desktop"];
+    NSString *documentsFolder = [homeDirectory stringByAppendingPathComponent:@"Documents"];
+    NSString *urlPath = url.path;
+    if ([urlPath hasPrefix:desktopFolder] || [urlPath hasPrefix:documentsFolder]) { // 10.12 Sierra prompts people to store their desktop and documents in iCloud
+        if (outError) {
+            NSString *description = NSLocalizedStringFromTableInBundle(@"Local documents folder cannot be used.", @"OmniFileExchange", OMNI_BUNDLE, @"error description");
+            NSString *reason = NSLocalizedStringFromTableInBundle(@"The proposed local documents folder is in a location which can be synchronized by iCloud. Using two file synchronization systems on the same folder can result in data loss.", @"OmniFileExchange", OMNI_BUNDLE, @"error description");
+            OFXError(outError, OFXLocalAccountDirectoryNotUsable, description, reason);
+        }
+        return NO;
+    }
+    
     return YES;
 }
 
-#if !defined(TARGET_OS_IPHONE) || !TARGET_OS_IPHONE
 static BOOL _validateLocalFileSystem(NSURL *url, NSError **outError)
 {
     struct statfs fs_info = {0};
@@ -173,11 +181,11 @@ static BOOL _validateLocalFileSystem(NSURL *url, NSError **outError)
         OBASSERT(validationReason == OFXServerAccountValidateLocalDirectoryForSyncing);
     }
     
+#if !defined(TARGET_OS_IPHONE) || !TARGET_OS_IPHONE
     // Make sure the proposed URL isn't located inside other synchronized folders.
     if (!_validateNotDropbox(documentsURL, outError))
         return NO;
     
-#if !defined(TARGET_OS_IPHONE) || !TARGET_OS_IPHONE
     if (!_validateLocalFileSystem(documentsURL, outError))
         return NO;
 #endif
@@ -198,10 +206,10 @@ static BOOL _validateLocalFileSystem(NSURL *url, NSError **outError)
 
 + (BOOL)validatePotentialLocalDocumentsParentURL:(NSURL *)documentsURL registry:(OFXServerAccountRegistry *)registry error:(NSError **)outError;
 {
+#if !defined(TARGET_OS_IPHONE) || !TARGET_OS_IPHONE
     if (!_validateNotDropbox(documentsURL, outError))
         return NO;
     
-#if !defined(TARGET_OS_IPHONE) || !TARGET_OS_IPHONE
     if (!_validateLocalFileSystem(documentsURL, outError))
         return NO;
 #endif

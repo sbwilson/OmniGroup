@@ -1,4 +1,4 @@
-// Copyright 1997-2015 Omni Development, Inc. All rights reserved.
+// Copyright 1997-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -14,9 +14,9 @@
 
 #import <OmniAppKit/NSBundle-OAExtensions.h>
 #import <OmniAppKit/NSWindow-OAExtensions.h>
-#import "OAFindPattern.h"
-#import "OARegExFindPattern.h"
-#import "OAWindowCascade.h"
+#import <OmniAppKit/OAFindPattern.h>
+#import <OmniAppKit/OARegExFindPattern.h>
+#import <OmniAppKit/OAWindowCascade.h>
 
 RCS_ID("$Id$")
 
@@ -241,7 +241,7 @@ RCS_ID("$Id$")
     return findText ? findText : @"";
 }
 
-- (id <OAFindControllerTarget>)target;
+- (nullable id <OAFindControllerTarget>)target;
 {
     NSWindow *mainWindow = [[NSApplication sharedApplication] mainWindow];
     id target = [(id)[mainWindow delegate] omniFindControllerTarget];
@@ -400,7 +400,7 @@ RCS_ID("$Id$")
 
 @implementation NSObject (OAFindControllerAware)
 
-- (id <OAFindControllerTarget>)omniFindControllerTarget;
+- (nullable id <OAFindControllerTarget>)omniFindControllerTarget;
 {
     return nil;
 }

@@ -1,4 +1,4 @@
-// Copyright 2004-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2004-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -16,10 +16,20 @@
 #else
 #import <CoreServices/CoreServices.h>
 #endif
+#import <Foundation/NSValueTransformer.h>
 
 RCS_ID("$Id$");
 
+NS_ASSUME_NONNULL_BEGIN
+
 @implementation OFVersionNumber
+{
+    NSString *_originalVersionString;
+    NSString *_cleanVersionString;
+
+    NSUInteger  _componentCount;
+    NSUInteger *_components;
+}
 
 + (OFVersionNumber *)mainBundleVersionNumber;
 {
@@ -59,21 +69,32 @@ RCS_ID("$Id$");
     return userVisibleOperatingSystemVersionNumber;
 }
 
-static BOOL isOperatingSystemLaterThanVersionString(NSString *versionString) __attribute__((unused)); // Can end up being unused when we require the latest version available of a platform's OS.
+static BOOL isOperatingSystemAtLeastVersionString(NSString *versionString) __attribute__((unused)); // Can end up being unused when we require the latest version available of a platform's OS.
 
-static BOOL isOperatingSystemLaterThanVersionString(NSString *versionString)
+static BOOL isOperatingSystemAtLeastVersionString(NSString *versionString)
     // NOTE: Don't expose this directly! Instead, declare a new method (such as +isOperatingSystemLionOrLater) which caches its result (and which will give us nice warnings to find later when we decide to retire support for pre-Lion).
     // This implementation is meant to be called during initialization, not repeatedly, since this allocates and discards an instance.
 {
     OFVersionNumber *version = [[OFVersionNumber alloc] initWithVersionString:versionString];
-    BOOL isLater = ([[OFVersionNumber userVisibleOperatingSystemVersionNumber] compareToVersionNumber:version] != NSOrderedAscending);
+    BOOL result = [[OFVersionNumber userVisibleOperatingSystemVersionNumber] isAtLeast:version];
     [version release];
-    return isLater;
+    return result;
 }
 
 #if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
 
 // We require iOS 9.0 currently
+
++ (BOOL)isOperatingSystemiOS93OrLater;
+{
+    static BOOL isEarlier;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        isEarlier = isOperatingSystemAtLeastVersionString(@"9.3");
+    });
+    
+    return isEarlier;
+}
 
 #else
 
@@ -82,7 +103,18 @@ static BOOL isOperatingSystemLaterThanVersionString(NSString *versionString)
     static BOOL isLater;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        isLater = isOperatingSystemLaterThanVersionString(@"10.11");
+        isLater = isOperatingSystemAtLeastVersionString(@"10.11");
+    });
+
+    return isLater;
+}
+
++ (BOOL)isOperatingSystemSierraOrLater; // 10.12
+{
+    static BOOL isLater;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        isLater = isOperatingSystemAtLeastVersionString(@"10.12");
     });
 
     return isLater;
@@ -91,7 +123,7 @@ static BOOL isOperatingSystemLaterThanVersionString(NSString *versionString)
 #endif
 
 /* Initializes the receiver from a string representation of a version number.  The input string may have an optional leading 'v' or 'V' followed by a sequence of positive integers separated by '.'s.  Any trailing component of the input string that doesn't match this pattern is ignored.  If no portion of this string matches the pattern, nil is returned. */
-- initWithVersionString:(NSString *)versionString;
+- (nullable instancetype)initWithVersionString:(NSString *)versionString;
 {
     OBPRECONDITION([versionString isKindOfClass:[NSString class]]);
     
@@ -172,9 +204,7 @@ static BOOL isOperatingSystemLaterThanVersionString(NSString *versionString)
     [super dealloc];
 }
 
-
-#pragma mark -
-#pragma mark API
+#pragma mark - API
 
 - (NSString *)originalVersionString;
 {
@@ -216,16 +246,29 @@ static BOOL isOperatingSystemLaterThanVersionString(NSString *versionString)
     return 0;
 }
 
-#pragma mark -
-#pragma mark NSCopying
+- (NSUInteger)majorComponent;
+{
+    return [self componentAtIndex:0];
+}
 
-- (id)copyWithZone:(NSZone *)zone;
+- (NSUInteger)minorComponent;
+{
+    return [self componentAtIndex:1];
+}
+
+- (NSUInteger)bugFixComponent;
+{
+    return [self componentAtIndex:2];
+}
+
+#pragma mark - NSCopying
+
+- (id)copyWithZone:(nullable NSZone *)zone;
 {
     return [self retain];
 }
 
-#pragma mark -
-#pragma mark Comparison
+#pragma mark - Comparison
 
 - (NSUInteger)hash;
 {
@@ -272,8 +315,32 @@ static BOOL isOperatingSystemLaterThanVersionString(NSString *versionString)
     return NSOrderedSame;
 }
 
-#pragma mark -
-#pragma mark Debugging
+- (BOOL)isAtLeast:(OFVersionNumber *)otherVersion;
+{
+    return [self compareToVersionNumber: otherVersion] != NSOrderedAscending;
+}
+
+- (BOOL)isAfter:(OFVersionNumber *)otherVersion;
+{
+    return [self compareToVersionNumber: otherVersion] == NSOrderedDescending;
+}
+
+- (BOOL)isBefore:(OFVersionNumber *)otherVersion;
+{
+    return [self compareToVersionNumber: otherVersion] == NSOrderedAscending;
+}
+
+#pragma mark - Debugging
+
+- (NSString *)description;
+{
+    return [self debugDescription];
+}
+
+- (NSString *)debugDescription;
+{
+    return [NSString stringWithFormat:@"<%@:%p %@>", NSStringFromClass([self class]), self, [self cleanVersionString]];
+}
 
 - (NSMutableDictionary *)debugDictionary;
 {
@@ -317,14 +384,14 @@ NSString * const OFVersionNumberTransformerName = @"OFVersionNumberTransformer";
     return YES;
 }
 
-- (id)transformedValue:(id)value;
+- (nullable id)transformedValue:(nullable id)value;
 {
     if ([value isKindOfClass:[OFVersionNumber class]])
         return [(OFVersionNumber *)value cleanVersionString];
     return nil;
 }
 
-- (id)reverseTransformedValue:(id)value;
+- (nullable id)reverseTransformedValue:(nullable id)value;
 {
     if ([value isKindOfClass:[NSString class]])
         return [[[OFVersionNumber alloc] initWithVersionString:value] autorelease];
@@ -332,3 +399,5 @@ NSString * const OFVersionNumberTransformerName = @"OFVersionNumberTransformer";
 }
 
 @end
+
+NS_ASSUME_NONNULL_END

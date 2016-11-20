@@ -35,7 +35,7 @@ typedef OFWeakReference <id <OFControllerStatusObserver>> *OFControllerStatusObs
     NSLock *observerLock;
     NSMutableArray <OFControllerStatusObserverReference> *_observerReferences; // OFWeakReferences holding the observers
     NSMutableSet *postponingObservers;
-    NSMutableDictionary *queues;
+    NSMutableDictionary *_queues;
     
     OFPreference *_crashOnAssertionOrUnhandledExceptionPreference;
 
@@ -45,29 +45,38 @@ typedef OFWeakReference <id <OFControllerStatusObserver>> *OFControllerStatusObs
 
 static OFController *sharedController = nil;
 static BOOL CrashOnAssertionOrUnhandledException = NO; // Cached so we can get this w/in the handler w/o calling into ObjC (since it might be unsafe)
+static BOOL IsRunningUnitTests;
 
 #ifdef OMNI_ASSERTIONS_ON
 static void _OFControllerCheckTerminated(void)
 {
     @autoreleasepool {
         // Make sure that applications that use OFController actually call its -willTerminate.
-        NSDictionary *environment = [[NSProcessInfo processInfo] environment];
-        if ([[[environment objectForKey:@"XCInjectBundle"] pathExtension] isEqualToString:@"xctest"] &&
-            [[environment objectForKey:@"XCInjectBundleInto"] hasPrefix:[[NSBundle mainBundle] bundlePath]]) {
+        if (IsRunningUnitTests) {
             // We need to skip this check for xctest host apps since +[XCTestProbe runTests:] just calls exit() rather than -terminate:.
         } else {
-            OBASSERT(!sharedController || sharedController->_status == OFControllerTerminatingStatus || sharedController->_status == OFControllerNotInitializedStatus);
+            OBASSERT(!sharedController || sharedController->_status == OFControllerStatusTerminating || sharedController->_status == OFControllerStatusNotInitialized);
         }
     }
 }
 #endif
 
++ (void)initialize;
+{
+    OBINITIALIZE;
+
+    // Grabbing this up front so that OFCrashImmediately() can read it w/o fear of causing another exception.
+    NSString *pathExtension = [[[self controllingBundle] bundlePath] pathExtension];
+    IsRunningUnitTests = [pathExtension isEqual:@"xctest"];
+}
+
 // If we are running a bundled app, this will return the main bundle.  Otherwise, if we are running unit tests, this will return the unit test bundle.
 + (NSBundle *)controllingBundle;
 {
     static NSBundle *controllingBundle = nil;
-    
-    if (!controllingBundle) {
+    static dispatch_once_t onceToken;
+
+    dispatch_once(&onceToken, ^{
         if (NSClassFromString(@"XCTestCase")) {
             // There should be exactly one test bundle with an extension of either 'xctest'.
             NSBundle *candidateBundle = nil;
@@ -88,7 +97,7 @@ static void _OFControllerCheckTerminated(void)
         if (!controllingBundle)
             controllingBundle = [[NSBundle mainBundle] retain];
         
-        // If the controlling bundle specifies a minimum OS revision, make sure it is at least 10.10 (since that is our global minimum on the trunk right now).  Only really applies for LaunchServices-started bundles (applications).
+        // If the controlling bundle specifies a minimum OS revision, make sure it is at least 10.11 (since that is our global minimum on the trunk right now).  Only really applies for LaunchServices-started bundles (applications).
 #ifdef OMNI_ASSERTIONS_ON
         {
             NSString *requiredVersionString = [[controllingBundle infoDictionary] objectForKey:@"LSMinimumSystemVersion"];
@@ -96,17 +105,27 @@ static void _OFControllerCheckTerminated(void)
                 OFVersionNumber *requiredVersion = [[OFVersionNumber alloc] initWithVersionString:requiredVersionString];
                 OBASSERT(requiredVersion);
                 
-                OFVersionNumber *globalRequiredVersion = [[OFVersionNumber alloc] initWithVersionString:@"10.10"];
+                OFVersionNumber *globalRequiredVersion = [[OFVersionNumber alloc] initWithVersionString:@"10.11"];
                 OBASSERT([globalRequiredVersion compareToVersionNumber:requiredVersion] != NSOrderedDescending);
                 [requiredVersion release];
                 [globalRequiredVersion release];
             }
         }
 #endif
-    }
+    });
     
     OBPOSTCONDITION(controllingBundle);
     return controllingBundle;
+}
+
++ (BOOL)isRunningUnitTests;
+{
+    return IsRunningUnitTests;
+}
+
+static NSString *ControllerClassName(NSBundle *bundle)
+{
+    return [[bundle infoDictionary] objectForKey:@"OFControllerClass"];
 }
 
 + (instancetype)sharedController;
@@ -116,12 +135,12 @@ static void _OFControllerCheckTerminated(void)
         static BOOL _stillSettingUpSharedController = YES;
         assert(_stillSettingUpSharedController == YES);
 
-        NSBundle *controllingBundle = [self controllingBundle];
-        NSDictionary *infoDictionary = [controllingBundle infoDictionary];
-        NSString *controllerClassName = [infoDictionary objectForKey:@"OFControllerClass"];
+        // When running unit tests, the main bundle won't be the test bundle.
+        NSString *controllerClassName = ControllerClassName([self controllingBundle]);
         
         if ([NSString isEmptyString:controllerClassName]) {
-            // When running unit tests, the main bundle won't be the test bundle.
+            // This can happen, for example, when the unit test bundle doesn't specify a controller class, but is using a host app rather than plain xctest.
+            controllerClassName = ControllerClassName([NSBundle mainBundle]);
         }
         
         Class controllerClass;
@@ -152,10 +171,8 @@ static void _OFControllerCheckTerminated(void)
         // For one-time setup that we don't want to do in -init if we are going to be a losing instance.
         [sharedController becameSharedController];
     }
-    
-    OBASSERT([sharedController isKindOfClass:self]);
-    if (![sharedController isKindOfClass:self])
-        return nil;
+
+    assert([sharedController isKindOfClass:self]);
     
     return sharedController;
 }
@@ -197,7 +214,7 @@ static void _OFControllerCheckTerminated(void)
     [[[NSThread currentThread] threadDictionary] setObject:self forKey:@"NSAssertionHandler"];
     
     observerLock = [[NSLock alloc] init];
-    _status = OFControllerNotInitializedStatus;
+    _status = OFControllerStatusNotInitialized;
     _observerReferences = [[NSMutableArray alloc] init];
     postponingObservers = [[NSMutableSet alloc] init];
     
@@ -222,7 +239,7 @@ static void _OFControllerCheckTerminated(void)
     
     [_observerReferences release];
     [postponingObservers release];
-    [queues release];
+    [_queues release];
     
     [_locked_notificationOwnerReferences release];
     [_notificationOwnersLock release];
@@ -325,24 +342,34 @@ static void _replacement_userNotificationCenterSetDelegate(id self, SEL _cmd, id
 /*" Enqueues an invocation to occur when the controller enters a specific state. If the controller is already in that state (or a later state), then the action will happen immediately. Unlike the observer protocol, this method retains the receiver (via the invocation) until the message is sent. "*/
 - (void)queueInvocation:(OFInvocation *)action whenStatus:(OFControllerStatus)state;
 {
-    if (!action)
+    if (action == nil)
+        return;
+
+    [self performBlock:^{ [action invoke]; } whenStatus:state];
+}
+
+- (void)performBlock:(void (^)(void))block whenStatus:(OFControllerStatus)state;
+{
+    if (block == NULL)
         return;
     
     [observerLock lock];
     if (state <= _status) {
         [observerLock unlock];
-        [action invoke];
+        block();
     } else {
         NSNumber *key = [NSNumber numberWithInt:state];
-        NSMutableArray *queue = [queues objectForKey:key];
-        if (!queue) {
-            if (!queues)
-                queues = [[NSMutableDictionary alloc] init];
+        NSMutableArray *queue = [_queues objectForKey:key];
+        if (queue == nil) {
+            if (_queues == nil)
+                _queues = [[NSMutableDictionary alloc] init];
             queue = [NSMutableArray array];
-            [queues setObject:queue forKey:key];
+            [_queues setObject:queue forKey:key];
         }
 
-        [queue addObject:action];
+        id copiedBlock = [block copy];
+        [queue addObject:copiedBlock];
+        [copiedBlock release];
         
         [observerLock unlock];
     }
@@ -352,7 +379,7 @@ static void _replacement_userNotificationCenterSetDelegate(id self, SEL _cmd, id
 - (void)didInitialize;
 {
     OBPRECONDITION([NSThread isMainThread]);
-    OBPRECONDITION(_status == OFControllerNotInitializedStatus);
+    OBPRECONDITION(_status == OFControllerStatusNotInitialized);
     
     // See -init for why we delay this work
     {
@@ -364,7 +391,7 @@ static void _replacement_userNotificationCenterSetDelegate(id self, SEL _cmd, id
         [self _crashOnAssertionPreferenceChanged:nil];
     }
 
-    self.status = OFControllerInitializedStatus;
+    self.status = OFControllerStatusInitialized;
     [self _makeObserversPerformSelector:@selector(controllerDidInitialize:)];
 }
 
@@ -372,9 +399,9 @@ static void _replacement_userNotificationCenterSetDelegate(id self, SEL _cmd, id
 - (void)startedRunning;
 {
     OBPRECONDITION([NSThread isMainThread]);
-    OBPRECONDITION(_status == OFControllerInitializedStatus);
+    OBPRECONDITION(_status == OFControllerStatusInitialized);
     
-    self.status = OFControllerRunningStatus;
+    self.status = OFControllerStatusRunning;
     [self _makeObserversPerformSelector:@selector(controllerStartedRunning:)];
 }
     
@@ -382,9 +409,9 @@ static void _replacement_userNotificationCenterSetDelegate(id self, SEL _cmd, id
 - (OFControllerTerminateReply)requestTermination;
 {
     OBPRECONDITION([NSThread isMainThread]);
-    OBPRECONDITION(_status == OFControllerRunningStatus);
+    OBPRECONDITION(_status == OFControllerStatusRunning);
     
-    self.status = OFControllerRequestingTerminateStatus;
+    self.status = OFControllerStatusRequestingTerminate;
     
     for (id anObserver in [self _observersSnapshot]) {
         if ([anObserver respondsToSelector:@selector(controllerRequestsTerminate:)]) {
@@ -396,23 +423,23 @@ static void _replacement_userNotificationCenterSetDelegate(id self, SEL _cmd, id
         }
         
         // Break if the termination was cancelled
-        if (_status == OFControllerRunningStatus)
+        if (_status == OFControllerStatusRunning)
             break;
     }
 
-    if (_status != OFControllerRunningStatus && [postponingObservers count] > 0)
-        self.status = OFControllerPostponingTerminateStatus;
+    if (_status != OFControllerStatusRunning && [postponingObservers count] > 0)
+        self.status = OFControllerStatusPostponingTerminate;
 
     switch (_status) {
-        case OFControllerRunningStatus:
+        case OFControllerStatusRunning:
             return OFControllerTerminateCancel;
-        case OFControllerRequestingTerminateStatus:
-            self.status = OFControllerTerminatingStatus;
+        case OFControllerStatusRequestingTerminate:
+            self.status = OFControllerStatusTerminating;
             return OFControllerTerminateNow;
-        case OFControllerPostponingTerminateStatus:
+        case OFControllerStatusPostponingTerminate:
             return OFControllerTerminateLater;
         default:
-            OBASSERT_NOT_REACHED("Can't return from OFControllerRunningStatus to an earlier state");
+            OBASSERT_NOT_REACHED("Can't return from OFControllerStatusRunning to an earlier state");
             return OFControllerTerminateNow;
     }
 }
@@ -423,15 +450,19 @@ static void _replacement_userNotificationCenterSetDelegate(id self, SEL _cmd, id
     OBPRECONDITION([NSThread isMainThread]);
     
     switch (_status) {
-        case OFControllerRequestingTerminateStatus:
-            self.status = OFControllerRunningStatus;
+        case OFControllerStatusRequestingTerminate:
+            self.status = OFControllerStatusRunning;
             break;
-        case OFControllerPostponingTerminateStatus:
+        case OFControllerStatusPostponingTerminate:
             [self gotPostponedTerminateResult:NO];
-            self.status = OFControllerRunningStatus;
+            self.status = OFControllerStatusRunning;
             break;
         default:
             break;
+    }
+    
+    if (self.status == OFControllerStatusRunning) {
+        [self _makeObserversPerformSelector:@selector(controllerCancelledTermnation:)];
     }
 }
 
@@ -449,8 +480,8 @@ static void _replacement_userNotificationCenterSetDelegate(id self, SEL _cmd, id
     
     [postponingObservers removeObject:observer];
     if ([postponingObservers count] == 0) {
-        [self gotPostponedTerminateResult:(_status != OFControllerRunningStatus)];
-    } else if ((_status == OFControllerRequestingTerminateStatus || _status == OFControllerPostponingTerminateStatus || _status == OFControllerTerminatingStatus)) {
+        [self gotPostponedTerminateResult:(_status != OFControllerStatusRunning)];
+    } else if ((_status == OFControllerStatusRequestingTerminate || _status == OFControllerStatusPostponingTerminate || _status == OFControllerStatusTerminating)) {
         [self _makeObserversPerformSelector:@selector(controllerRequestsTerminate:)];
     }
 }
@@ -458,7 +489,7 @@ static void _replacement_userNotificationCenterSetDelegate(id self, SEL _cmd, id
 - (void)willTerminate;
 {
     OBPRECONDITION([NSThread isMainThread]);
-    OBPRECONDITION(_status == OFControllerTerminatingStatus); // We should have requested termination and not had it cancelled or postponed.
+    OBPRECONDITION(_status == OFControllerStatusTerminating); // We should have requested termination and not had it cancelled or postponed.
     
     [self _makeObserversPerformSelector:@selector(controllerWillTerminate:)];
 }
@@ -466,7 +497,7 @@ static void _replacement_userNotificationCenterSetDelegate(id self, SEL _cmd, id
 - (void)gotPostponedTerminateResult:(BOOL)isReadyToTerminate;
 {
     if (isReadyToTerminate)
-        self.status = OFControllerTerminatingStatus;
+        self.status = OFControllerStatusTerminating;
 }
 
 // Allow subclasses to override this
@@ -481,6 +512,11 @@ static void _replacement_userNotificationCenterSetDelegate(id self, SEL _cmd, id
 
 static void OFCrashImmediately(void)
 {
+    if (IsRunningUnitTests) {
+        // When running unit tests on our build server, with a loopback ssh connection to allow opening keychains, xctest can hang on a crash of a unit test (it's trying to connect to Xcode it seems).
+        exit(1);
+    }
+
     unsigned int *bad = (unsigned int *)sizeof(unsigned int);
     bad[-1] = 0; // Crash immediately; crazy approach is to defeat the clang error about dereferencing NULL, which is the point!
 }
@@ -889,24 +925,24 @@ static NSString * const OFControllerAssertionHandlerException = @"OFControllerAs
 
 - (void)_runQueues
 {
-    for(;;) {
+    for (;;) {
         NSMutableArray *toRun = nil;
         [observerLock lock];
-        for (NSNumber *targetState in [queues keyEnumerator]) {
+        for (NSNumber *targetState in [_queues keyEnumerator]) {
             if ([targetState intValue] <= (int)_status) {
-                toRun = [[queues objectForKey:targetState] retain];
-                [queues removeObjectForKey:targetState];
+                toRun = [[_queues objectForKey:targetState] retain];
+                [_queues removeObjectForKey:targetState];
                 break;
             }
         }
         [observerLock unlock];
         
         if (toRun) {
-            for (OFInvocation *anAction in toRun) {
+            for (void (^block)(void) in toRun) {
                 @try {
-                    [anAction invoke];
+                    block();
                 } @catch (NSException *exc) {
-                    NSLog(@"Ignoring exception raised during %@: %@", [anAction shortDescription], [exc reason]);
+                    NSLog(@"Ignoring exception raised during controller initialization block: %@", exc.reason);
                 };
             }
             [toRun release];

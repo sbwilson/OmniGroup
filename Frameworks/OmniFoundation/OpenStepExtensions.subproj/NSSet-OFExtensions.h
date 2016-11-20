@@ -1,4 +1,4 @@
-// Copyright 2005-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2005-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -9,39 +9,41 @@
 
 #import <Foundation/NSSet.h>
 
-#import <CoreFoundation/CFSet.h>
-#import <OmniFoundation/OFUtilities.h>
-#import <Foundation/NSObjCRuntime.h> // for NSComparator
+@interface NSSet<__covariant ObjectType> (OFExtensions)
 
-@interface NSSet<ObjectType> (OFExtensions)
+typedef NSComparisonResult (^OFSetObjectComparator)(__kindof ObjectType object1, __kindof ObjectType object2);
+typedef BOOL (^OFSetObjectPredicate)(__kindof ObjectType object);
+typedef id (^OFSetObjectMap)(__kindof ObjectType object);
 
 /// Returns YES if set is nil or is empty.
 + (BOOL)isEmptySet:(NSSet *)set;
 
-- (NSSet<ObjectType> *)setByPerformingSelector:(SEL)aSelector;
-- (NSSet<ObjectType> *)setByPerformingBlock:(OFObjectToObjectBlock)block;
++ (instancetype)setByEnumerating:(NSEnumerator<ObjectType> *)enumerator;
 
-- (NSSet<ObjectType> *)setByRemovingObject:(id)anObject;
+- (NSSet *)setByPerformingSelector:(SEL)aSelector;
+- (NSSet *)setByPerformingBlock:(OFSetObjectMap)block;
+
+- (NSSet<ObjectType> *)setByRemovingObject:(ObjectType)anObject;
 
 - (NSArray<ObjectType> *)sortedArrayUsingSelector:(SEL)comparator;
-- (NSArray<ObjectType> *)sortedArrayUsingComparator:(NSComparator)comparator;
+- (NSArray<ObjectType> *)sortedArrayUsingComparator:(OFSetObjectComparator)comparator;
 
 - (void)applyFunction:(CFSetApplierFunction)applier context:(void *)context;
 
-- (id)any:(OFPredicateBlock)predicate;
-- (BOOL)all:(OFPredicateBlock)predicate;
+- (ObjectType)any:(OFSetObjectPredicate)predicate;
+- (BOOL)all:(OFSetObjectPredicate)predicate;
 
-- (id)min:(NSComparator)comparator;
-- (id)max:(NSComparator)comparator;
+- (ObjectType)min:(OFSetObjectComparator)comparator;
+- (ObjectType)max:(OFSetObjectComparator)comparator;
 
-- (id)minValueForKey:(NSString *)key comparator:(NSComparator)comparator;
-- (id)maxValueForKey:(NSString *)key comparator:(NSComparator)comparator;
+- (ObjectType)minValueForKey:(NSString *)key comparator:(OFSetObjectComparator)comparator;
+- (ObjectType)maxValueForKey:(NSString *)key comparator:(OFSetObjectComparator)comparator;
 
-- (NSSet<ObjectType> *)select:(OFPredicateBlock)predicate;
+- (NSSet<ObjectType> *)select:(OFSetObjectPredicate)predicate;
 
-- (NSDictionary *)indexByBlock:(OFObjectToObjectBlock)blk;
+- (NSDictionary *)indexByBlock:(OFSetObjectMap)blk;
 
-- (BOOL)containsObjectIdenticalTo:(id)anObject;
+- (BOOL)containsObjectIdenticalTo:(ObjectType)anObject;
 - (BOOL)isIdenticalToSet:(NSSet *)otherSet;
 
 @end

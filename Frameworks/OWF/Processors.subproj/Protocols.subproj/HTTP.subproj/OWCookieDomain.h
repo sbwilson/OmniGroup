@@ -1,4 +1,4 @@
-// Copyright 1997-2005, 2010 Omni Development, Inc.  All rights reserved.
+// Copyright 1997-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -9,18 +9,17 @@
 
 #import <OmniFoundation/OFObject.h>
 #import <OmniFoundation/OFDataBuffer.h>
-#import <OWF/FrameworkDefines.h>
 
 @class NSArray, NSLock, NSMutableArray;
 @class OWAddress, OWContentInfo, OWCookie, OWCookiePath, OWHeaderDictionary, OWURL;
 @protocol OWProcessorContext;
 
-OWF_EXTERN BOOL OWCookiesDebug;
-OWF_EXTERN NSString *OWSetCookieHeader;
+extern BOOL OWCookiesDebug;
+extern NSString * const OWSetCookieHeader;
 
-OWF_EXTERN NSString *OWAcceptCookiePreferenceKey;
-OWF_EXTERN NSString *OWRejectThirdPartyCookiesPreferenceKey;
-OWF_EXTERN NSString *OWExpireCookiesAtEndOfSessionPreferenceKey;
+extern NSString * const OWAcceptCookiePreferenceKey;
+extern NSString * const OWRejectThirdPartyCookiesPreferenceKey;
+extern NSString * const OWExpireCookiesAtEndOfSessionPreferenceKey;
 
 @interface OWCookieDomain : OFObject <NSCopying>
 {
@@ -28,8 +27,6 @@ OWF_EXTERN NSString *OWExpireCookiesAtEndOfSessionPreferenceKey;
     NSString *_nameDomain;
     NSMutableArray *_cookiePaths;
 }
-
-+ (void)readDefaults;
 
 + (void)registerCookie:(OWCookie *)aCookie fromURL:(OWURL *)url siteURL:(OWURL *)siteURL;
 + (void)registerCookiesFromURL:(OWURL *)url outerContentInfos:(NSArray *)outerContentInfos headerValue:(NSString *)headerValue;
@@ -73,5 +70,5 @@ OWF_EXTERN NSString *OWExpireCookiesAtEndOfSessionPreferenceKey;
 @end
 
 
-OWF_EXTERN NSString * const OWCookiesChangedNotification;
+extern NSString * const OWCookiesChangedNotification;
     // Posted when cookie data has changed.

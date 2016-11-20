@@ -30,6 +30,7 @@
 #import <OmniFoundation/NSString-OFExtensions.h>
 #import <OmniFoundation/NSURL-OFExtensions.h>
 #import <OmniFoundation/NSDate-OFExtensions.h>
+#import <OmniFoundation/NSError-OFExtensions.h>
 #import <OmniFoundation/OFBackgroundActivity.h>
 #import <OmniFoundation/OFBindingPoint.h>
 #import <OmniFoundation/OFCredentials.h>
@@ -57,6 +58,7 @@
 #import <OmniUIDocument/OUIDocumentProviderPreferencesViewController.h>
 #import <OmniUIDocument/OUIDocumentViewController.h>
 #import <OmniUIDocument/OUIDocumentCreationTemplatePickerViewController.h>
+#import <OmniUIDocument/OUIServerAccountSetupViewController.h>
 #import <OmniUIDocument/OUIToolbarTitleButton.h>
 //#import <CrashReporter/CrashReporter.h>
 
@@ -70,7 +72,6 @@
 #import "OUIDocumentPickerViewController-Internal.h"
 #import "OUIDocumentPickerItemView-Internal.h"
 #import "OUIRestoreSampleDocumentListController.h"
-#import "OUIServerAccountSetupViewController.h"
 #import "OUIDocumentOpenAnimator.h"
 #import "OUIWebDAVSyncListController.h"
 #import "OUILaunchViewController.h"
@@ -199,6 +200,7 @@ static unsigned SyncAgentRunningAccountsContext;
         NSString *closeDocumentTitle = NSLocalizedStringWithDefaultValue(@"Documents <back button>", @"OmniUIDocument", OMNI_BUNDLE, @"Documents", @"Toolbar button title for returning to list of documents.");
         _closeDocumentBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:closeDocumentTitle
                                                                         style:UIBarButtonItemStylePlain target:self action:@selector(closeDocument:)];
+        _closeDocumentBarButtonItem.accessibilityIdentifier = @"BackToDocuments"; // match with compact edition below for consistent screenshot script access.
     }
     return _closeDocumentBarButtonItem;
 }
@@ -209,6 +211,7 @@ static unsigned SyncAgentRunningAccountsContext;
     if (!_compactCloseDocumentBarButtonItem) {
         _compactCloseDocumentBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"OUIToolbarDocumentClose" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil]
                                                                        style:UIBarButtonItemStylePlain target:self action:@selector(closeDocument:)];
+        _compactCloseDocumentBarButtonItem.accessibilityIdentifier = @"BackToDocuments";
     }
     return _compactCloseDocumentBarButtonItem;
 }
@@ -535,11 +538,7 @@ static unsigned SyncAgentRunningAccountsContext;
                 _window.rootViewController = _documentPicker;
                 [_window makeKeyAndVisible];
                 
-                if (_specialURLToHandle) {
-                    [self handleSpecialURL:_specialURLToHandle];
-                    _specialURLToHandle = nil;
-                }
-                
+                [self handleCachedSpecialURLIfNeeded];
                 animateDocument = NO;
             }
             
@@ -1026,6 +1025,15 @@ static NSMutableArray *_arrayByRemovingBookmarksMatchingURL(NSArray <NSData *> *
     }
 }
 
+- (void)handleCachedSpecialURLIfNeeded
+{
+    if (_specialURLToHandle != nil)
+    {
+        [self handleSpecialURL:_specialURLToHandle];
+        _specialURLToHandle = nil;
+    }
+}
+
 #pragma mark - UIResponder subclass
 
 - (NSArray *)keyCommands;
@@ -1177,15 +1185,20 @@ static NSMutableArray *_arrayByRemovingBookmarksMatchingURL(NSArray <NSData *> *
 {
     OBPRECONDITION(viewController);
     
-    if ([syncError hasUnderlyingErrorDomain:ODAVErrorDomain code:ODAVCertificateNotTrusted]) {
-        NSURLAuthenticationChallenge *challenge = [[syncError userInfo] objectForKey:ODAVCertificateTrustChallengeErrorKey];
-        OUICertificateTrustAlert *certAlert = [[OUICertificateTrustAlert alloc] initForChallenge:challenge];
-        certAlert.trustBlock = ^(OFCertificateTrustDuration trustDuration) {
-            OFAddTrustForChallenge(challenge, trustDuration);
-            if (retryBlock)
+    NSError *serverCertificateError = syncError.serverCertificateError;
+    if (serverCertificateError != nil) {
+        OUICertificateTrustAlert *certAlert = [[OUICertificateTrustAlert alloc] initForError:serverCertificateError];
+        certAlert.shouldOfferTrustAlwaysOption = YES;
+        certAlert.storeResult = YES;
+        if (retryBlock) {
+            certAlert.trustBlock = ^(OFCertificateTrustDuration trustDuration) {
                 retryBlock();
-        };
-        [certAlert showFromViewController:viewController];
+            };
+        }
+        [certAlert findViewController:^{
+            return viewController;
+        }];
+        [[[OUIAppController sharedController] backgroundPromptQueue] addOperation:certAlert];
         return;
     }
     
@@ -1706,7 +1719,7 @@ static NSMutableArray *_arrayByRemovingBookmarksMatchingURL(NSArray <NSData *> *
                 OBASSERT(strongSelf);
                 if (!strongSelf)
                     return;
-
+                
 
                 [strongSelf _updateCoreSpotlightIndex];
                 
@@ -1890,10 +1903,7 @@ static NSMutableArray *_arrayByRemovingBookmarksMatchingURL(NSArray <NSData *> *
         _window.rootViewController = _documentPicker;
         [_window makeKeyAndVisible];
         
-        if (_specialURLToHandle) {
-            [self handleSpecialURL:_specialURLToHandle];
-            _specialURLToHandle = nil;
-        }
+        [self handleCachedSpecialURLIfNeeded];
     }
 
     UINavigationController *navigationController = [[UINavigationController alloc] initWithRootViewController:setup];
@@ -1916,11 +1926,9 @@ static NSMutableArray *_arrayByRemovingBookmarksMatchingURL(NSArray <NSData *> *
         DEBUG_LAUNCH(1, @"Did openURL:%@ sourceApplication:%@ annotation:%@", url, sourceApplication, annotation);
         
         if ([self isSpecialURL:url]) {
+            _specialURLToHandle = [url copy];
             if (self.window.rootViewController == _documentPicker) {
-                [self handleSpecialURL:url];
-            }
-            else {
-                _specialURLToHandle = [url copy];
+                [self handleCachedSpecialURLIfNeeded];
             }
             return;
         }
@@ -2624,10 +2632,7 @@ static NSString * const OUINextLaunchActionDefaultsKey = @"OUINextLaunchAction";
     _window.rootViewController = _documentPicker;
     [_window makeKeyAndVisible];
     
-    if (_specialURLToHandle) {
-        [self handleSpecialURL:_specialURLToHandle];
-        _specialURLToHandle = nil;
-    }
+    [self handleCachedSpecialURLIfNeeded];
     
     [OUIDocumentPreview populateCacheForFileItems:_documentStore.mergedFileItems completionHandler:^{
     }];

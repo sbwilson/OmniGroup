@@ -1,18 +1,18 @@
-// Copyright 2003-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2003-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
 // distributed with this project and can also be found at
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
 
-#import "OAContextButton.h"
+#import <OmniAppKit/OAContextButton.h>
 
 #import <AppKit/AppKit.h>
 #import <OmniBase/OmniBase.h>
 #import <OmniFoundation/OmniFoundation.h>
 
-#import "NSImage-OAExtensions.h"
-#import "OAContextControl.h"
+#import <OmniAppKit/NSImage-OAExtensions.h>
+#import <OmniAppKit/OAContextControl.h>
 
 RCS_ID("$Id$");
 
@@ -132,9 +132,7 @@ RCS_ID("$Id$");
 - (NSMenu *)locateActionMenu;
 {
     id <OAContextControlDelegate> delegate = _weak_delegate;
-    NSMenu *menu;
-    OAContextControlGetMenu(delegate, self, &menu, NULL);
-    return menu;
+    return OAContextControlGetMenu(delegate, self).menu;
 }
 
 /*" Returns YES if the receiver can find a menu to pop up.  Useful if you have an instance in a toolbar and wish to validate whether it can pop up anything. "*/
@@ -151,9 +149,9 @@ RCS_ID("$Id$");
         return;
     
     id <OAContextControlDelegate> delegate = _weak_delegate;
-    NSView *targetView;
-    NSMenu *menu;
-    OAContextControlGetMenu(delegate, self, &menu, &targetView);
+    OAContextControlMenuAndView *menuAndView = OAContextControlGetMenu(delegate, self);
+    NSMenu *menu = menuAndView.menu;
+    NSView *targetView = menuAndView.targetView;
     
     if (targetView == nil)
         menu = OAContextControlNoActionsMenu();

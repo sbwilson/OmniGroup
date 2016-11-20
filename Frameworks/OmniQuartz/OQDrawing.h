@@ -1,4 +1,4 @@
-// Copyright 2003-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2003-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -14,10 +14,12 @@
 #import <OmniBase/assertions.h>
 
 #if !defined(TARGET_OS_IPHONE) || !TARGET_OS_IPHONE
-extern void OQSetPatternColorReferencePoint(CGPoint point, NSView *view);
+extern void OQSetPatternColorReferencePoint(CGPoint point, NSView * _Nonnull view);
 #else
 #import <CoreGraphics/CoreGraphics.h>
 #endif
+
+CF_ASSUME_NONNULL_BEGIN
 
 // 
 // Rounded rect support.
@@ -42,6 +44,7 @@ typedef enum {
 #define OQRectMaxXMaxYCorner      0x004
 #define OQRectMinXMaxYCorner      0x008
 #define OQRectAllCorners          0x00F
+#define OQRectIveCorners          0x100   // Use softened superellipse-like shape instead of circular arc
 
 // These do not depend on the flippedness of the coordinate system because they are symmetrical
 extern void OQAppendRoundedRect(CGContextRef ctx, CGRect rect, CGFloat radius);
@@ -131,24 +134,4 @@ static inline CGFloat OQAffineTransformGetDilation(CGAffineTransform m)
     return m.a * m.d - m.b * m.c;
 }
 
-// SVG-style paths
-CGPathRef OQCGPathCreateFromSVGPath(const unsigned char *d, size_t d_length);
-int OQCGContextAddSVGPath(CGContextRef cgContext, const unsigned char *d, size_t d_length);
-
-// SVG-style arcs
-struct OQEllipseParameters {
-    CGPoint center;              // Computed center of the ellipse.
-    unsigned int numSegments;    // At most 4 Bezier segments in the result.
-    CGPoint points[ 3 * 4 ];     // Three control points per segment; first segment's currentpoint is (0,0).
-};
-/*
- Computes the parameters of an elliptical arc as given by the SVG-style arc operator.
- delta is the vector from the start to the end of the arc.
- rMaj and rMin are the major and minor radii of the ellipse.
- theta is the angle of the major radius (0 -> towards positive X, pi/4 -> towards +X,+Y).
- largeSweep and posAngle disambiguate between the four possible fits to the above parameters.
- */
-void OQComputeEllipseParameters(CGFloat deltaX, CGFloat deltaY,
-                                CGFloat rMaj, CGFloat rMin, CGFloat theta,
-                                BOOL largeSweep, BOOL posAngle,
-                                struct OQEllipseParameters *result);
+CF_ASSUME_NONNULL_END

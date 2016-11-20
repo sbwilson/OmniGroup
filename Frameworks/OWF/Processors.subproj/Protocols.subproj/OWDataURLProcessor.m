@@ -1,4 +1,4 @@
-// Copyright 2000-2005, 2010-2011, 2013-2014 Omni Development, Inc. All rights reserved.
+// Copyright 2000-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -121,7 +121,7 @@ static NSData *decodeURLEscapedBytes(NSString *input)
             parameter = [part substringToIndex:equals.location];
             value = [NSString decodeURLString:[part substringFromIndex:NSMaxRange(equals)]];
             if (!fullHeader)
-                fullHeader = [[[OWParameterizedContentType alloc] initWithContentType:header] autorelease];
+                fullHeader = [[OWParameterizedContentType alloc] initWithContentType:header];
             [fullHeader setObject:value forKey:parameter];
         }
     }
@@ -129,7 +129,7 @@ static NSData *decodeURLEscapedBytes(NSString *input)
     NSString *part = [dataString substringFromIndex:NSMaxRange(comma)];
     NSData *body;
     if (isBase64) {
-        body = [NSData dataWithBase64String:part];
+        body = [[NSData alloc] initWithBase64EncodedString:part options:NSDataBase64DecodingIgnoreUnknownCharacters];
     } else {
         body = decodeURLEscapedBytes(part);
     }
@@ -139,16 +139,13 @@ static NSData *decodeURLEscapedBytes(NSString *input)
     [content dataEnd];
 
     OWContent *nContent = [OWContent contentWithDataStream:content isSource:YES];
-    [content release];
     if (fullHeader)
         [nContent setFullContentType:fullHeader];
     else
         [nContent setContentType:header];
     [nContent markEndOfHeaders];
     
-    [pipeline addContent:nContent
-           fromProcessor:self
-                   flags:OWProcessorContentNoDiskCache|OWProcessorContentIsSource|OWProcessorTypeDerived];
+    [self.pipeline addContent:nContent fromProcessor:self flags:OWProcessorContentNoDiskCache|OWProcessorContentIsSource|OWProcessorTypeDerived];
 }
     
 @end

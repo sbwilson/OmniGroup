@@ -1,11 +1,11 @@
-// Copyright 2001-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2001-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
 // distributed with this project and can also be found at
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
 
-#import "OSUCheckOperation.h"
+#import <OmniSoftwareUpdate/OSUCheckOperation.h>
 
 #import <OmniSoftwareUpdate/OSUProbe.h>
 #import <OmniFoundation/OFVersionNumber.h>
@@ -14,13 +14,13 @@
 #import <OmniFoundation/NSObject-OFExtensions.h>
 #import <OmniBase/OmniBase.h>
 
-#import "OSUPreferences.h"
-#import "OSUChecker.h"
+#import <OmniSoftwareUpdate/OSUPreferences.h>
+#import <OmniSoftwareUpdate/OSUChecker.h>
 #import "OSUErrors.h"
 #import "OSURunOperationParameters.h"
 #import "OSURunOperation.h"
 #import "OSURuntime.h"
-#import "OSUHardwareInfo.h"
+#import <OmniSoftwareUpdate/OSUHardwareInfo.h>
 #import "OSUSettings.h"
 
 RCS_ID("$Id$");
@@ -203,6 +203,15 @@ static NSError *OSUTransformCheckServiceError(NSError *error, NSString *hostname
 
 - (void)_run;
 {
+#if defined(DEBUG)
+    unsigned int delay = (unsigned int)[[NSUserDefaults standardUserDefaults] integerForKey:@"OSUCheckDelay"];
+    // This is helpful when you need some time to examine/test the software update panel in its initial state before it gets a response from the software update server.
+    if (delay > 0) {
+        NSLog(@"OSUCheckDelay: delaying the check for %u seconds", delay);
+        sleep(delay);
+    }
+#endif
+
     NSString *host = [_url host];
     if ([NSString isEmptyString:host]) {
         // A file URL for testing?
@@ -247,19 +256,17 @@ static NSError *OSUTransformCheckServiceError(NSError *error, NSString *hostname
     params.uuidString = uuidString;
 
     // See OSUCheckService's main() for why this is split out.
-    NSMutableDictionary *runtimeStatsAndProbes = [NSMutableDictionary dictionary];
-    OSURunTimeAddStatisticsToInfo([checker applicationIdentifier], runtimeStatsAndProbes);
+    NSMutableDictionary *runtimeStats = [NSMutableDictionary dictionary];
+    OSURunTimeAddStatisticsToInfo([checker applicationIdentifier], runtimeStats);
     
     // Embed our custom probes too (also in our preferences domain).
+    [[NSNotificationCenter defaultCenter] postNotificationName:OSUProbeFinalizeForQueryNotification object:self];
+    NSMutableDictionary *probes = [NSMutableDictionary dictionary];
     for (OSUProbe *probe in [OSUProbe allProbes]) {
         NSString *key = probe.key;
-        if (runtimeStatsAndProbes[key]) {
-            OBASSERT_NOT_REACHED("Custom probe key duplicates one used by the main hardware info. Ignoring.");
-            continue;
-        }
         NSString *value = [probe.value description]; // All the values in the info dictionary must be strings
         if (value)
-            runtimeStatsAndProbes[key] = value;
+            probes[key] = value;
     }
 
     __autoreleasing NSError *error = nil;
@@ -279,7 +286,7 @@ static NSError *OSUTransformCheckServiceError(NSError *error, NSString *hostname
         if (remoteObjectProxy) {
             // We really want this to be synchronous (we are already on a background queue).
             __block BOOL hasReceivedResponseOrError = NO;
-            [remoteObjectProxy performCheck:params runtimeStatsAndProbes:runtimeStatsAndProbes lookupCredential:lookupCredential withReply:^(NSDictionary *results, NSError *checkError){
+            [remoteObjectProxy performCheck:params runtimeStats:runtimeStats probes:probes lookupCredential:lookupCredential withReply:^(NSDictionary *results, NSError *checkError){
                 dict = [results copy];
                 if (!dict)
                     strongError = checkError;
@@ -319,7 +326,7 @@ static NSError *OSUTransformCheckServiceError(NSError *error, NSString *hostname
     __block NSError *strongError = nil;
     __block BOOL hasReceivedResponseOrError = NO;
 
-    OSURunOperation(params, runtimeStatsAndProbes, lookupCredential, ^(NSDictionary *runResult, NSError *runError){
+    OSURunOperation(params, runtimeStats, probes, lookupCredential, ^(NSDictionary *runResult, NSError *runError){
         if (runResult)
             dict = runResult;
         else
@@ -375,13 +382,21 @@ static NSError *OSUTransformCheckServiceError(NSError *error, NSString *hostname
 - (NSXPCConnection *)connection;
 {
     if (_connection == nil) {
+
+        // As of around 09/19/2016, the XPC service needs a bundle identifier registered with the MacAppStore.
+#if MAC_APP_STORE
+        static NSString * const ServiceName = @"com.omnigroup.OmniSoftwareUpdate.OSUCheckService.MacAppStore";
+#else
+        static NSString * const ServiceName = @"com.omnigroup.OmniSoftwareUpdate.OSUCheckService";
+#endif
+
         _connectionFlags.invalid = NO;
         _connectionFlags.interrupted = NO;
-        _connection = [[NSXPCConnection alloc] initWithServiceName:@"com.omnigroup.OmniSoftwareUpdate.OSUCheckService"];
+        _connection = [[NSXPCConnection alloc] initWithServiceName:ServiceName];
         
         NSXPCInterface *remoteObjectInterface = [NSXPCInterface interfaceWithProtocol:@protocol(OSUCheckService)];
         
-        [remoteObjectInterface setInterface:[NSXPCInterface interfaceWithProtocol:@protocol(OSULookupCredential)] forSelector:@selector(performCheck:runtimeStatsAndProbes:lookupCredential:withReply:) argumentIndex:2 ofReply:NO];
+        [remoteObjectInterface setInterface:[NSXPCInterface interfaceWithProtocol:@protocol(OSULookupCredential)] forSelector:@selector(performCheck:runtimeStats:probes:lookupCredential:withReply:) argumentIndex:3 ofReply:NO];
 
         _connection.remoteObjectInterface = remoteObjectInterface;
 

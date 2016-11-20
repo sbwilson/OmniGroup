@@ -1,4 +1,4 @@
-// Copyright 1997-2005, 2011 Omni Development, Inc.  All rights reserved.
+// Copyright 1997-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -11,7 +11,7 @@
 #import <OmniBase/OmniBase.h>
 #import <OmniFoundation/OmniFoundation.h>
 
-#import "OWHTMLToSGMLObjects.h"   // for +entityNameForCharacter:
+#import <OWF/OWHTMLToSGMLObjects.h>   // for +entityNameForCharacter:
 
 RCS_ID("$Id$")
 
@@ -56,13 +56,13 @@ RCS_ID("$Id$")
                 
                 if (entityName) {
                     OFDataBufferAppendUnichar(&dataBuffer, '&');
-                    OFDataBufferAppendUnicodeString(&dataBuffer, (CFStringRef)entityName);
+                    OFDataBufferAppendUnicodeString(&dataBuffer, (__bridge CFStringRef)entityName);
                     OFDataBufferAppendUnichar(&dataBuffer, ';');
                     continue;
                 }
             }
             
-            OFDataBufferAppendUnicodeString(&dataBuffer, (CFStringRef)[NSString stringWithFormat:numericFormat, ch]);
+            OFDataBufferAppendUnicodeString(&dataBuffer, (__bridge CFStringRef)[NSString stringWithFormat:numericFormat, ch]);
         } else
             OFDataBufferAppendUnichar(&dataBuffer, ch);
     } OFStringEndLoopThroughCharacters;
@@ -70,10 +70,9 @@ RCS_ID("$Id$")
     // Slurp data into string
     CFDataRef data = NULL;
     OFDataBufferRelease(&dataBuffer, kCFAllocatorDefault, &data);
-    escapedString = [[NSString alloc] initWithData:(NSData *)data encoding:NSUnicodeStringEncoding];
-    CFRelease(data);
+    escapedString = [[NSString alloc] initWithData:CFBridgingRelease(data) encoding:NSUnicodeStringEncoding];
 
-    return [escapedString autorelease];
+    return escapedString;
 }
 
 // OWSGMLToken protocol

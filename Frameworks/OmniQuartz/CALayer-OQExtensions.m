@@ -1,4 +1,4 @@
-// Copyright 2008-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2008-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -11,10 +11,11 @@
 #import <OmniFoundation/NSFileManager-OFExtensions.h>
 #endif
 
-#import <Foundation/Foundation.h>
-#import <OmniBase/OmniBase.h>
+@import Foundation;
+@import OmniBase;
+@import QuartzCore;
 
-#import "OQDrawing.h"
+#import <OmniQuartz/OQDrawing.h>
 
 RCS_ID("$Id$");
 
@@ -502,8 +503,10 @@ static void _writeString(NSString *str)
     if (self.autoresizingMask != 0)
         [str appendFormat:@" autoresizingMask:%d", self.autoresizingMask];
     
-    if (self.layoutManager)
-        [str appendFormat:@" layout:%@", [self.layoutManager shortDescription]];
+    if (self.layoutManager) {
+        // Cast to id since this is returned as `id <CALayoutManager>` which the compiler doesn't know if is an NSObject.
+        [str appendFormat:@" layout:%@", [(id)self.layoutManager shortDescription]];
+    }
 #endif
     
     CATransform3D transform = self.transform;

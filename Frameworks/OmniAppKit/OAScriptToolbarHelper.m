@@ -5,18 +5,18 @@
 // distributed with this project and can also be found at
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
 
-#import "OAScriptToolbarHelper.h"
+#import <OmniAppKit/OAScriptToolbarHelper.h>
 
 #import <AppKit/AppKit.h>
 #import <Foundation/Foundation.h>
 #import <OmniBase/OmniBase.h>
 #import <OmniFoundation/OmniFoundation.h>
 
-#import "NSImage-OAExtensions.h"
-#import "NSToolbar-OAExtensions.h"
-#import "NSFileManager-OAExtensions.h"
-#import "OAApplication.h"
-#import "OAToolbarItem.h"
+#import <OmniAppKit/NSImage-OAExtensions.h>
+#import <OmniAppKit/NSToolbar-OAExtensions.h>
+#import <OmniAppKit/NSFileManager-OAExtensions.h>
+#import <OmniAppKit/OAApplication.h>
+#import <OmniAppKit/OAToolbarItem.h>
 
 RCS_ID("$Id$")
 
@@ -102,7 +102,7 @@ static BOOL OAScriptToolbarItemsDisabled = NO;
     return [_pathForItemDictionary objectForKey:[item itemIdentifier]];
 }
 
-- (NSToolbarItem *)finishSetupForToolbarItem:(NSToolbarItem *)toolbarItem toolbar:(NSToolbar *)toolbar willBeInsertedIntoToolbar:(BOOL)willInsert;
+- (nullable NSToolbarItem *)finishSetupForToolbarItem:(NSToolbarItem *)toolbarItem toolbar:(NSToolbar *)toolbar willBeInsertedIntoToolbar:(BOOL)willInsert;
 {
     if (OAScriptToolbarItemsDisabled)
         return nil;

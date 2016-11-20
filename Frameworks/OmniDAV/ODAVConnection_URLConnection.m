@@ -1,4 +1,4 @@
-// Copyright 2008-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2008-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -124,20 +124,6 @@ RCS_ID("$Id$")
     [op _didCompleteWithError:error];
 }
 
-#if 0 // As far as I can tell, this never gets called (maybe since we implement -connection:willSendRequestForAuthenticationChallenge:.
-- (BOOL)connectionShouldUseCredentialStorage:(NSURLConnection *)connection;
-{
-    OFSFileManager *fileManager = _weak_fileManager;
-    OBASSERT(fileManager, "File manager deallocated before operations finished");
-    
-    id <OFSFileManagerDelegate> delegate = fileManager.delegate;
-    if ([delegate respondsToSelector:@selector(fileManagerShouldUseCredentialStorage:)])
-        return [delegate fileManagerShouldUseCredentialStorage:fileManager];
-    else
-        return YES;
-}
-#endif
-
 - (void)connection:(NSURLConnection *)connection willSendRequestForAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge;
 {
     OBASSERT([challenge sender], "NSURLConnection-based challenged need the old 'sender' calls.");
@@ -151,8 +137,17 @@ RCS_ID("$Id$")
                     [[challenge sender] continueWithoutCredentialForAuthenticationChallenge:challenge];
                 }
                 break;
+            case NSURLSessionAuthChallengeCancelAuthenticationChallenge:
+                [[challenge sender] cancelAuthenticationChallenge:challenge];
+                break;
+            case NSURLSessionAuthChallengeRejectProtectionSpace:
+                [[challenge sender] rejectProtectionSpaceAndContinueWithChallenge:challenge];
+                break;
             default:
                 DEBUG_DAV(0, "Unhandled auth challenge disposition %ld", disposition);
+                /*FALLTHROUGH*/
+            case NSURLSessionAuthChallengePerformDefaultHandling:
+                [[challenge sender] performDefaultHandlingForAuthenticationChallenge:challenge];
                 break;
         }
     }];

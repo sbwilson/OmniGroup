@@ -1,19 +1,19 @@
-// Copyright 2000-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2000-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
 // distributed with this project and can also be found at
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
 
-#import "NSColor-OAExtensions.h"
-#import "OAColorSpaceManager.h"
+#import <OmniAppKit/NSColor-OAExtensions.h>
+#import <OmniAppKit/OAColorSpaceManager.h>
 #import <Foundation/Foundation.h>
 #import <AppKit/AppKit.h>
 #import <OmniBase/OmniBase.h>
 #import <OmniFoundation/OmniFoundation.h>
 
-#import "OAColorProfile.h"
-#import "NSImage-OAExtensions.h"
+#import <OmniAppKit/OAColorProfile.h>
+#import <OmniAppKit/NSImage-OAExtensions.h>
 
 RCS_ID("$Id$")
 
@@ -558,19 +558,17 @@ static OANamedColorEntry *_addColorsFromList(OANamedColorEntry *colorEntries, NS
 
 static const OANamedColorEntry *_combinedColorEntries(NSUInteger *outEntryCount)
 {
-    OBPRECONDITION([NSThread isMainThread]); // static variables
-    
     static OANamedColorEntry *entries = NULL;
     static NSUInteger entryCount = 0;
-    
-    if (entries == NULL) {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
 	// Two built-in color lists that should get localized
         entries = _addColorsFromList(entries, &entryCount, [NSColorList colorListNamed:@"Apple"]);
         entries = _addColorsFromList(entries, &entryCount, [NSColorList colorListNamed:@"Crayons"]);
 	
 	// Load *our* color list last since it should be localized and has more colors than either of the above
 	entries = _addColorsFromList(entries, &entryCount, classicCrayonsColorList());
-    }
+    });
     
     *outEntryCount = entryCount;
     return entries;
@@ -857,7 +855,7 @@ static void _xmlStringAdder(id container, NSString *key, NSString *string)
 static void _xmlDataAdder(id container, NSString *key, NSData *data)
 {
     OBPRECONDITION([container isKindOfClass:[OFXMLDocument class]]);
-    [container setAttribute:key string:[data base64String]];
+    [container setAttribute:key string:[data base64EncodedStringWithOptions:0]];
 }
 
 
@@ -899,7 +897,7 @@ static NSData *_xmlCursorDataGetter(void *container, NSString *key)
     NSString *string = [(OFXMLCursor *)container attributeNamed:key];
     if (!string)
         return nil;
-    return [[[NSData alloc] initWithBase64String:string] autorelease];
+    return [[[NSData alloc] initWithBase64EncodedString:string options:NSDataBase64DecodingIgnoreUnknownCharacters] autorelease];
 }
 
 + (NSColor *)colorFromXML:(OFXMLCursor *)cursor;

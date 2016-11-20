@@ -1,17 +1,17 @@
-// Copyright 2003-2005, 2010-2011, 2013-2014 Omni Development, Inc. All rights reserved.
+// Copyright 2003-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
 // distributed with this project and can also be found at
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
 
-#import "OWDataStreamFilterCursor.h"
+#import <OWF/OWDataStreamFilterCursor.h>
 
 #import <Foundation/Foundation.h>
 #import <OmniBase/OmniBase.h>
 #import <OmniFoundation/OFInvocation.h>
 #import <OmniFoundation/OFMessageQueue.h>
-#import "OWProcessor.h"
+#import <OWF/OWProcessor.h>
 
 RCS_ID("$Id$");
 
@@ -41,13 +41,6 @@ static NSException *OWDataStreamCursor_SeekException;
 
     return self;
 }
-
-- (void)dealloc;
-{
-    [bufferedData release];
-    [super dealloc];
-}
-
 
 // API
 
@@ -260,7 +253,6 @@ static NSException *OWDataStreamCursor_SeekException;
         return nil; // We have no more data
 
     NSData *result = [bufferedData subdataWithRange:NSMakeRange(oldBytesInBuffer, bufferedDataValidLength - oldBytesInBuffer)];
-    [bufferedData release];
     bufferedData = [[NSMutableData alloc] initWithCapacity:0];
     bufferedDataStart += bufferedDataValidLength;
     bufferedDataValidLength = 0;
@@ -307,5 +299,5 @@ static NSException *OWDataStreamCursor_SeekException;
 
 @end
 
-NSString *OWDataStreamCursor_SeekExceptionName = @"OWDataStreamCursor Seek Exception";
+NSString * const OWDataStreamCursor_SeekExceptionName = @"OWDataStreamCursor Seek Exception";
 

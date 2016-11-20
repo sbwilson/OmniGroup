@@ -1,4 +1,4 @@
-// Copyright 2008-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2008-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -15,6 +15,10 @@
 #import <OmniDataObjects/ODOModel.h>
 #import <OmniDataObjects/Errors.h>
 
+@import OmniBase;
+@import OmniFoundation;
+@import Foundation;
+
 #import "ODOProperty-Internal.h"
 #import "ODOEditingContext-Internal.h"
 #import "ODOObject-Accessors.h"
@@ -27,10 +31,6 @@
 #if TARGET_OS_IPHONE
 #import <objc/message.h>
 #endif
-
-#import <Foundation/NSUndoManager.h>
-#import <Foundation/FoundationErrors.h>
-#import <OmniFoundation/NSUndoManager-OFExtensions.h>
 
 #if 0 && defined(DEBUG)
     #define DEBUG_DELETE(format, ...) NSLog((format), ## __VA_ARGS__)
@@ -241,7 +241,14 @@ static void ODOEditingContextInternalInsertObject(ODOEditingContext *self, ODOOb
     
     @try {
         ODOEditingContextInternalInsertObject(self, object);
-        [object awakeFromInsert];
+        
+        OBASSERT(![object _isAwakingFromInsert]);
+        [object _setIsAwakingFromInsert:YES];
+        @try {
+            [object awakeFromInsert];
+        } @finally {
+            [object _setIsAwakingFromInsert:NO];
+        }
         
         // If this was to be undeletable, make sure it gets processed while undo is off
         if (undeletable) {
@@ -686,7 +693,7 @@ static void ODOEditingContextDidDeleteObjects(ODOEditingContext *self, NSSet *de
     CFSetApplyFunction((CFSetRef)deleted, _forgetObjectApplier, self->_registeredObjectByID);
 }
 
-static NSDictionary *_createChangeSetNotificationUserInfo(NSSet *inserted, NSSet *updated, NSSet *deleted)
+static NSDictionary *_createChangeSetNotificationUserInfo(NSSet *inserted, NSSet *updated, NSSet *deleted, NSDictionary *snapshots)
 {
     // Making copies of these sets since we mutate _recentlyUpdatedObjects below while merging (at least for the call from -_internal_processPendingChanges
     NSMutableDictionary *userInfo = [[NSMutableDictionary alloc] init];
@@ -701,14 +708,14 @@ static NSDictionary *_createChangeSetNotificationUserInfo(NSSet *inserted, NSSet
         [set release];
         
         // Build a subset of the objects that have material edits.
-        NSMutableSet *materialUpdates = nil;
+        NSMapTable *materiallyUpdatedValues = nil;
         for (ODOObject *object in updated) {
             // Might be called for a recent update of a processed insert and -changedNonDerivedChangedValue currently does OBRequestConcreteImplementation() for inserted objects since its meaning is unclear in general.  Here we'll contend that an 'insert' is a material update (even if no recent updates are material).
             if ([object isInserted] || [object changedNonDerivedChangedValue]) {
-                if (!materialUpdates)
-                    materialUpdates = [[NSMutableSet alloc] init];
+                if (!materiallyUpdatedValues)
+                    materiallyUpdatedValues = [NSMapTable strongToStrongObjectsMapTable];
                 
-                [materialUpdates addObject:object];
+                [materiallyUpdatedValues setObject:[object changedNonDerivedValues] forKey:object];
 #if 0 && defined(DEBUG_bungi)
                 NSLog(@"material update to %@: %@", [object shortDescription], [object isInserted] ? (id)object : (id)[object changedValues]);
 #endif
@@ -718,15 +725,26 @@ static NSDictionary *_createChangeSetNotificationUserInfo(NSSet *inserted, NSSet
 #endif
             }
         }
-        if (materialUpdates) {
+        if (materiallyUpdatedValues) {
+            [userInfo setObject:materiallyUpdatedValues forKey:ODOMateriallyUpdatedObjectPropertiesKey];
+            
+            NSSet *materialUpdates = [NSSet setByEnumerating:[materiallyUpdatedValues keyEnumerator]];
             [userInfo setObject:materialUpdates forKey:ODOMateriallyUpdatedObjectsKey];
-            [materialUpdates release];
         }
     }
     
     if (deleted) {
         NSSet *set = [deleted copy];
         [userInfo setObject:set forKey:ODODeletedObjectsKey];
+        
+        NSMutableDictionary *deletedSnapshots = [[NSMutableDictionary alloc] init];
+        for (ODOObject *deletedObject in set) {
+            ODOObjectID *deletedID = deletedObject.objectID;
+            deletedSnapshots[deletedID] = snapshots[deletedID];
+        }
+        [userInfo setObject:deletedSnapshots forKey:ODODeletedObjectPropertySnapshotsKey];
+        
+        [deletedSnapshots release];
         [set release];
     }
     
@@ -743,7 +761,7 @@ static NSDictionary *_createChangeSetNotificationUserInfo(NSSet *inserted, NSSet
     // TODO: Handle the case where an object is inserted, processed, updated, deleted.  That is -deleteObject: should prune objects from the recent updates so that -isUpdated and -updatedObjects don't have to consider that (and we don't need/want the undo/notification to have an object in both the updated and deleted sets).
 
     // Send notifications for inserts, updates and deletes based on the pending edits (i.e., a previously inserted object can be the subject of a update notification and a previous insert/update can be the subject of a delete).    
-    NSDictionary *userInfo = _createChangeSetNotificationUserInfo(_recentlyInsertedObjects, _recentlyUpdatedObjects, _recentlyDeletedObjects);
+    NSDictionary *userInfo = _createChangeSetNotificationUserInfo(_recentlyInsertedObjects, _recentlyUpdatedObjects, _recentlyDeletedObjects, _objectIDToCommittedPropertySnapshot);
     NSNotification *note = [NSNotification notificationWithName:ODOEditingContextObjectsDidChangeNotification object:self userInfo:userInfo];
     [userInfo release];
 
@@ -1004,7 +1022,7 @@ BOOL ODOEditingContextObjectIsInsertedNotConsideringDeletions(ODOEditingContext 
         // note: docs for -[NSManagedObject willSave] have been updated to say that you should not use -setValue:forKey: but only -setPrimitiveValue:forKey: if you make changes since the former will generated more change notifications.  Of course, you have changed the object, so any listeners would really want to know about that!  Presumably, they want you to manually KVO and use primitive values to avoid telling the NSMOC that the object is edited while in the middle of saving.
 
         // Form a notification that specifies what we are going to do, but don't post it unless we sucessfully do so.
-        NSDictionary *userInfo = _createChangeSetNotificationUserInfo(_processedInsertedObjects, _processedUpdatedObjects, _processedDeletedObjects);
+        NSDictionary *userInfo = _createChangeSetNotificationUserInfo(_processedInsertedObjects, _processedUpdatedObjects, _processedDeletedObjects, _objectIDToCommittedPropertySnapshot);
         NSNotification *note = [NSNotification notificationWithName:ODOEditingContextDidSaveNotification object:self userInfo:userInfo];
         [userInfo release];
 
@@ -1346,7 +1364,9 @@ NSString * const ODOEditingContextDidSaveNotification = @"ODOEditingContextDidSa
 NSString * const ODOInsertedObjectsKey = @"ODOInsertedObjectsKey";
 NSString * const ODOUpdatedObjectsKey = @"ODOUpdatedObjectsKey";
 NSString * const ODOMateriallyUpdatedObjectsKey = @"ODOMateriallyUpdatedObjectsKey";
+NSString * const ODOMateriallyUpdatedObjectPropertiesKey = @"ODOMateriallyUpdatedObjectPropertiesKey";
 NSString * const ODODeletedObjectsKey = @"ODODeletedObjectsKey";
+NSString * const ODODeletedObjectPropertySnapshotsKey = @"ODODeletedObjectPropertySnapshotsKey";
 
 NSString * const ODOEditingContextWillResetNotification = @"ODOEditingContextWillReset";
 NSString * const ODOEditingContextDidResetNotification = @"ODOEditingContextDidReset";
@@ -1402,7 +1422,7 @@ NSString * const ODOEditingContextDidResetNotification = @"ODOEditingContextDidR
         
         _isSendingWillSave = YES;
         {
-            NSDictionary *userInfo = _createChangeSetNotificationUserInfo(_processedInsertedObjects, _processedUpdatedObjects, _processedDeletedObjects);
+            NSDictionary *userInfo = _createChangeSetNotificationUserInfo(_processedInsertedObjects, _processedUpdatedObjects, _processedDeletedObjects, _objectIDToCommittedPropertySnapshot);
             NSNotification *notification = [NSNotification notificationWithName:ODOEditingContextWillSaveNotification object:self userInfo:userInfo];
             [[NSNotificationCenter defaultCenter] postNotification:notification];
             [userInfo release];
@@ -1426,27 +1446,6 @@ NSString * const ODOEditingContextDidResetNotification = @"ODOEditingContextDidR
     return success;
 }
 
-typedef struct {
-    NSMutableArray *validationErrors;
-    SEL sel;
-} ValidationContext;
-
-typedef BOOL (*validationMethod)(id self, SEL _cmd, NSError **outError);
-
-static void _validateApplier(const void *value, void *context)
-{
-    ODOObject *object = (ODOObject *)value;
-    ValidationContext *ctx = context;
-    
-    NSError *error = nil;
-    BOOL success = ((validationMethod)objc_msgSend)(object, ctx->sel, &error);
-    if (!success) {
-        if (!ctx->validationErrors)
-            ctx->validationErrors = [NSMutableArray array];
-        [ctx->validationErrors addObject:error];
-    }
-}
-
 // Delete validation occurs when -deleteObject: is called
 - (BOOL)_validateInsertsAndUpdates:(NSError **)outError;
 {
@@ -1454,29 +1453,42 @@ static void _validateApplier(const void *value, void *context)
     OBPRECONDITION(!_recentlyUpdatedObjects);
     OBPRECONDITION(!_recentlyDeletedObjects);
     
-    ValidationContext ctx;
-    memset(&ctx, 0, sizeof(ctx));
+    NSMutableArray <NSError *> *validationErrors = [NSMutableArray new];
+    __block NSError *localError = nil;
     
-    if (_processedInsertedObjects) {
-        ctx.sel = @selector(validateForInsert:);
-        CFSetApplyFunction((CFSetRef)_processedInsertedObjects, _validateApplier, &ctx);
-    }
-    if (_processedUpdatedObjects) {
-        ctx.sel = @selector(validateForUpdate:);
-        CFSetApplyFunction((CFSetRef)_processedUpdatedObjects, _validateApplier, &ctx);
+    void(^checkSuccess)(BOOL isSuccess) = ^(BOOL isSuccess) {
+        if (!isSuccess) {
+            [validationErrors addObject:localError];
+        }
+        localError = nil;
+    };
+    
+    for (ODOObject *object in _processedInsertedObjects) {
+        checkSuccess([object validateForInsert:&localError]);
     }
     
-    if (!ctx.validationErrors)
+    for (ODOObject *object in _processedUpdatedObjects) {
+        checkSuccess([object validateForUpdate:&localError]);
+    }
+    
+    if (validationErrors.count == 0) {
         return YES;
+    }
     
-    // TODO: Should we collect the validation errors into an ivar?  This approach will build an array of arrays of errors rather than a flat array of all errors across all objects.
-    if ([ctx.validationErrors count] == 1) {
-        if (outError != NULL)
-            *outError = [ctx.validationErrors lastObject];
+    if (validationErrors.count == 1) {
+        if (outError != NULL) {
+            *outError = [validationErrors lastObject];
+        }
     } else {
+#ifdef DEBUG
+        NSArray *errors = validationErrors;
+        for (NSError *error in errors) {
+            NSLog(@"Validation error: %@", error);
+        }
+#endif
         NSString *reason = NSLocalizedStringFromTableInBundle(@"Multiple validation errors occurred while saving.", @"OmniDataObjects", OMNI_BUNDLE, @"error reason");
         NSString *description = NSLocalizedStringFromTableInBundle(@"Unable to save.", @"OmniDataObjects", OMNI_BUNDLE, @"error description");
-        ODOErrorWithInfo(outError, ODOUnableToSave, description, reason, ODODetailedErrorsKey, ctx.validationErrors, nil);
+        ODOErrorWithInfo(outError, ODOUnableToSave, description, reason, ODODetailedErrorsKey, validationErrors, nil);
     }
     
     return NO;

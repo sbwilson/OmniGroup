@@ -7,8 +7,6 @@
 //
 // $Id$
 
-#import <Foundation/Foundation.h>
-
 #import <OmniAppKit/OAFeatures.h>
 
 #import <OmniAppKit/NSAttributedString-OAExtensions.h>
@@ -77,10 +75,12 @@
 #import <OmniAppKit/OAAppKitQueueProcessor.h>
 #import <OmniAppKit/OAApplication.h>
 #import <OmniAppKit/OAAquaButton.h>
+#import <OmniAppKit/OAAutosizingSegmentedControl.h>
 #import <OmniAppKit/OABackgroundImageControl.h>
 #import <OmniAppKit/OABoxSeparator.h>
 #import <OmniAppKit/OABrowserCell.h>
 #import <OmniAppKit/OACalendarView.h>
+#import <OmniAppKit/OACertificateTrustPrompt.h>
 #import <OmniAppKit/OAChangeConfigurationValue.h>
 #import <OmniAppKit/OAChasingArrowsProgressIndicator.h>
 #import <OmniAppKit/OACloseButtonOverlay.h>
@@ -115,6 +115,7 @@
 #import <OmniAppKit/OAMouseTipWindow.h>
 #import <OmniAppKit/OAOutlineViewEnumerator.h>
 #import <OmniAppKit/OAPageSelectableDocumentProtocol.h>
+#import <OmniAppKit/OAPassphrasePrompt.h>
 #import <OmniAppKit/OAPasteboardHelper.h>
 #import <OmniAppKit/OAPopUpButton.h>
 #import <OmniAppKit/OAPopupDatePicker.h>
@@ -129,7 +130,6 @@
 #import <OmniAppKit/OASendFeedbackErrorRecovery.h>
 #import <OmniAppKit/OAShrinkingTextDisplayer.h>
 #import <OmniAppKit/OAShrinkyTextField.h>
-#import <OmniAppKit/OASlowLoadingImage.h>
 #import <OmniAppKit/OASplitView.h>
 #import <OmniAppKit/OASpringLoadHelper.h>
 #import <OmniAppKit/OAStackView.h>

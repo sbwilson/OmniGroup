@@ -1,11 +1,11 @@
-// Copyright 1999-2005, 2010-2012 Omni Development, Inc. All rights reserved.
+// Copyright 1999-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
 // distributed with this project and can also be found at
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
 
-#import "NSDate-OWExtensions.h"
+#import <OWF/NSDate-OWExtensions.h>
 
 #import <Foundation/Foundation.h>
 #import <OmniBase/OmniBase.h>
@@ -54,7 +54,7 @@ static NSTimeZone *gmtTimeZone;
     longMonthNames = [[NSArray alloc] initWithObjects:@"january", @"february", @"march", @"april", @"may", @"june", @"july", @"august", @"september", @"october", @"november", @"december", nil];
     shortWeekdayNames = [[NSArray alloc] initWithObjects:@"sun", @"mon", @"tue", @"wed", @"thu", @"fri", @"sat", nil];
     longWeekdayNames = [[NSArray alloc] initWithObjects:@"sunday", @"monday", @"tuesday", @"wednesday", @"thursday", @"friday", @"saturday", nil];
-    gmtTimeZone = [[NSTimeZone timeZoneWithName:@"GMT"] retain];
+    gmtTimeZone = [NSTimeZone timeZoneWithName:@"GMT"];
 }
 
 + (void)setDebugHTTPDateParsing:(BOOL)shouldDebug;
@@ -128,7 +128,6 @@ static NSTimeZone *gmtTimeZone;
     }
 
 nonstandardDate:
-    [scanner release];
 
 #if 0
     // Foundation's date parser is REALLY slow (like, 40 seconds) for bogus strings like this one that we get from google ad syndication: "Built on Oct  8 2003 12:43:55 (1065642215)"
@@ -409,7 +408,7 @@ nonstandardDate:
 
 + (OWHoursMinutesSeconds *)objectHoldingHours:(unsigned int)newHours minutes:(unsigned int)newMinutes seconds:(unsigned int)newSeconds;
 {
-    return [[[self alloc] initWithHours:newHours minutes:newMinutes seconds:newSeconds] autorelease];
+    return [[self alloc] initWithHours:newHours minutes:newMinutes seconds:newSeconds];
 }
 
 - initWithHours:(unsigned int)newHours minutes:(unsigned int)newMinutes seconds:(unsigned int)newSeconds;

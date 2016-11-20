@@ -1,32 +1,40 @@
-// Copyright 2000-2005, 2010-2011, 2013 Omni Development, Inc. All rights reserved.
+// Copyright 2000-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
 // distributed with this project and can also be found at
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
 
-#import "OWSimpleTarget.h"
+#import <OWF/OWSimpleTarget.h>
 
 #import <Foundation/Foundation.h>
 #import <OmniBase/OmniBase.h>
 #import <OmniFoundation/OmniFoundation.h>
 
-#import "OWAddress.h"
-#import "OWContentInfo.h"
-#import "OWContentType.h"
-#import "OWDataStream.h"
-#import "OWDataStreamCursor.h"
-#import "OWHeaderDictionary.h"
-#import "OWPipeline.h"
-#import "OWProcessor.h"
+#import <OWF/OWAddress.h>
+#import <OWF/OWContentInfo.h>
+#import <OWF/OWContentType.h>
+#import <OWF/OWDataStream.h>
+#import <OWF/OWDataStreamCursor.h>
+#import <OWF/OWHeaderDictionary.h>
+#import <OWF/OWPipeline.h>
+#import <OWF/OWProcessor.h>
 
 RCS_ID("$Id$")
 
-@interface OWSimpleTarget (Private)
-- (void)_setResultingContent:(OWContent *)someContent;
-@end
-
 @implementation OWSimpleTarget
+{
+    OWContent *initialContent;
+    
+    OWContentInfo *parentContentInfo;
+    OWContentType *targetContentType;
+    NSString *targetTypeFormatString;
+    
+    NSConditionLock *resultLock;
+    OWContent *resultingContent;
+    OWTargetContentOffer resultingContentFlags;
+    OWAddress *addressOfLastContent;
+}
 
 enum { OWSimpleTargetNoResult, OWSimpleTargetHaveResult };
 
@@ -37,11 +45,9 @@ enum { OWSimpleTargetNoResult, OWSimpleTargetHaveResult };
     if (!(self = [super init]))
         return nil;
 
-    OWFWeakRetainConcreteImplementation_INIT;
-
-    initialContent = [someContent retain];
-    parentContentInfo = [contentInfo retain];
-    targetContentType = [contentType retain];
+    initialContent = someContent;
+    parentContentInfo = contentInfo;
+    targetContentType = contentType;
     resultLock = [[NSConditionLock alloc] initWithCondition:OWSimpleTargetNoResult];
     targetTypeFormatString = nil;
 
@@ -50,17 +56,7 @@ enum { OWSimpleTargetNoResult, OWSimpleTargetHaveResult };
 
 - (void)dealloc;
 {
-    OWFWeakRetainConcreteImplementation_DEALLOC;
-
-    [initialContent release];
-    [parentContentInfo release];
-    [targetContentType release];
-    [targetTypeFormatString release];
-    [resultLock release];
-    [resultingContent release];
-    [addressOfLastContent release];
-    
-    [super dealloc];
+    [OWPipeline invalidatePipelinesForTarget:self];
 }
 
 // API
@@ -70,24 +66,22 @@ enum { OWSimpleTargetNoResult, OWSimpleTargetHaveResult };
     if (newFormatString == targetTypeFormatString)
         return;
         
-    [targetTypeFormatString release];
-    targetTypeFormatString = [newFormatString retain];
+    targetTypeFormatString = newFormatString;
 }
 
 - (void)startProcessingContent;
 {
     OWPipeline *pipeline = [[OWPipeline alloc] initWithContent:initialContent target:self];
     [pipeline startProcessingContent];
-    [pipeline release];
 }
 
 - (OWContent *)resultingContent;
 {
     [resultLock lockWhenCondition:OWSimpleTargetHaveResult];
-    OWContent *someContent = [resultingContent retain];
+    OWContent *someContent = resultingContent;
     [resultLock unlock];
     
-    return [someContent autorelease];
+    return someContent;
 }
 
 - (OWTargetContentOffer)resultingContentFlags;
@@ -104,15 +98,6 @@ enum { OWSimpleTargetNoResult, OWSimpleTargetHaveResult };
     return addressOfLastContent;
 }
 
-// OWFWeakRetain protocol
-
-OWFWeakRetainConcreteImplementation_IMPLEMENTATION
-
-- (void)invalidateWeakRetains;
-{
-    [OWPipeline invalidatePipelinesForTarget:self];
-}
-
 // OWTarget protocol
 
 - (OWContentType *)targetContentType;
@@ -124,13 +109,12 @@ OWFWeakRetainConcreteImplementation_IMPLEMENTATION
 {
     [resultLock lock];
     
-    addressOfLastContent = [[aPipeline lastAddress] retain];
+    addressOfLastContent = [aPipeline lastAddress];
     
     NSLog(@"-[%@ %@], someContent=%@", OBShortObjectDescription(self), NSStringFromSelector(_cmd), someContent);
     
     if (resultingContent != someContent) {
-        [resultingContent release];
-        resultingContent = [someContent retain];
+        resultingContent = someContent;
     }
     
     resultingContentFlags = flags;
@@ -148,7 +132,6 @@ OWFWeakRetainConcreteImplementation_IMPLEMENTATION
 
 - (void)pipelineDidEnd:(OWPipeline *)aPipeline;
 {
-    [self _setResultingContent:resultingContent];
 }
 
 - (NSString *)targetTypeFormatString;
@@ -162,14 +145,6 @@ OWFWeakRetainConcreteImplementation_IMPLEMENTATION
 - (OWContentInfo *)parentContentInfo;
 {
     return parentContentInfo;
-}
-
-@end
-
-@implementation OWSimpleTarget (Private)
-
-- (void)_setResultingContent:(OWContent *)someContent;
-{
 }
 
 @end

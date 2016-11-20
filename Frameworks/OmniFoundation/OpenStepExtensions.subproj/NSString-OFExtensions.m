@@ -1106,7 +1106,7 @@ static inline unichar hex(int i)
     NSString *encodedWord;
     if (b64Size < qpSize) {
         // Base64 is smallest. Use it.
-        encodedWord = [NSString stringWithFormat:@"=?%@?B?%@?=", charsetName, [(OB_BRIDGE NSData *)convertedBytes base64String]];
+        encodedWord = [NSString stringWithFormat:@"=?%@?B?%@?=", charsetName, [(OB_BRIDGE NSData *)convertedBytes base64EncodedStringWithOptions:0]];
     } else {
         NSMutableString *encodedContent;
         // Quoted-Printable is smallest (or, at least, not larger than Base64).
@@ -1418,3 +1418,16 @@ NSString *OFCreateDecimalStringFromDouble(double value)
 }
 
 @end
+
+#import <math.h>
+#import <float.h>
+
+double OFFloatDigitsBaseE(void)
+{
+    static double floatDigitsBaseE;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        floatDigitsBaseE = log(exp2(FLT_MANT_DIG - 1));
+    });
+    return floatDigitsBaseE;
+}

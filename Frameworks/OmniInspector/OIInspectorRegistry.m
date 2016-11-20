@@ -17,6 +17,7 @@
 #import <OmniAppKit/OAWindowCascade.h>
 #import <OmniBase/OmniBase.h>
 #import <OmniFoundation/OmniFoundation.h>
+#import <OmniInspector/NSWindowController-OIExtensions.h>
 #import <OmniInspector/OIInspectableControllerProtocol.h>
 #import <OmniInspector/OIInspectionSet.h>
 #import <OmniInspector/OIInspector.h>
@@ -244,8 +245,8 @@ static NSMutableArray *hiddenPanels = nil;
         OBASSERT([[controller inspector] isKindOfClass:[OITabbedInspector class]]);
         OITabbedInspector *inspector = OB_CHECKED_CAST(OITabbedInspector, [controller inspector]);
         [inspector switchToInspectorWithIdentifier:identifier];
-        
-        NSWindow *window = [[[NSApplication sharedApplication] delegate] windowForInspectorRegistry:self];
+        NSObject *appDelegate = (NSObject *)[[NSApplication sharedApplication] delegate];
+        NSWindow *window = [appDelegate windowForInspectorRegistry:self];
         if ([window.delegate respondsToSelector:@selector(inspectorRegistryDidRevealEmbeddedInspectorFromMenuItem:)]) {
             [(id)window.delegate inspectorRegistryDidRevealEmbeddedInspectorFromMenuItem:self];
         }
@@ -424,7 +425,7 @@ static NSMutableArray *hiddenPanels = nil;
     }
     
     OFController *appController = [OFController sharedController];
-    if ([appController status] < OFControllerRunningStatus)
+    if ([appController status] < OFControllerStatusRunning)
         [appController addStatusObserver:self];
     else
         [self queueSelectorOnce:@selector(controllerStartedRunning:) withObject:nil];
@@ -1239,11 +1240,12 @@ static NSString *OIWorkspaceOrderPboardType = @"OIWorkspaceOrder";
             [window orderFront:self];
     }
 
-    NSResponder *responder = [window firstResponder];
-    if (!responder)
-        responder = window;
+    inspectionSet = [[self class] newInspectionSetForWindowController:windowController];
+}
 
-    inspectionSet = [[self class] newInspectionSetForResponder:responder];
++ (OIInspectionSet *)newInspectionSetForWindowController:(NSWindowController *)windowController;
+{
+    return [self newInspectionSetForResponder:[windowController responderForInspectionSet]];
 }
 
 + (OIInspectionSet *)newInspectionSetForResponder:(NSResponder *)responder;
@@ -1490,6 +1492,11 @@ static NSString *OIWorkspaceOrderPboardType = @"OIWorkspaceOrder";
     }
     
     return nil;
+}
+
+- (BOOL)tabbedInspector:(OITabbedInspector *)tabbedInspector shouldLoadTabWithIdentifier:(NSString *)identier;
+{
+    return YES;
 }
 
 @end

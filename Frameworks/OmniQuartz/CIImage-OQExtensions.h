@@ -1,4 +1,4 @@
-// Copyright 2006-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2006-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -7,15 +7,13 @@
 //
 // $Id$
 
-#import <QuartzCore/CIImage.h>
+#import <CoreImage/CIImage.h>
 
 @class NSAttributedString, NSColor, NSFont;
 
 extern const CGFloat OQMakeImageAsWideAsNeededToAvoidWrapping;
 
 @interface CIImage (OQExtensions)
-+ (CIImage *)imageWithAttributedString:(NSAttributedString *)attributedString maxWidth:(CGFloat)width targetContext:(CGContextRef)targetContext backgroundColor:(NSColor *)backgroundColor;
-+ (CIImage *)imageWithString:(NSString *)string font:(NSFont *)font color:(NSColor *)color maxWidth:(CGFloat)width targetContext:(CGContextRef)targetContext backgroundColor:(NSColor *)backgroundColor;
 
 + (CIImage *)oci_imageWithColor:(CIColor *)color;
 + (CIImage *)oci_imageWithColor:(CIColor *)color extent:(CGRect)extent;

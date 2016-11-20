@@ -1,16 +1,17 @@
-// Copyright 2007-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2007-2016 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
 // distributed with this project and can also be found at
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
 
-#import "OAWebPageViewer.h"
+#import <OmniAppKit/OAWebPageViewer.h>
 
-#import <WebKit/WebKit.h>
+
 #import <OmniBase/OmniBase.h>
 #import <OmniFoundation/OmniFoundation.h>
 #import <OmniAppKit/OmniAppKit.h>
+#import <WebKit/WebKit.h>
 
 RCS_ID("$Id$")
 
@@ -22,7 +23,7 @@ RCS_ID("$Id$")
 
 @property (nonatomic, copy) NSString *name;
 @property (nonatomic, strong) NSView <WebDocumentView> *webDocumentView;
-
+@property (nonatomic, copy) void (^loadCompletion)(BOOL success, NSURL *url, NSError *error);
 @end
 
 #pragma mark -
@@ -108,6 +109,14 @@ static NSMutableDictionary *sharedViewerCache = nil;
     [[_webView mainFrame] loadRequest:request];
 }
 
+- (void)loadRequest:(NSURLRequest *)request onCompletion:(void (^)(BOOL success, NSURL *url, NSError *error))completionBlock;
+{
+    OBPRECONDITION(completionBlock != nil);
+    
+    self.loadCompletion = completionBlock;
+    [self loadRequest:request];
+}
+
 #pragma mark -
 #pragma mark Accessors
 
@@ -190,7 +199,7 @@ static NSMutableDictionary *sharedViewerCache = nil;
 #pragma mark -
 #pragma mark NSObject (OAFindControllerAware)
 
-- (id <OAFindControllerTarget>)omniFindControllerTarget;
+- (nullable id <OAFindControllerTarget>)omniFindControllerTarget;
 {
     return self;
 }
@@ -200,25 +209,35 @@ static NSMutableDictionary *sharedViewerCache = nil;
 
 - (BOOL)_urlIsFromAllowedBundle:(NSURL *)url;
 {
-    NSString *path = nil;
-    if ([url isFileURL])
-        path = [[[url path] stringByStandardizingPath] stringByResolvingSymlinksInPath];
-    
-    if ([path hasPrefix:[[[[NSBundle mainBundle] bundlePath] stringByStandardizingPath] stringByResolvingSymlinksInPath]])
+    if (OFISEQUAL(url.scheme, @"about") || OFISEQUAL(url.scheme, @"applewebdata"))
         return YES;
-    else 
-        return NO;
+
+    if ([url isFileURL]) {
+        NSString *path = [[[url path] stringByStandardizingPath] stringByResolvingSymlinksInPath];
+        return [path hasPrefix:[[[[NSBundle mainBundle] bundlePath] stringByStandardizingPath] stringByResolvingSymlinksInPath]];
+    }
+
+    return NO;
 }
 
 - (void)webView:(WebView *)aWebView decidePolicyForNavigationAction:(NSDictionary *)actionInformation request:(NSURLRequest *)request frame:(WebFrame *)frame decisionListener:(id<WebPolicyDecisionListener>)listener;
 {
     NSURL *url = [actionInformation objectForKey:WebActionOriginalURLKey];
-    if (OFISEQUAL([url scheme], @"help")) {
+    if (OFISEQUAL(url.scheme, @"help")) {
         [[OAApplication sharedApplication] showHelpURL:[url resourceSpecifier]];
         [listener ignore];
         return;
     }
 
+    // News urls are not in our bundle, but we want to allow the web view to load.
+    NSString *newsURLString = [[[OFPreferenceWrapper sharedPreferenceWrapper] preferenceForKey:@"OSUCurrentNewsURL"] stringValue];
+    if (newsURLString) {
+        if (OFISEQUAL(url.absoluteString, newsURLString)) {
+            [listener use];
+            return;
+        }
+    }
+    
     // Initial content
     WebNavigationType webNavigationType = [[actionInformation objectForKey:WebActionNavigationTypeKey] intValue];
     if (webNavigationType == WebNavigationTypeOther || webNavigationType == WebNavigationTypeReload) {
@@ -262,6 +281,7 @@ static NSMutableDictionary *sharedViewerCache = nil;
         self.webDocumentView = frame.frameView.documentView;
 
     [self showWindow:nil];
+    [self _handleLoadCompletionWithSuccess:YES url:[[[frame provisionalDataSource] request] URL] error:nil];
 }
 
 - (void)webView:(WebView *)sender didChangeLocationWithinPageForFrame:(WebFrame *)frame;
@@ -273,6 +293,8 @@ static NSMutableDictionary *sharedViewerCache = nil;
 - (void)webView:(WebView *)sender didFailLoadWithError:(NSError *)error forFrame:(WebFrame *)frame;
 {
     NSLog(@"%@ [%@]: %@ (%@)", _name, [frame.dataSource.request.URL relativeString], [error localizedDescription], [error localizedRecoverySuggestion]);
+    [self _handleLoadCompletionWithSuccess:NO url:[[[frame provisionalDataSource] request] URL] error:error];
+    
 }
 
 - (void)webView:(WebView *)sender didClearWindowObject:(WebScriptObject *)windowObject forFrame:(WebFrame *)frame
@@ -286,6 +308,7 @@ static NSMutableDictionary *sharedViewerCache = nil;
 - (void)webView:(WebView *)sender resource:(id)identifier didFailLoadingWithError:(NSError *)error fromDataSource:(WebDataSource *)dataSource
 {
     NSLog(@"%@: error=%@", _name, error);
+    [self _handleLoadCompletionWithSuccess:NO url:[[dataSource initialRequest] URL] error:error];
 }
 
 #pragma mark - NSObject (WebUIDelegate)
@@ -374,6 +397,14 @@ static NSMutableDictionary *sharedViewerCache = nil;
     (void)[self window];
 }
 
+- (void)_handleLoadCompletionWithSuccess:(BOOL)success url:(NSURL *)url error:(NSError *)error
+{
+    if (self.loadCompletion) {
+        self.loadCompletion(success, url, error);
+        // nil out the completion handler so subsequent load attempts to incorrectly call.
+        self.loadCompletion = nil;
+    }
+}
 @end
 
 

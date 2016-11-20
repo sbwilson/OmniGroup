@@ -2,6 +2,21 @@
 "An error has occurred." = "Une erreur s’est produite.";
 
 /* error description */
+"Cannot create directory." = "Impossible de créer le répertoire.";
+
+/* error description */
+"Cannot delete file." = "Impossible de supprimer le fichier.";
+
+/* error description */
+"Cannot move file." = "Impossible de déplacer le fichier.";
+
+/* bad password error reason */
+"Could not decode encryption document key." = "Impossible de décoder la clé de document de cryptage.";
+
+/* error description */
+"Could not decrypt file." = "Impossible de décrypter le fichier.";
+
+/* error description */
 "Could not find \"%@\"." = "“%@” est introuvable.";
 
 /* error description */
@@ -16,14 +31,26 @@
 /* error reason */
 "Failed to move \"%@\" to \"%@\"." = "Le déplacement de “%1$@” vers “%2$@” a échoué.";
 
+/* bad password error description */
+"Incorrect encryption password." = "Mot de passe de cryptage incorrect.";
+
+/* error description */
+"Internal error updating keychain" = "Erreur interne lors de la mise à jour du trousseau";
+
 /* error reason - listing a directory that doesn't exist */
 "No document exists at \"%@\"." = "Aucun document n’existe dans “%@”.";
+
+/* error reason */
+"No such directory \"%@\"" = "Le répertoire %@ n’existe pas";
 
 /* error reason */
 "No such file \"%@\"." = "Aucun fichier “%@”.";
 
 /* error reason */
 "Please make sure that the destination folder exists." = "Assurez-vous que le dossier de destination existe.";
+
+/* keychain item description - used in keychain access control prompt */
+"Sync Encryption Key" = "Clé de cryptage de synchronisation";
 
 /* error description */
 "Unable to delete file." = "Impossible de supprimer le fichier.";
@@ -33,3 +60,12 @@
 
 /* error description */
 "Unable to read document." = "Impossible de lire le document.";
+
+/* error description */
+"Unable to read file." = "Impossible de lire le fichier.";
+
+/* error description */
+"Unable to write file." = "Impossible d’écrire sur le fichier.";
+
+/* error detail */
+"Unrecognized settings in encryption header" = "Réglages non reconnus dans l’en-tête de cryptage.";

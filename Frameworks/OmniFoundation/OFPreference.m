@@ -281,6 +281,12 @@ static void _setValue(OFPreference *self, OB_STRONG id *_value, NSString *key, _
     return nil;
 }
 
++ (NSSet *) keyPathsForValuesAffectingHasNonDefaultValue
+{
+	return [NSSet setWithArray: @[ @"objectValue" ]];
+}
+
+
 // OFPreference instances must be uniqued, so you should always go through +preferenceForKey:
 - init;
 {

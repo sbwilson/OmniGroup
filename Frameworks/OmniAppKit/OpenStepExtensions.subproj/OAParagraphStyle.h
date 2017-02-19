@@ -14,12 +14,12 @@
 #else
 
 #import <AppKit/NSParagraphStyle.h>
-
+/*
 // UIKit cleaned up these names -- let's use the nicer names in shared code.
 #define NSTextAlignmentLeft NSLeftTextAlignment
 #define NSTextAlignmentRight NSRightTextAlignment
 #define NSTextAlignmentCenter NSCenterTextAlignment
 #define NSTextAlignmentJustified NSJustifiedTextAlignment
 #define NSTextAlignmentNatural NSNaturalTextAlignment
-
+*/
 #endif

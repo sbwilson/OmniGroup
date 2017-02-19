@@ -11,6 +11,6 @@
 
 @interface CIColor (OQExtensions)
 
-+ (CIColor *)clearColor;
+// + (CIColor *)clearColor;
 
 @end

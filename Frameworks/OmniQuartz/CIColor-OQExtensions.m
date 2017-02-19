@@ -10,7 +10,7 @@
 RCS_ID("$Id$");
 
 @implementation CIColor (OQExtensions)
-
+/*
 + (CIColor *)clearColor;
 {
     static CIColor *clear = nil;
@@ -18,5 +18,5 @@ RCS_ID("$Id$");
 	clear = [[CIColor colorWithRed:0 green:0 blue:0 alpha:0] retain];
     return clear;
 }
-
+*/
 @end

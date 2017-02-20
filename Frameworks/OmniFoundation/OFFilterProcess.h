@@ -30,7 +30,7 @@ typedef void (^OFFilterProcessFdAcceptor)(int fd);
 #define OFFilterProcessNewProcessGroupKey           (@"setpgrp")     /* NSNumber, defaults to FALSE */
 
 /* Init actually creates and starts the task */
-- initWithParameters:(NSDictionary *)filterParameters standardOutput:(NSOutputStream *)stdoutStream standardError:(NSOutputStream *)stderrStream;
+- (id)initWithParameters:(NSDictionary *)filterParameters standardOutput:(NSOutputStream *)stdoutStream standardError:(NSOutputStream *)stderrStream;
 
 // Can be used to free up operating system resources as early as possible. Automatically called when the object is deallocated/finalized.
 - (void)invalidate;

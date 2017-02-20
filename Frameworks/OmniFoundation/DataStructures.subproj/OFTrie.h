@@ -13,7 +13,7 @@
 
 @interface OFTrie : NSObject
 
-- initCaseSensitive:(BOOL)shouldBeCaseSensitive;
+- (id)initCaseSensitive:(BOOL)shouldBeCaseSensitive;
 
 - (NSEnumerator *)objectEnumerator;
 

@@ -27,9 +27,9 @@
 + (OFCharacterSet *)whitespaceOFCharacterSet;
 
 //
-- initWithCharacterSet:(NSCharacterSet *)characterSet;
-- initWithOFCharacterSet:(OFCharacterSet *)ofCharacterSet;
-- initWithString:(NSString *)string;
+- (id)initWithCharacterSet:(NSCharacterSet *)characterSet;
+- (id)initWithOFCharacterSet:(OFCharacterSet *)ofCharacterSet;
+- (id)initWithString:(NSString *)string;
 
 // API
 - (BOOL)characterIsMember:(unichar)character;

@@ -28,13 +28,13 @@
     NSMutableArray *_errors; // Accumulated from the input stream and structured error handler.
 }
 
-- initWithInputStream:(NSInputStream *)inputStream startingInternedNames:(OFXMLInternedNameTable)startingInternedNames error:(NSError **)outError;
+- (id)initWithInputStream:(NSInputStream *)inputStream startingInternedNames:(OFXMLInternedNameTable)startingInternedNames error:(NSError **)outError;
 
-- initWithData:(NSData *)data startingInternedNames:(OFXMLInternedNameTable)startingInternedNames error:(NSError **)outError;
-- initWithData:(NSData *)data error:(NSError **)outError;
+- (id)initWithData:(NSData *)data startingInternedNames:(OFXMLInternedNameTable)startingInternedNames error:(NSError **)outError;
+- (id)initWithData:(NSData *)data error:(NSError **)outError;
 
-- initWithURL:(NSURL *)url startingInternedNames:(OFXMLInternedNameTable)startingInternedNames error:(NSError **)outError;
-- initWithURL:(NSURL *)url error:(NSError **)outError;
+- (id)initWithURL:(NSURL *)url startingInternedNames:(OFXMLInternedNameTable)startingInternedNames error:(NSError **)outError;
+- (id)initWithURL:(NSURL *)url error:(NSError **)outError;
 
 @property (nonatomic,readonly) NSURL *url;
 

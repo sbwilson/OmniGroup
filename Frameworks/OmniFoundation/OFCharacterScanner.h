@@ -31,7 +31,7 @@
     NSUInteger inputStringPosition;	// This is the position (in a possibly notional string buffer) of the first character in inputBuffer
 }
 
-- init;
+- (id)init;
     // Designated initializer
 
 // - (NSString *)string;

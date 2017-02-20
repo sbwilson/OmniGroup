@@ -16,6 +16,6 @@
 + (void)removeLayer:(CALayer *)layer completion:(void (^)(BOOL finished))completion;
 + (void)removeLayer:(CALayer *)layer;
 // Subclasses
-+ animationForRemovingLayer:(CALayer *)layer;
++ (id)animationForRemovingLayer:(CALayer *)layer;
 
 @end

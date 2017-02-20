@@ -19,9 +19,9 @@
     BOOL fireOnTermination;
 }
 
-- initWithInvocation:(OFInvocation *)anInvocation atDate:(NSDate *)aDate;
-- initWithInvocation:(OFInvocation *)anInvocation atDate:(NSDate *)aDate fireOnTermination:(BOOL)shouldFireOnTermination;
-- initForObject:(id)anObject selector:(SEL)aSelector withObject:(id)aWithObject atDate:(NSDate *)date;
+- (id)initWithInvocation:(OFInvocation *)anInvocation atDate:(NSDate *)aDate;
+- (id)initWithInvocation:(OFInvocation *)anInvocation atDate:(NSDate *)aDate fireOnTermination:(BOOL)shouldFireOnTermination;
+- (id)initForObject:(id)anObject selector:(SEL)aSelector withObject:(id)aWithObject atDate:(NSDate *)date;
 
 - (OFInvocation *)invocation;
 - (NSDate *)date;

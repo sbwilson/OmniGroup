@@ -19,7 +19,7 @@
     } _components;
 }
 
-- initWithTimeSpanFormatter:(OFTimeSpanFormatter *)aFormatter;
+- (id)initWithTimeSpanFormatter:(OFTimeSpanFormatter *)aFormatter;
 
 - (void)setYears:(float)aValue;
 - (void)setMonths:(float)aValue;

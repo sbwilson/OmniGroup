@@ -29,8 +29,8 @@
     NSMutableArray *_preferences;
 }
 
-- initWithPreferenceClientRecord:(OAPreferenceClientRecord *)clientRecord controller:(OAPreferenceController *)controller;
-- initWithTitle:(NSString *)newTitle defaultsArray:(NSArray *)newDefaultsArray controller:(OAPreferenceController *)controller;
+- (id)initWithPreferenceClientRecord:(OAPreferenceClientRecord *)clientRecord controller:(OAPreferenceController *)controller;
+- (id)initWithTitle:(NSString *)newTitle defaultsArray:(NSArray *)newDefaultsArray controller:(OAPreferenceController *)controller;
 
 + (NSString *)resetPreferencesMainPromptString;
 + (NSString *)resetPreferencesSecondaryPromptString;

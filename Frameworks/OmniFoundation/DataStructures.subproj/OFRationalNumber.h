@@ -50,8 +50,8 @@ void OFRationalRound(struct OFRationalNumberStruct *n, ofr_component max_denomin
 
 @interface NSNumber (OFRationalNumberValue)
 
-+ numberWithRatio:(struct OFRationalNumberStruct)r;
-+ numberWithRatio:(int)numerator :(int)denominator;
++ (id)numberWithRatio:(struct OFRationalNumberStruct)r;
++ (id)numberWithRatio:(int)numerator :(int)denominator;
 
 - (struct OFRationalNumberStruct)rationalValue;
 

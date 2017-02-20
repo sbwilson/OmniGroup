@@ -13,7 +13,7 @@
     
 @interface OFXMLQName : OFObject <NSCopying>
 
-- initWithNamespace:(NSString *)namespace name:(NSString *)name;
+- (id)initWithNamespace:(NSString *)namespace name:(NSString *)name;
 
 // The resolved namespace of the name.  For example, <foo:bar/> would be resolved to whatever has previously been declared as the value of a "xmlns:foo" attribute.
 @property(nonatomic,readonly) NSString *namespace;

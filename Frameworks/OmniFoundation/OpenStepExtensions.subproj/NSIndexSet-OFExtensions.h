@@ -15,8 +15,8 @@
 @interface NSIndexSet (OFExtensions)
 
 - (NSString *)rangeString;
-- initWithRangeString:(NSString *)aString;
-+ indexSetWithRangeString:(NSString *)aString;
+- (id)initWithRangeString:(NSString *)aString;
++ (id)indexSetWithRangeString:(NSString *)aString;
 
 - (NSRange)rangeGreaterThanOrEqualToIndex:(NSUInteger)index;
 

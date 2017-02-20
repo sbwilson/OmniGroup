@@ -14,5 +14,5 @@
     NSString *_quotedString;
 }
 
-- initWithString:(NSString *)unquotedString;
+- (id)initWithString:(NSString *)unquotedString;
 @end

@@ -13,7 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface OFFileTypeDescription : NSObject
 
-- initWithFileType:(NSString *)fileType;
+- (id)initWithFileType:(NSString *)fileType;
 
 @property (nonatomic, readonly) NSString *fileType;
 @property (nonatomic, readonly) NSString *displayName;

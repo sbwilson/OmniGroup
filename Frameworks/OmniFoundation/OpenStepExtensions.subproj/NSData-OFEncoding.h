@@ -18,21 +18,21 @@ typedef struct OFQuotedPrintableMapping {
 @interface NSData (OFEncoding) 
 
 + (id)dataWithHexString:(NSString *)hexString error:(NSError **)outError;
-- initWithHexString:(NSString *)hexString error:(NSError **)outError;
+- (id)initWithHexString:(NSString *)hexString error:(NSError **)outError;
 
 - (NSString *)lowercaseHexString; /* has a leading 0x (sigh) */
 - (NSString *)unadornedLowercaseHexString;  /* no 0x */
 
-- initWithASCII85String:(NSString *)ascii85String;
+- (id)initWithASCII85String:(NSString *)ascii85String;
 - (NSString *)ascii85String;
 
 + (id)dataWithBase64String:(NSString *)base64String NS_DEPRECATED(10_9, 10_9, 7_0, 7_0, "Use -initWithBase64EncodedString:options:");
-- initWithBase64String:(NSString *)base64String NS_DEPRECATED(10_9, 10_9, 7_0, 7_0, "Use -initWithBase64EncodedString:options:");
+- (id)initWithBase64String:(NSString *)base64String NS_DEPRECATED(10_9, 10_9, 7_0, 7_0, "Use -initWithBase64EncodedString:options:");
 - (NSString *)base64String NS_DEPRECATED(10_9, 10_9, 7_0, 7_0, "Use -base64EncodedStringWithOptions:");
 
 // This is our own coding method, not a standard.  This is good
 // for NSData strings that users have to type in.
-- initWithASCII26String:(NSString *)ascii26String;
+- (id)initWithASCII26String:(NSString *)ascii26String;
 - (NSString *)ascii26String;
 
 // This is a generic implementation of quoted-printable-style encodings, used by methods elsewhere in OmniFoundation

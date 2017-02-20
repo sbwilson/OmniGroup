@@ -26,7 +26,7 @@ Alternatively, a controller that manages a submenu attached to a menu item can b
 
 Having a non-zero recent selections count is necessary for popups to work correctly but is not needed for submenus. */
 
-- initForMenu:(NSMenu *)theMenu;
+- (id)initForMenu:(NSMenu *)theMenu;
 
 - (void)setMenuStructure:(NSArray *)newPopupStructure;
 - (void)setRecentSelectionsHeading:(NSString *)heading count:(int)count defaultKey:(NSString *)key;

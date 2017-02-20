@@ -25,10 +25,10 @@
     NSString *_destinationKeyPath;
 }
 
-- initWithSourceObject:(id)sourceObject sourceKeyPath:(NSString *)sourceKeyPath
+- (id)initWithSourceObject:(id)sourceObject sourceKeyPath:(NSString *)sourceKeyPath
      destinationObject:(id)destinationObject destinationKeyPath:(NSString *)destinationKeyPath; // designated initializer for now...
 
-- initWithSourcePoint:(OFBindingPoint *)sourcePoint destinationPoint:(OFBindingPoint *)destinationPoint;
+- (id)initWithSourcePoint:(OFBindingPoint *)sourcePoint destinationPoint:(OFBindingPoint *)destinationPoint;
 
 - (void)invalidate;
 

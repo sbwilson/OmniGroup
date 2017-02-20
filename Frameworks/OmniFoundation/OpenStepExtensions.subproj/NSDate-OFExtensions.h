@@ -27,20 +27,20 @@
 + (NSCalendar *)gregorianLocalCalendar;
 
 // date formatted according to http://www.w3.org/2001/XMLSchema-datatypes
-- initWithXMLDateString:(NSString *)xmlString;
+- (id)initWithXMLDateString:(NSString *)xmlString;
 - (NSString *)xmlDateString;
 
 // dateTime formatted according to http://www.w3.org/2001/XMLSchema-datatypes
-- initWithXMLString:(NSString *)xmlString;
-- initWithXMLCString:(const char *)cString;
+- (id)initWithXMLString:(NSString *)xmlString;
+- (id)initWithXMLCString:(const char *)cString;
 - (NSString *)xmlString;
 
 // date formatted according to iCal
-- initWithICSDateOnlyString:(NSString *)aString;
+- (id)initWithICSDateOnlyString:(NSString *)aString;
 - (NSString *)icsDateOnlyString;
 
 // datetime formatted according to iCal
-- initWithICSDateString:(NSString *)aString;
+- (id)initWithICSDateString:(NSString *)aString;
 - (NSString *)icsDateString;
 
 // datetime formatted for OmniFocus sync transactions

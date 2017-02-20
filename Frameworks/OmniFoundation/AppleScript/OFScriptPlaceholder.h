@@ -18,7 +18,7 @@
     NSDictionary *_scriptingProperties;
 }
 
-- initWithTargetClass:(Class)targetClass;
+- (id)initWithTargetClass:(Class)targetClass;
 
 - (Class)targetClass;
 

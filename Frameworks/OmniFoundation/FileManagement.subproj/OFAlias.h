@@ -20,10 +20,10 @@
 // API
 
 #if !defined(TARGET_OS_IPHONE) || !TARGET_OS_IPHONE
-- initWithPath:(NSString *)path;
+- (id)initWithPath:(NSString *)path;
 #endif
 
-- initWithData:(NSData *)data;
+- (id)initWithData:(NSData *)data;
 
 #if !defined(TARGET_OS_IPHONE) || !TARGET_OS_IPHONE
 // returns nil if the alias doesn't resolve

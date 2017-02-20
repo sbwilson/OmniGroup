@@ -318,11 +318,13 @@ OFDataBufferAppendInteger(OFDataBuffer *dataBuffer, int integer)
 	integer *= -1;
 	OFDataBufferAppendByte(dataBuffer, '-');
     }
-    
-    divisor = (int)log10((double)integer);
+	
+	double divis = log10((double)integer);
+    divisor = (int) divis;
     if (divisor < 0)
 	divisor = 0;
-    divisor = (int)pow(10.0, (double)divisor);
+	divis = pow(10.0, (double)divisor);
+	divisor = (int) divis;
     while (1) {
         int digit = (integer / divisor);
         OBASSERT(digit >= 0);

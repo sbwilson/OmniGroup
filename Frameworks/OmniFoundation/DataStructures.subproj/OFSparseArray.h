@@ -18,7 +18,7 @@
     id defaultValue;
 }
 
-- initWithCapacity:(NSUInteger)aCapacity;
+- (id)initWithCapacity:(NSUInteger)aCapacity;
 - (NSUInteger)count;
 - (id)objectAtIndex:(NSUInteger)anIndex;
 - (void)setObject:(id)anObject atIndex:(NSUInteger)anIndex;

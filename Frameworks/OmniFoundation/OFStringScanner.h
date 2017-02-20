@@ -11,7 +11,7 @@
 
 @interface OFStringScanner : OFCharacterScanner
 
-- initWithString:(NSString *)aString;
+- (id)initWithString:(NSString *)aString;
     // Scan the specified string.  Retains string, rather than copying it, for efficiency, so don't change it.
 
 @property(nonatomic,readonly) NSString *string;

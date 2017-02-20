@@ -222,15 +222,15 @@ static inline OAColor * __attribute__((overloadable)) OAMakeColorWithAlpha(OAWhi
 
 static inline BOOL __attribute__((overloadable)) OAColorsEqual(OALinearRGBA c1, OALinearRGBA c2)
 {
-    return c1.r == c2.r && c1.g == c2.g && c1.b == c2.b && c1.a == c2.a;
+    return fabs(c1.r - c2.r) <= 0.0 && fabs(c1.g - c2.g) <= 0.0 && fabs(c1.b - c2.b) <= 0.0 && fabs(c1.a - c2.a) <= 0.0;
 }
 static inline BOOL __attribute__((overloadable)) OAColorsEqual(OAHSV c1, OAHSV c2)
 {
-    return c1.h == c2.h && c1.s == c2.s && c1.v == c2.v && c1.a == c2.a;
+    return fabs(c1.h - c2.h) <= 0.0 && fabs(c1.s - c2.s) <= 0.0 && fabs(c1.v - c2.v) <= 0.0 && fabs(c1.a - c2.a) <= 0.0;
 }
 static inline BOOL __attribute__((overloadable)) OAColorsEqual(OAWhiteAlpha c1, OAWhiteAlpha c2)
 {
-    return c1.w == c2.w && c1.a == c2.a;
+    return fabs(c1.w - c2.w) <= 0.0 && fabs(c1.a - c2.a) <= 0.0;
 }
 
 #if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE

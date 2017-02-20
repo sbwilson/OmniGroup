@@ -28,7 +28,7 @@ extern NSDictionary *OFSyncClientRequiredState(OFSyncClientParameters *parameter
 // Allows multiple clients per app (particularly for tests)
 @interface OFSyncClientParameters : NSObject
 
-- initWithDefaultClientIdentifierPreferenceKey:(NSString *)defaultClientIdentifierPreferenceKey hostIdentifierDomain:(NSString *)hostIdentifierDomain currentFrameworkVersion:(OFVersionNumber *)currentFrameworkVersion;
+- (id)initWithDefaultClientIdentifierPreferenceKey:(NSString *)defaultClientIdentifierPreferenceKey hostIdentifierDomain:(NSString *)hostIdentifierDomain currentFrameworkVersion:(OFVersionNumber *)currentFrameworkVersion;
 
 @property(nonatomic,readonly) NSString *defaultClientIdentifierPreferenceKey;
 @property(nonatomic,readonly) NSString *hostIdentifierDomain;
@@ -48,8 +48,8 @@ extern NSDictionary *OFSyncClientRequiredState(OFSyncClientParameters *parameter
 
 + (NSString *)computerName;
 
-- initWithURL:(NSURL *)clientURL previousClient:(OFSyncClient *)previousClient parameters:(OFSyncClientParameters *)parameters error:(NSError **)outError;
-- initWithURL:(NSURL *)clientURL propertyList:(NSDictionary *)propertyList error:(NSError **)outError;
+- (id)initWithURL:(NSURL *)clientURL previousClient:(OFSyncClient *)previousClient parameters:(OFSyncClientParameters *)parameters error:(NSError **)outError;
+- (id)initWithURL:(NSURL *)clientURL propertyList:(NSDictionary *)propertyList error:(NSError **)outError;
 
 @property(nonatomic,readonly) NSURL *clientURL;
 @property(nonatomic,readonly) NSDictionary *propertyList;

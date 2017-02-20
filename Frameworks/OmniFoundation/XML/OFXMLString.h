@@ -28,7 +28,7 @@
     NSString      *_newlineReplacement;
 }
 
-- initWithString: (NSString *) unquotedString quotingMask: (unsigned int) quotingMask newlineReplacment: (NSString *) newlineReplacment;
+- (id)initWithString: (NSString *) unquotedString quotingMask: (unsigned int) quotingMask newlineReplacment: (NSString *) newlineReplacment;
 
 - (NSString *) unquotedString;
 

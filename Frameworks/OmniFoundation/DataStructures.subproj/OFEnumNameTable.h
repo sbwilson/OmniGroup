@@ -16,7 +16,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface OFEnumNameTable : NSObject
 
-- initWithDefaultEnumValue:(NSInteger)defaultEnumValue;
+- (id)initWithDefaultEnumValue:(NSInteger)defaultEnumValue;
 
 @property(nonatomic,readonly) NSInteger defaultEnumValue;
 

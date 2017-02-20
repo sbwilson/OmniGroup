@@ -10,7 +10,7 @@
 #import <Foundation/NSValue.h>
 
 @interface NSNumber (OFExtensions)
-- initWithString:(NSString *)aString;
+- (id)initWithString:(NSString *)aString;
 
 
 // Arithmetic using NSNumbers. This was originally written OO-style, as a method for each operation, but it turns out what we really need is some sort of polymorphic dispatch a la Common Lisp; there's no good way to represent that in ObjC. So, since we have to special-case all the polymorphism anyway, just make it a single fn. (The especial complication here is the need to support OFRationalNumbers.)

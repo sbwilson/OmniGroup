@@ -20,7 +20,7 @@
     NSMutableDictionary *watchedServices;
 }
 
-- initWithUUIDString:(NSString *)aString lastUpdateDate:(NSDate *)anUpdateDate delegate:(id)aDelegate;
+- (id)initWithUUIDString:(NSString *)aString lastUpdateDate:(NSDate *)anUpdateDate delegate:(id)aDelegate;
 
 - (void)setLastChangedDate:(NSDate *)aDate;
 - (void)setLastUpdateDate:(NSDate *)aDate;

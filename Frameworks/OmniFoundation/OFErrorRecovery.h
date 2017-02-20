@@ -23,7 +23,7 @@
 + (NSError *)errorRecoveryErrorWithError:(NSError *)error object:(id)object;
 + (NSError *)errorRecoveryErrorWithError:(NSError *)error localizedRecoveryOption:(NSString *)localizedRecoveryOption object:(id)object;
     
-- initWithLocalizedRecoveryOption:(NSString *)localizedRecoveryOption object:(id)object;
+- (id)initWithLocalizedRecoveryOption:(NSString *)localizedRecoveryOption object:(id)object;
 
 - (NSString *)localizedRecoveryOption;
 - (id)object;

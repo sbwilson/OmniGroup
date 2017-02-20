@@ -23,8 +23,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (OFPoint *)pointWithPoint:(CGPoint)point;
 
-- initWithPoint:(CGPoint)point;
-- initWithString:(NSString *)string;
+- (id)initWithPoint:(CGPoint)point;
+- (id)initWithString:(NSString *)string;
 
 @property(nonatomic,readonly) CGPoint point;
 

@@ -19,8 +19,8 @@
 
 + (OAPasteboardHelper *) helperWithPasteboard:(NSPasteboard *)newPasteboard;
 + (OAPasteboardHelper *) helperWithPasteboardNamed:(NSString *)pasteboardName;
-- initWithPasteboard:(NSPasteboard *)newPasteboard;
-- initWithPasteboardNamed:(NSString *)pasteboardName;
+- (id)initWithPasteboard:(NSPasteboard *)newPasteboard;
+- (id)initWithPasteboardNamed:(NSString *)pasteboardName;
 
 - (NSPasteboard *) pasteboard;
 

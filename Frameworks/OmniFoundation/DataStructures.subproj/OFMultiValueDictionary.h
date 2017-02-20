@@ -16,9 +16,9 @@
 
 @interface OFMultiValueDictionary : OFObject </*NSCoding,*/ NSMutableCopying>
 
-- init;
-- initWithCaseInsensitiveKeys:(BOOL)caseInsensitivity;
-- initWithKeyCallBacks:(const CFDictionaryKeyCallBacks *)keyBehavior;
+- (id)init;
+- (id)initWithCaseInsensitiveKeys:(BOOL)caseInsensitivity;
+- (id)initWithKeyCallBacks:(const CFDictionaryKeyCallBacks *)keyBehavior;
 
 - (NSArray *)arrayForKey:(id)aKey;
 - (id)firstObjectForKey:(id)aKey;

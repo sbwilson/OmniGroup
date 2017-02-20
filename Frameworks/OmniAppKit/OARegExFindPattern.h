@@ -14,6 +14,6 @@
 
 @interface OARegExFindPattern : NSObject <OAFindPattern>
 
-- initWithPattern:(NSString *)pattern selectedCaptureGroup:(NSInteger)captureGroup backwards:(BOOL)backwards;
+- (id)initWithPattern:(NSString *)pattern selectedCaptureGroup:(NSInteger)captureGroup backwards:(BOOL)backwards;
 
 @end

@@ -24,7 +24,7 @@
     OFMessageQueueSchedulingInfo schedulingInfo;
 }
 
-- initForQueue:(OFMessageQueue *)aQueue;
+- (id)initForQueue:(OFMessageQueue *)aQueue;
 
 - (void)processQueueUntilEmpty;
 - (void)processQueueForever;

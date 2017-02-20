@@ -13,7 +13,7 @@
 
 @interface OFXMLUnparsedElement : OFObject
 
-- initWithQName:(OFXMLQName *)qname identifier:(NSString *)identifier data:(NSData *)data; 
+- (id)initWithQName:(OFXMLQName *)qname identifier:(NSString *)identifier data:(NSData *)data; 
 
 @property(nonatomic,readonly) OFXMLQName *qname;
 @property(nonatomic,readonly) NSString *identifier;

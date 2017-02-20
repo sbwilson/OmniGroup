@@ -26,7 +26,7 @@
 - (BOOL)causedByNetworkConnectionLost;
 #endif
 
-- initWithPropertyList:(NSDictionary *)propertyList;
+- (id)initWithPropertyList:(NSDictionary *)propertyList;
 - (NSDictionary *)toPropertyList;
 
 // Useful for test cases that intentionally provoke errors that might be logged to the console as well as being reported to the user via other means (if UI was hooked up). Only suppresses the error for the duration of the given action, and only on the calling thread.

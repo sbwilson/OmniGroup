@@ -39,11 +39,11 @@ extern NSDictionary *attributesFromFont(OAFontDescriptorPlatformFont font);
 
 + (void)fontSetWillChangeNotification:(NSNotification *)note;
 
-- initWithFontAttributes:(NSDictionary *)fontAttributes;
-- initWithFamily:(NSString *)family size:(CGFloat)size;
-- initWithFamily:(NSString *)family size:(CGFloat)size weight:(NSInteger)weight italic:(BOOL)italic condensed:(BOOL)condensed fixedPitch:(BOOL)fixedPitch;
-- initWithName:(NSString *)name size:(CGFloat)size; // Used when reading fonts from RTF
-- initWithFont:(OAFontDescriptorPlatformFont)font;
+- (id)initWithFontAttributes:(NSDictionary *)fontAttributes;
+- (id)initWithFamily:(NSString *)family size:(CGFloat)size;
+- (id)initWithFamily:(NSString *)family size:(CGFloat)size weight:(NSInteger)weight italic:(BOOL)italic condensed:(BOOL)condensed fixedPitch:(BOOL)fixedPitch;
+- (id)initWithName:(NSString *)name size:(CGFloat)size; // Used when reading fonts from RTF
+- (id)initWithFont:(OAFontDescriptorPlatformFont)font;
 
 - (NSDictionary *)fontAttributes;
 

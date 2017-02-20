@@ -25,7 +25,7 @@ typedef enum _OFXMLWhitespaceBehaviorType {
 + (OFXMLWhitespaceBehavior *)autoWhitespaceBehavior;
 + (OFXMLWhitespaceBehavior *)ignoreWhitespaceBehavior;
 
-- initWithDefaultBehavior:(OFXMLWhitespaceBehaviorType)defaultBehavior;
+- (id)initWithDefaultBehavior:(OFXMLWhitespaceBehaviorType)defaultBehavior;
 
 - (OFXMLWhitespaceBehaviorType)defaultBehavior;
 

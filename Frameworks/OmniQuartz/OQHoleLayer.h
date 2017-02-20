@@ -13,7 +13,7 @@
 
 @interface OQHoleLayer : CALayer <CAAnimationDelegate>
 
-- initWithGradientExtent:(OFExtent)gradientExtent shadowEdgeMask:(NSUInteger)shadowEdgeMask;
+- (id)initWithGradientExtent:(OFExtent)gradientExtent shadowEdgeMask:(NSUInteger)shadowEdgeMask;
 
 - (void)exposeByExpandingFromRect:(CGRect)originalRect toRect:(CGRect)finalRect inLayer:(CALayer *)parentLayer;
 - (void)removeAfterShrinkingToRect:(CGRect)finalRect;

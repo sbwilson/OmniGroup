@@ -23,7 +23,7 @@
     NSUInteger _stateCapacity;
 }
 
-- initWithOutlineView:(NSOutlineView *)outlineView visibleItem:(id) visibleItem;
+- (id)initWithOutlineView:(NSOutlineView *)outlineView visibleItem:(id) visibleItem;
 
 - (NSArray *)nextPath;
 - (NSArray *)previousPath;

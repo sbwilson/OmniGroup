@@ -19,7 +19,7 @@
     void *_userInfo;
 }
 
-- initWithTarget:(id)target selector:(SEL)selector;
+- (id)initWithTarget:(id)target selector:(SEL)selector;
 
 - (void)setUserInfo:(void *)userInfo;
 - (void *)userInfo;

@@ -14,7 +14,7 @@
     unsigned int maxLength;
 }
 
-- initWithMaxLength:(unsigned int)value;
+- (id)initWithMaxLength:(unsigned int)value;
 
 - (void)setMaxLength:(unsigned int)value;
 - (unsigned int)maxLength;

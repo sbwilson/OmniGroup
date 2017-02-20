@@ -13,7 +13,7 @@
 @interface OFFileEdit : NSObject <NSCopying>
 
 // This accesses the filesystem, possibly using a NSFileCoordinator, and must only be called on a background queue.
-- initWithFileURL:(NSURL *)fileURL error:(NSError **)outError;
+- (id)initWithFileURL:(NSURL *)fileURL error:(NSError **)outError;
 
 // Here we assume that the inputs were previously read under file coordination and so are consistent.
 - (instancetype)initWithFileURL:(NSURL *)fileURL fileModificationDate:(NSDate *)fileModificationDate inode:(NSUInteger)inode isDirectory:(BOOL)isDirectory;

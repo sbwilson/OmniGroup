@@ -16,6 +16,6 @@
     NSTableColumn *nonretainedTableColumn;
 }
 
-- initWithNonretainedTableColumn:(NSTableColumn *)tableColumn;
+- (id)initWithNonretainedTableColumn:(NSTableColumn *)tableColumn;
 
 @end

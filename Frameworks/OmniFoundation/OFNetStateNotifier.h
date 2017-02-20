@@ -26,7 +26,7 @@
 
 @interface OFNetStateNotifier : NSObject
 
-- initWithMemberIdentifier:(NSString *)memberIdentifier NS_EXTENSION_UNAVAILABLE_IOS("This depends on UIApplication, which isn't available in application extensions");
+- (id)initWithMemberIdentifier:(NSString *)memberIdentifier NS_EXTENSION_UNAVAILABLE_IOS("This depends on UIApplication, which isn't available in application extensions");
 
 - (void)invalidate;
 

@@ -14,7 +14,7 @@
 
 @interface OFHeap : OFObject
 
-- initWithComparator:(NSComparator)comparator;
+- (id)initWithComparator:(NSComparator)comparator;
 
 - (NSUInteger)count;
 

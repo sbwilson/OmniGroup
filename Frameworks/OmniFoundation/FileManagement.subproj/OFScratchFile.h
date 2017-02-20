@@ -16,7 +16,7 @@
 + (OFScratchFile *)scratchFileNamed:(NSString *)aName error:(NSError **)outError;
 + (OFScratchFile *)scratchDirectoryNamed:(NSString *)aName error:(NSError **)outError;
 
-- initWithFileURL:(NSURL *)fileURL;
+- (id)initWithFileURL:(NSURL *)fileURL;
 
 @property(nonatomic,readonly) NSURL *fileURL;
 

@@ -21,8 +21,8 @@
     NSData *_signatureData;
 }
 
-- initWithData: (NSData *) data;
-- initWithBytes: (const void *) bytes length: (NSUInteger) length;
+- (id)initWithData: (NSData *) data;
+- (id)initWithBytes: (const void *) bytes length: (NSUInteger) length;
 
 - (void) addData: (NSData *) data;
 - (void) addBytes: (const void *) bytes length: (NSUInteger) length;

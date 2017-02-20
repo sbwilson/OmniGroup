@@ -17,7 +17,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (NSString *)xmlElementName;
 - (void)appendXML:(OFXMLDocument *)doc;
-- initFromXML:(OFXMLCursor *)cursor;
+- (id)initFromXML:(OFXMLCursor *)cursor;
 
 @end
 

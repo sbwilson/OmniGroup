@@ -118,7 +118,7 @@ typedef void (^OFConfigurationValueObserver)(OFConfigurationValue *configuration
 
 @interface OFConfigurationValue : NSObject
 
-- initWithKey:(NSString *)key integral:(BOOL)integral defaultValue:(double)defaultValue minimumValue:(double)minimumValue maximumValue:(double)maximumValue;
+- (id)initWithKey:(NSString *)key integral:(BOOL)integral defaultValue:(double)defaultValue minimumValue:(double)minimumValue maximumValue:(double)maximumValue;
 
 + (NSArray *)configurationValues;
 + (void)restoreAllConfigurationValuesToDefaults;

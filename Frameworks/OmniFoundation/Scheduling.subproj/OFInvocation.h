@@ -21,13 +21,13 @@
 @end
 
 @interface OFInvocation (Inits)
-- initForObject:(id <NSObject>)targetObject nsInvocation:(NSInvocation *)anInvocation;
-- initForObject:(id <NSObject>)targetObject selector:(SEL)aSelector;
-- initForObject:(id <NSObject>)targetObject selector:(SEL)aSelector withBool:(BOOL)aBool;
-- initForObject:(id <NSObject>)targetObject selector:(SEL)aSelector withInt:(int)int1;
-- initForObject:(id <NSObject>)targetObject selector:(SEL)aSelector withInt:(int)int1 withInt:(int)int2;
-- initForObject:(id <NSObject>)targetObject selector:(SEL)aSelector withObject:(id <NSObject>)anObject;
-- initForObject:(id <NSObject>)targetObject selector:(SEL)aSelector withObject:(id <NSObject>)anObject withInt:(int)anInt;
-- initForObject:(id <NSObject>)targetObject selector:(SEL)aSelector withObject:(id <NSObject>)object1 withObject:(id <NSObject>)object2;
-- initForObject:(id <NSObject>)targetObject selector:(SEL)aSelector withObject:(id <NSObject>)object1 withObject:(id <NSObject>)object2 withObject:(id <NSObject>)object3;
+- (id)initForObject:(id <NSObject>)targetObject nsInvocation:(NSInvocation *)anInvocation;
+- (id)initForObject:(id <NSObject>)targetObject selector:(SEL)aSelector;
+- (id)initForObject:(id <NSObject>)targetObject selector:(SEL)aSelector withBool:(BOOL)aBool;
+- (id)initForObject:(id <NSObject>)targetObject selector:(SEL)aSelector withInt:(int)int1;
+- (id)initForObject:(id <NSObject>)targetObject selector:(SEL)aSelector withInt:(int)int1 withInt:(int)int2;
+- (id)initForObject:(id <NSObject>)targetObject selector:(SEL)aSelector withObject:(id <NSObject>)anObject;
+- (id)initForObject:(id <NSObject>)targetObject selector:(SEL)aSelector withObject:(id <NSObject>)anObject withInt:(int)anInt;
+- (id)initForObject:(id <NSObject>)targetObject selector:(SEL)aSelector withObject:(id <NSObject>)object1 withObject:(id <NSObject>)object2;
+- (id)initForObject:(id <NSObject>)targetObject selector:(SEL)aSelector withObject:(id <NSObject>)object1 withObject:(id <NSObject>)object2 withObject:(id <NSObject>)object3;
 @end

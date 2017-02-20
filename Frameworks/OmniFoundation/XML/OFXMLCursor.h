@@ -14,8 +14,8 @@
 
 @interface OFXMLCursor : NSObject
 
-- initWithDocument:(OFXMLDocument *)document element:(OFXMLElement *)element;
-- initWithDocument:(OFXMLDocument *)document;
+- (id)initWithDocument:(OFXMLDocument *)document element:(OFXMLElement *)element;
+- (id)initWithDocument:(OFXMLDocument *)document;
 
 @property(nonatomic,readonly) OFXMLDocument *document;
 

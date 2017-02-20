@@ -14,8 +14,8 @@
 
 @interface OFRegularExpressionMatch : NSObject
 
-- initWithTextCheckingResult:(NSTextCheckingResult *)textCheckingResult string:(NSString *)string;
-- initWithTextCheckingResult:(NSTextCheckingResult *)textCheckingResult stringScanner:(OFStringScanner *)stringScanner;
+- (id)initWithTextCheckingResult:(NSTextCheckingResult *)textCheckingResult string:(NSString *)string;
+- (id)initWithTextCheckingResult:(NSTextCheckingResult *)textCheckingResult stringScanner:(OFStringScanner *)stringScanner;
 
 @property(nonatomic,readonly) NSTextCheckingResult *textCheckingResult;
 @property(nonatomic,readonly) NSRange matchRange; // Range of the full match

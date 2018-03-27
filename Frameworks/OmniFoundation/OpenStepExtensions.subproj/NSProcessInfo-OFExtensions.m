@@ -62,6 +62,9 @@ OBPerformPosing(^{
 
 - (BOOL)isSandboxed;
 {
+	// SBW hack to avoid exceptions being thrown:
+	return NO;
+	
     // N.B. Using the method in our NSFileManager extensions could possibly return a different answer than using the SecCodeCopySelf that was previously here, but we likely don't care about those cases.
     static BOOL isSandboxed;
     static dispatch_once_t once;

@@ -1,4 +1,4 @@
-// Copyright 2003-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2003-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -88,7 +88,7 @@ RCS_ID("$Id$");
     OWTask *cachedTaskInfo;
     __weak OWPipeline *context;
     
-    OFSimpleLockType displayablesSimpleLock;
+    os_unfair_lock displayablesLock;
     NSDate *firstBytesDate;
     NSUInteger bytesProcessed;
     NSUInteger totalBytes;
@@ -103,7 +103,7 @@ RCS_ID("$Id$");
     if (!(self = [super init]))
         return nil;
 
-    OFSimpleLockInit(&displayablesSimpleLock);
+    displayablesLock = OS_UNFAIR_LOCK_INIT;
     
     cacheControl = [[OWCacheControlSettings alloc] init];
     owner = aCache;
@@ -119,8 +119,8 @@ RCS_ID("$Id$");
     flags.state = ArcStateInitial;
     observers = OFCreateNonOwnedPointerArray();
     context = owningPipeline;
-    OBASSERT(context != nil);
-    [context addDeallocationObserver:self];
+    OBASSERT(owningPipeline != nil);
+    [owningPipeline addDeallocationObserver:self];
 
 #warning TODO [wiml nov2003] - clumsy
     // We want to know whether the result might be "source" content. This is ugly --- we should probably put a flag on OWContentTypeLink to indicate source-ness.
@@ -142,8 +142,6 @@ RCS_ID("$Id$");
 {
     [self removeFromCache];
     [self _clearContext];
-
-    OFSimpleLockFree(&displayablesSimpleLock);
 
     OBASSERT(processor == nil); // Shouldn't this be true?  Well, just in case it's not, let's go ahead and test...
     if (processor != nil) {
@@ -499,7 +497,7 @@ RCS_ID("$Id$");
     NSUInteger oldBytesProcessed;
     NSUInteger oldTotalBytes;
 
-    OFSimpleLock(&displayablesSimpleLock);
+    os_unfair_lock_lock(&displayablesLock);
     oldBytesProcessed = bytesProcessed;
     oldTotalBytes = totalBytes;
 
@@ -509,7 +507,7 @@ RCS_ID("$Id$");
         firstBytesDate = [NSDate date];
 
     bytesProcessed = bytes;
-    OFSimpleUnlock(&displayablesSimpleLock);
+    os_unfair_lock_unlock(&displayablesLock);
 
     if ((oldBytesProcessed == 0 && bytesProcessed > 0) || (oldTotalBytes < 10 && totalBytes >= 10) || (bytesProcessed == totalBytes))
         [self processorStatusChanged:processor];
@@ -517,9 +515,9 @@ RCS_ID("$Id$");
 
 - (NSDate *)firstBytesDate;
 {
-    OFSimpleLock(&displayablesSimpleLock);
+    os_unfair_lock_lock(&displayablesLock);
     NSDate *aDate = firstBytesDate;
-    OFSimpleUnlock(&displayablesSimpleLock);
+    os_unfair_lock_unlock(&displayablesLock);
     return aDate;
 }
 
@@ -1087,10 +1085,11 @@ RCS_ID("$Id$");
     OWAddress *logAddress;
     NSString *logAddressStr;
 
+    OWPipeline *context_ = context;
     if ([source isAddress])
         logAddress = [source address];
     else
-        logAddress = [context lastAddress];
+        logAddress = [context_ lastAddress];
 
     if (logAddress != nil) {
         NSString *addressMethod;
@@ -1104,7 +1103,7 @@ RCS_ID("$Id$");
     }
 
 #ifdef DEBUG
-    return [NSString stringWithFormat:@"%@ (%@, %@)", [self shortDescription], [context shortDescription], logAddressStr];
+    return [NSString stringWithFormat:@"%@ (%@, %@)", [self shortDescription], [context_ shortDescription], logAddressStr];
 #else
     return [NSString stringWithFormat:@"%@ (%@)", logAddressStr, [[self processorDescription] processorClassName]];
 #endif

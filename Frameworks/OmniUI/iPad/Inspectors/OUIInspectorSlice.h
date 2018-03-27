@@ -1,4 +1,4 @@
-// Copyright 2010-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2017 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -30,8 +30,11 @@ typedef NS_ENUM(NSInteger, OUIInspectorSliceGroupPosition) {
 + (instancetype)slice;
 
 + (UIEdgeInsets)sliceAlignmentInsets; // Default alignment insets for a slice
++ (NSDirectionalEdgeInsets)sliceDirectionalLayoutMargins;
 + (UIColor *)sliceSeparatorColor; // Default color for slice separators
 + (CGFloat)paddingBetweenSliceGroups; // The space to leave between groups of inspector slices.
+
+@property(nonatomic, strong) IBOutlet UIView *contentView;
 
 @property(nonatomic, weak) OUIStackedSlicesInspectorPane *containingPane; // Set by the containing inspector pane
 @property(readonly,nonatomic) OUIInspector *inspector;
@@ -69,4 +72,7 @@ typedef NS_ENUM(NSInteger, OUIInspectorSliceGroupPosition) {
 - (NSNumber *)singleSelectedValueForIntegerSelector:(SEL)sel;
 - (NSValue *)singleSelectedValueForCGPointSelector:(SEL)sel;
 
+@property (nonatomic, weak) NSLayoutConstraint *rightMarginLayoutConstraint;
 @end
+
+static const CGFloat InspectorFontSize = 17;

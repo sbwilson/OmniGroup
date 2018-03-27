@@ -1,4 +1,4 @@
-// Copyright 2010-2014 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2017 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -15,12 +15,12 @@
 
 typedef void (^OUITextLayoutExtraBackgroundRangesAndColors)(CGContextRef ctx, void (^rangeAndColor)(NSRange range, CGColorRef color));
 
-typedef enum {
+typedef NS_ENUM(NSInteger, OUITextLayoutDrawingOptions) {
     // All are 'negative' so that options=0 means "do the normal thing"
     OUITextLayoutDisableRunBackgrounds = (1 << 0),
     OUITextLayoutDisableGlyphs = (1 << 1),
     OUITextLayoutDisableFlipping = (1 << 2),
-} OUITextLayoutDrawingOptions;
+};
 
 @interface OUITextLayout : NSObject
 
@@ -37,7 +37,7 @@ typedef enum {
 - (NSRange)effectiveRangeOfAttribute:(NSString *)attributeName atCharacterIndex:(NSUInteger)characterIndex;
 
 - (BOOL)contentsAreSameAsAttributedString:(NSAttributedString *)attributedString;
-- (void)eachAttachment:(void (^)(OATextAttachment *, BOOL *stop))applier;
+- (void)eachAttachment:(void (^ NS_NOESCAPE)(NSRange, OATextAttachment *, BOOL *stop))applier;
 
 @property(readonly,nonatomic) CGSize usedSize;
 
@@ -46,7 +46,6 @@ typedef enum {
 
 - (void)drawInContext:(CGContextRef)ctx; // Draws at (0,0) in the current coordinate system. Text draws upside down normally and with the last line that the origin.
 - (void)drawFlippedInContext:(CGContextRef)ctx bounds:(CGRect)bounds; // Draws like you'd expect text to be drawn -- with the text stuck to the top of the given bounds and right side up.
-- (CGFloat)firstLineAscent;
 
 - (CGRect)firstRectForRange:(NSRange)range;
 
@@ -54,6 +53,8 @@ typedef enum {
 - (NSUInteger)hitCharacterIndexForPoint:(CGPoint)pt;
 
 - (void)fitToText;
+
+- (NSLayoutManager *)layoutManager;
 
 @end
 

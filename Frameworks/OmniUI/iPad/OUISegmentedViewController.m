@@ -1,4 +1,4 @@
-// Copyright 2010-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -8,6 +8,8 @@
 //ContentInsets
 
 #import <OmniUI/OUISegmentedViewController.h>
+#import <OmniUI/OUIInspector.h>
+#import <OmniUI/OUIInspectorAppearance.h>
 
 RCS_ID("$Id$")
 
@@ -52,9 +54,8 @@ RCS_ID("$Id$")
     
     NSDictionary *views = NSDictionaryOfVariableBindings(_navigationBar);
     [self.view addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|[_navigationBar]|" options:0 metrics:nil views:views]];
-    
-    
-    [self.view addConstraint:[NSLayoutConstraint constraintWithItem:self.navigationBar attribute:NSLayoutAttributeTop relatedBy:NSLayoutRelationEqual toItem:self.topLayoutGuide attribute:NSLayoutAttributeBottom multiplier:1.0 constant:0.0]];
+
+    [self.view addConstraint:[self.navigationBar.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor]];
 }
 
 - (void)viewDidDisappear:(BOOL)animated;
@@ -63,11 +64,15 @@ RCS_ID("$Id$")
 
     if (_invalidated) {
         // If we do this in -oui_invalidate, we can be in the middle of an appearance transition. This can cause <bug:///121483> (Crasher: Crash (sometimes) tapping 'Documents' to close document) by removing the selected view controller from its parent while in the middle of an appearance transition.
-        self.viewControllers = @[];
+        self.viewControllers = nil;
     }
 }
 
-#pragma mark - Public API
+- (void)setEditing:(BOOL)editing animated:(BOOL)animated {
+    [self.selectedViewController setEditing:editing animated:animated];
+}
+
+#pragma mark Public API
 
 - (void)oui_invalidate;
 {
@@ -77,7 +82,10 @@ RCS_ID("$Id$")
     [self.navigationBar removeFromSuperview];
     self.navigationBar = nil;
 
-    self.view = nil;
+    // <bug:///146312> (iOS-OmniOutliner Engineering: Error: PRECONDITION failed. Requires '_invalidated == NO', at /Users/brent/Projects/omni/OmniGroup/Frameworks/OmniUI/iPad/OUISegmentedViewController.m:44)
+    // Don't set the view to nil. The problem: while closing the document, the layout engine may reference this view, in which case it will load the view and viewDidLoad will get called (because view is nil), which triggers an assertion failure. Instead, let’s expect deallocation.
+//    self.view = nil;
+    OBExpectDeallocation(self);
 }
 
 - (CGFloat)topLayoutLength;{
@@ -91,6 +99,7 @@ RCS_ID("$Id$")
     }
     
     _viewControllers = [viewControllers copy];
+    
     self.selectedViewController = [_viewControllers firstObject];
 
     if (_viewControllers)
@@ -101,12 +110,20 @@ RCS_ID("$Id$")
 {
     OBPRECONDITION(!selectedViewController || [_viewControllers containsObject:selectedViewController]);
 
+    if (_invalidated) {
+        OBASSERT(selectedViewController == nil, @"Don't set up a new view controller if we are in the middle of teardown");
+        _selectedViewController = nil;
+        return;
+    }
+    
     if (_selectedViewController == selectedViewController) {
         return;
     }
     
     // Remove currently selected view controller.
     if (_selectedViewController) {
+        [_selectedViewController setEditing:NO animated:NO];
+        
           // we used to try to only send appearance transitions if we were "on screen".  But that dropped some on the floor when this controller is in a splitview sidebar.  So now we send them always.  Which sometimes results in child view controllers getting doubled appearance messages.  So we deal with that.
         BOOL performTransition = [self isViewLoaded] && !_invalidated;
 
@@ -192,20 +209,44 @@ RCS_ID("$Id$")
     self.selectedViewController = viewControllerToSelect;
 }
 
-#pragma mark - Private API
+- (void)setLeftBarButtonItem:(UIBarButtonItem *)leftBarButtonItem {
+    if (_leftBarButtonItem == leftBarButtonItem) {
+        return;
+    }
+    
+    _leftBarButtonItem = leftBarButtonItem;
+    
+    
+    self.navigationItem.leftBarButtonItem = _leftBarButtonItem;
+}
+
+#pragma mark Private API
 
 - (void)_setupSegmentedControl;
 {
-    NSMutableArray *segmentTitles = [NSMutableArray array];
+    NSMutableArray *segmentItems = [NSMutableArray array];
     for (UIViewController *vc in self.viewControllers) {
-        NSString *title = vc.title;
-        OBASSERT(title);
-        
-        [segmentTitles addObject:title];
+        // A UIViewController could have both a title and a segmentItem. We'll prefer the OUISegmentItem if one exists and use the title as a fallback.
+        if (vc.segmentItem != nil) {
+            // OUISegmentItem can only be created with either an image or a title. Order
+            OUISegmentItem *item = vc.segmentItem;
+            if (item.title != nil) {
+                [segmentItems addObject:item.title];
+            }
+            else {
+                [segmentItems addObject:item.image];
+            }
+        }
+        else {
+            NSString *title = vc.title;
+            OBASSERT(title);
+            
+            [segmentItems addObject:title];
+        }
     }
     
     
-    self.segmentedControl = [[UISegmentedControl alloc] initWithItems:segmentTitles];
+    self.segmentedControl = [[UISegmentedControl alloc] initWithItems:segmentItems];
     [self.segmentedControl setSelectedSegmentIndex:0];
     [self.segmentedControl addTarget:self action:@selector(_segmentValueChanged:) forControlEvents:UIControlEventValueChanged];
     
@@ -248,7 +289,7 @@ RCS_ID("$Id$")
     [self setShouldShowDismissButton:_shouldShowDismissButton];
 }
 
-#pragma mark - UINavigationBarDelegate
+#pragma mark UINavigationBarDelegate
 
 - (UIBarPosition)positionForBar:(id <UIBarPositioning>)bar;
 {
@@ -259,21 +300,26 @@ RCS_ID("$Id$")
     return UIBarPositionAny;
 }
 
-#pragma mark - UINavigationControllerDelegate
+#pragma mark UINavigationControllerDelegate
 
 - (void)navigationController:(UINavigationController *)navigationController willShowViewController:(UIViewController *)viewController animated:(BOOL)animated;
 {
-    if ([self.originalNavDelegate respondsToSelector:@selector(navigationController:willShowViewController:animated:)]) {
-        [self.originalNavDelegate navigationController:navigationController willShowViewController:viewController animated:animated];
+    id<UINavigationControllerDelegate> originalNavDelegate = self.originalNavDelegate;
+    if ([originalNavDelegate respondsToSelector:@selector(navigationController:willShowViewController:animated:)]) {
+        [originalNavDelegate navigationController:navigationController willShowViewController:viewController animated:animated];
     }
     
+#ifdef DEBUG_tom
+    NSLog(@"-[%@ %@]", OBShortObjectDescription(self), NSStringFromSelector(_cmd));
+#endif
     [viewController.navigationController setNavigationBarHidden:viewController.wantsHiddenNavigationBar animated:YES];
 }
 
 - (void)navigationController:(UINavigationController *)navigationController didShowViewController:(UIViewController *)viewController animated:(BOOL)animated;
 {
-    if ([self.originalNavDelegate respondsToSelector:@selector(navigationController:didShowViewController:animated:)]) {
-        [self.originalNavDelegate navigationController:navigationController didShowViewController:viewController animated:animated];
+    id<UINavigationControllerDelegate> originalNavDelegate = self.originalNavDelegate;
+    if ([originalNavDelegate respondsToSelector:@selector(navigationController:didShowViewController:animated:)]) {
+        [originalNavDelegate navigationController:navigationController didShowViewController:viewController animated:animated];
     }
 }
 
@@ -283,8 +329,9 @@ RCS_ID("$Id$")
 - (NSUInteger)navigationControllerSupportedInterfaceOrientations:(UINavigationController *)navigationController;
 #endif
 {
-    if ([self.originalNavDelegate respondsToSelector:@selector(navigationControllerSupportedInterfaceOrientations:)]) {
-        return [self.originalNavDelegate navigationControllerSupportedInterfaceOrientations:navigationController];
+    id<UINavigationControllerDelegate> originalNavDelegate = self.originalNavDelegate;
+    if ([originalNavDelegate respondsToSelector:@selector(navigationControllerSupportedInterfaceOrientations:)]) {
+        return [originalNavDelegate navigationControllerSupportedInterfaceOrientations:navigationController];
     }
     
     return UIInterfaceOrientationMaskAll;
@@ -292,8 +339,9 @@ RCS_ID("$Id$")
 
 - (UIInterfaceOrientation)navigationControllerPreferredInterfaceOrientationForPresentation:(UINavigationController *)navigationController;
 {
-    if ([self.originalNavDelegate respondsToSelector:@selector(navigationControllerPreferredInterfaceOrientationForPresentation:)]) {
-        return [self.originalNavDelegate navigationControllerPreferredInterfaceOrientationForPresentation:navigationController];
+    id<UINavigationControllerDelegate> originalNavDelegate = self.originalNavDelegate;
+    if ([originalNavDelegate respondsToSelector:@selector(navigationControllerPreferredInterfaceOrientationForPresentation:)]) {
+        return [originalNavDelegate navigationControllerPreferredInterfaceOrientationForPresentation:navigationController];
     }
     
     return UIInterfaceOrientationPortrait;
@@ -302,8 +350,9 @@ RCS_ID("$Id$")
 - (id <UIViewControllerInteractiveTransitioning>)navigationController:(UINavigationController *)navigationController
                           interactionControllerForAnimationController:(id <UIViewControllerAnimatedTransitioning>) animationController;
 {
-    if ([self.originalNavDelegate respondsToSelector:@selector(navigationController:interactionControllerForAnimationController:)]) {
-        return [self.originalNavDelegate navigationController:navigationController interactionControllerForAnimationController:animationController];
+    id<UINavigationControllerDelegate> originalNavDelegate = self.originalNavDelegate;
+    if ([originalNavDelegate respondsToSelector:@selector(navigationController:interactionControllerForAnimationController:)]) {
+        return [originalNavDelegate navigationController:navigationController interactionControllerForAnimationController:animationController];
     }
     
     return nil;
@@ -314,16 +363,58 @@ RCS_ID("$Id$")
                                                 fromViewController:(UIViewController *)fromVC
                                                   toViewController:(UIViewController *)toVC;
 {
-    if ([self.originalNavDelegate respondsToSelector:@selector(navigationController:animationControllerForOperation:fromViewController:toViewController:)]) {
-        return [self.originalNavDelegate navigationController:navigationController animationControllerForOperation:operation fromViewController:fromVC toViewController:toVC];
+    id<UINavigationControllerDelegate> originalNavDelegate = self.originalNavDelegate;
+    if ([originalNavDelegate respondsToSelector:@selector(navigationController:animationControllerForOperation:fromViewController:toViewController:)]) {
+        return [originalNavDelegate navigationController:navigationController animationControllerForOperation:operation fromViewController:fromVC toViewController:toVC];
     }
     
     return nil;
 }
 
+- (void)themedAppearanceDidChange:(OUIThemedAppearance *)changedAppearance;
+{
+    OUIInspectorAppearance *appearance = OB_CHECKED_CAST(OUIInspectorAppearance, changedAppearance);
+    
+    self.navigationBar.barStyle = appearance.InspectorBarStyle;
+}
+
+
 @end
 
+#pragma mark - OUISegmentItem
+@interface OUISegmentItem ()
 
+@property (nonatomic, copy, readwrite) NSString *title;
+@property (nonatomic, strong, readwrite) UIImage *image;
+
+@end
+
+@implementation OUISegmentItem
+
+- (instancetype)init {
+    // You must use either -initWithTitle: or -initWithImage:
+    OBRejectUnusedImplementation(self, _cmd);
+}
+
+- (instancetype)initWithTitle:(NSString *)title {
+    self = [super init];
+    if (self) {
+        _title = title;
+    }
+    return self;
+}
+
+- (instancetype)initWithImage:(UIImage *)image {
+    self = [super init];
+    if (self) {
+        _image = image;
+    }
+    return self;
+}
+
+@end
+
+#pragma mark - UIViewController (OUISegmentedViewControllerExtras)
 @implementation UIViewController (OUISegmentedViewControllerExtras)
 - (BOOL)wantsHiddenNavigationBar;
 {
@@ -343,6 +434,20 @@ RCS_ID("$Id$")
     }
     
     return nil;
+}
+
+- (OUISegmentItem *)segmentItem {
+    return nil;
+}
+
+@end
+
+
+@implementation UINavigationController (OUISegmentedViewControllerExtras)
+
+- (OUISegmentItem *)segmentItem {
+    // We probably don't want the image or title changing every time a new view controller is pushed on. Let's just grab the first view controller's segmentItem if it exists.
+    return self.viewControllers.firstObject.segmentItem;
 }
 
 @end

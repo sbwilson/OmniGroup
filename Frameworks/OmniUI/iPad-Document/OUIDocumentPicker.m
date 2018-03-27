@@ -1,4 +1,4 @@
-// Copyright 2010-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -14,11 +14,11 @@
 #import <OmniDocumentStore/ODSStore.h>
 #import <OmniFoundation/OFPreference.h>
 #import <OmniUI/OUIAppController.h>
+#import <OmniUI/OUIInspectorAppearance.h>
 #import <OmniUIDocument/OUIDocumentAppController.h>
 #import <OmniUIDocument/OUIDocumentCreationTemplatePickerViewController.h>
 #import <OmniUIDocument/OUIDocumentPickerHomeScreenViewController.h>
 #import <OmniUIDocument/OUIDocumentPickerViewController.h>
-#import <OmniUIDocument/OUIDocumentProviderPreferencesViewController.h>
 #import <OmniUIDocument/OmniUIDocumentAppearance.h>
 #import <OmniUI/UIPopoverPresentationController-OUIExtensions.h>
 
@@ -44,6 +44,16 @@ RCS_ID("$Id$")
     NSString *scopeIdentifierToSelect;
 }
 
++ (BOOL)shouldShowExternalScope;
+{
+    static OFPreference *shouldShowExternalScopePreference;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        shouldShowExternalScopePreference = [OFPreference preferenceForKey:@"OUIDocumentPickerShouldShowRecentDocuments"];
+    });
+    return [shouldShowExternalScopePreference boolValue];
+}
+
 - (instancetype)init;
 {
     OBRejectUnusedImplementation(self, _cmd); // use -initWithDocumentStore:
@@ -55,19 +65,6 @@ RCS_ID("$Id$")
         return nil;
     
     _documentStore = documentStore;
-    
-    [[NSNotificationCenter defaultCenter] addObserverForName:OUIDocumentProviderPreferencesCloudDocumentsPreferenceTurnedOffNotification
-                                                      object:nil
-                                                       queue:[NSOperationQueue mainQueue]
-                                                  usingBlock:^(NSNotification *note) {
-                                                      if ([[self.topLevelNavigationController.viewControllers lastObject] isKindOfClass:[OUIDocumentPickerViewController class]]) {
-                                                          if ([[(OUIDocumentPickerViewController*)[self.topLevelNavigationController.viewControllers lastObject] selectedScope] isExternal]) {
-                                                              [self dismissViewControllerAnimated:YES completion:^{
-                                                                  [self.topLevelNavigationController popViewControllerAnimated:YES];
-                                                              }];
-                                                          }
-                                                      }
-                                                  }];
     
     return self;
 }
@@ -101,8 +98,9 @@ RCS_ID("$Id$")
 - (OUIDocumentPickerHomeScreenViewController *)homeScreenViewController;
 {
     if (!_homeScreenViewController) {
-        if ([_delegate respondsToSelector:@selector(documentPickerHomeViewController:)])
-            _homeScreenViewController = [_delegate documentPickerHomeViewController:self];
+        id<OUIDocumentPickerDelegate> delegate = _delegate;
+        if ([delegate respondsToSelector:@selector(documentPickerHomeViewController:)])
+            _homeScreenViewController = [delegate documentPickerHomeViewController:self];
         else
             _homeScreenViewController = [[OUIDocumentPickerHomeScreenViewController alloc] initWithDocumentPicker:self];
     }
@@ -172,7 +170,7 @@ RCS_ID("$Id$")
     
     NSArray *existingViewControllers = self.topLevelNavigationController.viewControllers;
     if ([existingViewControllers count] == 0) {
-        OBASSERT_NOT_REACHED("How can this happen? Cold launch of some sort?");
+        // This happens when launching into an open document
         [self _setUpNavigationControllerForTraitCollection:self.traitCollection unconditionally:YES];
     }
     existingViewControllers = self.topLevelNavigationController.viewControllers;
@@ -202,26 +200,41 @@ RCS_ID("$Id$")
         folderItem = folderItem.parentFolder;
     }
 
-    // <bug:///121867> (Crasher: Crash launching from Spotlight or 3D Touch to a document save in a subfolder -[__NSArrayM insertObject:atIndex:]: object cannot be nil)
-    // This is not actually true when launching from a shortcut. It would be good to make this true in another way (since other code might depend on it being in the stack), but for now, we'll just use the home screen controller directly.
     UIViewController *homeViewController = [existingViewControllers firstObject];
-    OBASSERT(homeViewController == self.homeScreenViewController || homeViewController == self.homeScreenContainer);
-
-    if (homeViewController)
+    if (homeViewController != nil) {
+        // We might not have any existing view controllers when launching from a shortcut. It might be good to ensure our home view controller gets onto the stack somehow (since other code might depend on it being there), but for now we just access the controller directly when we need it.
+        OBASSERT(homeViewController == self.homeScreenViewController || homeViewController == self.homeScreenContainer);
         [newViewControllers insertObject:homeViewController atIndex:0];
+    }
 
     [self.topLevelNavigationController setViewControllers:newViewControllers animated:animated];
 }
 
-- (void)navigateToContainerForItem:(ODSItem *)item dismissingAnyOpenDocument:(BOOL)dismissOpenDocument animated:(BOOL)animated;
+
+/**
+ @param item The thing we want visible in the document picker
+ @param dismissOpenDocument Should we go ahead and hide the document?
+ @param animated
+ @return Did we find a container to navigate to?
+ */
+- (BOOL)navigateToContainerForItem:(ODSItem *)item dismissingAnyOpenDocument:(BOOL)dismissOpenDocument animated:(BOOL)animated;
 {
     UINavigationController *topLevelNavController = self.topLevelNavigationController;
 
-    void (^completionBlock)() = ^() {
-        ODSScope *scope = item.scope;
-        if (!scope || ![_documentStore.scopes containsObject:scope]) {
-            return;
-        } else if (topLevelNavController.viewControllers.count > 1
+    __block ODSScope *scope = item.scope;
+    if (!scope || (scope.isExternal && !OUIDocumentPicker.shouldShowExternalScope) || ![_documentStore.scopes containsObject:scope]) {
+        // The item is external or otherwise unfindable
+        return NO;
+    }
+
+    ODSFolderItem* containingFolder = [scope folderItemContainingItem:item];
+    if (containingFolder == nil && ![scope.rootFolder.childItems containsObject:item]) {
+        // The scope doesn't have it.
+        return NO;
+    }
+
+    void (^completionBlock)(void) = ^() {
+        if (topLevelNavController.viewControllers.count > 1
                    && ![topLevelNavController.viewControllers.lastObject isKindOfClass:[OUIDocumentCreationTemplatePickerViewController class]]
                    && [topLevelNavController.viewControllers.lastObject respondsToSelector:@selector(filteredItems)]
                    && [[(OUIDocumentPickerViewController *)topLevelNavController.viewControllers.lastObject filteredItems] containsObject:item]) {
@@ -242,6 +255,16 @@ RCS_ID("$Id$")
         [topLevelNavController dismissViewControllerAnimated:NO completion:completionBlock];
     } else {
         completionBlock();
+    }
+    return YES;
+}
+
+// Navigate to the item if possible, otherwise navigate *somewhere* sensible
+- (void)navigateToBestEffortContainerForItem:(ODSFileItem *)fileItem
+{
+    BOOL success = [self navigateToContainerForItem:fileItem dismissingAnyOpenDocument:NO animated:NO];
+    if (!success) {
+        [self navigateToScope:[self localDocumentsScope] animated:NO];
     }
 }
 
@@ -289,6 +312,11 @@ RCS_ID("$Id$")
 {
     NSArray *sorted = [_documentStore.scopes sortedArrayUsingSelector:@selector(compareDocumentScope:)];
     return [sorted objectAtIndex:0];
+}
+
+- (ODSFolderItem *)currentFolder;
+{
+    return self.selectedScopeViewController.folderItem;
 }
 
 - (OUIDocumentPickerViewController *)selectedScopeViewController;
@@ -411,6 +439,8 @@ RCS_ID("$Id$")
 
 - (void)viewWillAppear:(BOOL)animated;
 {
+    [OUIInspectorAppearance setCurrentTheme:OUIThemedAppearanceThemeLight];
+
     if (!self.wrappedViewController) {
         UINavigationController *navigationController = [[UINavigationController alloc] init];
         navigationController.delegate = self;
@@ -424,6 +454,10 @@ RCS_ID("$Id$")
         }
     }
     
+    id<OUIDocumentPickerDelegate> delegate = _delegate;
+    if ([delegate respondsToSelector:@selector(documentPicker:viewWillAppear:)])
+        [delegate documentPicker:self viewWillAppear:animated];
+
     [super viewWillAppear:animated];
 }
 
@@ -442,8 +476,14 @@ RCS_ID("$Id$")
     UIImage *backgroundImage;
     UIColor *barTintColor;
     NSDictionary *barTitleAttributes;
+    BOOL wantsVisibleNavigationBarAtRoot = NO;
     
-    if (!_isSetUpForCompact && (viewController == _homeScreenContainer || viewController == _homeScreenViewController)) {
+    id<OUIDocumentPickerDelegate> delegate = self.delegate;
+    if ([delegate respondsToSelector:@selector(documentPickerWantsVisibleNavigationBarAtRoot:)]) {
+        wantsVisibleNavigationBarAtRoot = [delegate documentPickerWantsVisibleNavigationBarAtRoot:self];
+    }
+    
+    if (!wantsVisibleNavigationBarAtRoot && (!_isSetUpForCompact && (viewController == _homeScreenContainer || viewController == _homeScreenViewController))) {
         static UIImage *blankImage;
         static dispatch_once_t onceToken;
         dispatch_once(&onceToken, ^{
@@ -536,8 +576,9 @@ RCS_ID("$Id$")
     if (scope.isTrash)
         return @[];
     
-    if ([_delegate respondsToSelector:@selector(documentPickerAvailableFilters:)])
-        return [_delegate documentPickerAvailableFilters:self];
+    id<OUIDocumentPickerDelegate> delegate = _delegate;
+    if ([delegate respondsToSelector:@selector(documentPickerAvailableFilters:)])
+        return [delegate documentPickerAvailableFilters:self];
     
     else
         return @[];

@@ -1,4 +1,4 @@
-// Copyright 2014-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2014-2017 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -26,8 +26,8 @@ RCS_ID("$Id$")
     CGPoint topLeft = CGPointZero;
     CGPoint topRight = CGPointZero;
     if (self.navigationBarHidden) {
-        CGPoint topLeftInMyCoords = CGPointMake(CGRectGetMinX(self.view.bounds), self.view.bounds.origin.y + self.topLayoutGuide.length);
-        CGPoint topRightInMyCoords = CGPointMake(CGRectGetMaxX(self.view.bounds), self.view.bounds.origin.y + self.topLayoutGuide.length);
+        CGPoint topLeftInMyCoords = CGPointMake(CGRectGetMinX(self.view.bounds), self.view.bounds.origin.y + self.view.safeAreaInsets.top);
+        CGPoint topRightInMyCoords = CGPointMake(CGRectGetMaxX(self.view.bounds), self.view.bounds.origin.y + self.view.safeAreaInsets.top);
         topLeft = [self.view convertPoint:topLeftInMyCoords toView:view];
         topRight = [self.view convertPoint:topRightInMyCoords toView:view];
     } else {

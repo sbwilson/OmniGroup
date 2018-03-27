@@ -1,4 +1,4 @@
-// Copyright 2010-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -26,7 +26,6 @@
 #import <OmniUIDocument/OUIDocumentPickerItemMetadataView.h>
 #import <OmniUIDocument/OUIDocumentPickerScrollView.h>
 #import <OmniUIDocument/OUIDocumentPreview.h>
-#import <OmniUIDocument/OUIDocumentProviderPreferencesViewController.h>
 #import <OmniUIDocument/OUIDocumentTitleView.h>
 #import <OmniUIDocument/OUIDocumentViewController.h>
 #import <OmniUIDocument/OUIErrors.h>
@@ -34,6 +33,7 @@
 #import <OmniUIDocument/OmniUIDocumentAppearance.h>
 #import <OmniUIDocument/OUIDocumentPreviewingViewController.h>
 #import <OmniUIDocument/OUIReplaceRenameDocumentAlertController.h>
+#import <OmniUIDocument/OmniUIDocument-Swift.h>
 #import "OUIDocumentOpenAnimator.h"
 #import "OUIDocumentParameters.h"
 #import "OUIDocument-Internal.h"
@@ -61,7 +61,7 @@ static NSString * const kActionSheetDeleteIdentifier = @"com.omnigroup.OmniUI.OU
 
 static NSString * const FilteredItemsBinding = @"filteredItems";
 
-@interface OUIDocumentPickerViewController () <OUIDocumentTitleViewDelegate, UIViewControllerPreviewingDelegate>
+@interface OUIDocumentPickerViewController () <OUIDocumentTitleViewDelegate, UIViewControllerPreviewingDelegate, UIDropInteractionDelegate>
 
 @property(nonatomic,readonly) ODSFileItem *singleSelectedFileItem;
 
@@ -84,6 +84,9 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
 @property (nonatomic, weak) OUIMenuController *restoreToMenuController;
 
 @property (nonatomic, strong) id <UIViewControllerPreviewing>previewingContext;
+
+@property (nonatomic,readonly) UIActivityIndicatorView *activityIndicator;
+@property (nonatomic, strong) UIDropProposal *latestDropProposal;
 
 @end
 
@@ -132,7 +135,7 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
     OBPRECONDITION(picker);
     OBPRECONDITION(scope);
     OBPRECONDITION(folderItem);
-    
+
     // Need to provide nib name explicitly, since template picker is a subclass but should use the same nib
     if (!(self = [super initWithNibName:@"OUIDocumentPickerViewController" bundle:OMNI_BUNDLE]))
         return nil;
@@ -163,8 +166,9 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
 
     _exporter = [OUIDocumentExporter exporterForViewController:self];
 
-    if ([picker.delegate respondsToSelector:@selector(defaultDocumentStoreFilterFilterPredicate:)])
-        _documentStoreFilter.filterPredicate = [picker.delegate defaultDocumentStoreFilterFilterPredicate:picker];
+    id<OUIDocumentPickerDelegate> pickerDelegate = picker.delegate;
+    if ([pickerDelegate respondsToSelector:@selector(defaultDocumentStoreFilterFilterPredicate:)])
+        _documentStoreFilter.filterPredicate = [pickerDelegate defaultDocumentStoreFilterFilterPredicate:picker];
     
     [self _flushAfterDocumentStoreInitializationActions];
 
@@ -177,7 +181,7 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
 
     // The delegate likely wants to update the title displayed in the document picker toolbar.
     [self updateTitle];
-        
+    
     // --- _setupFilteredItemsBinding:
     
     // We might want to bind _documentStore.fileItems to us and then mirror that property to the scroll view, or force feed it. This would allow us to stage animations or whatnot.
@@ -188,7 +192,7 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
                                                      destinationPoint:OFBindingPointMake(self, FilteredItemsBinding)];
     [_filteredItemsBinding propagateCurrentValue];
 #endif
-    
+
     return self;
 }
 
@@ -313,10 +317,10 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
         // <bug://bugs/60005> (Document picker scrolls to empty spot after editing file)
         [_mainScrollView.window layoutIfNeeded];
         
-        //OBFinishPortingLater("Show/open the group scroll view if the item is in a group?");
+        //OBFinishPortingLater("<bug:///147830> (iOS-OmniOutliner Bug: OUIDocumentPickerViewController.m:317 - Show/open the group scroll view if the item is in a group?)");
         ODSFileItem *fileItem = [_documentStore fileItemWithURL:targetURL];
         if (!fileItem) {
-            OBFinishPortingLater("Scroll to the top");
+            OBFinishPortingLater("<bug:///147829> (iOS-OmniOutliner Bug: OUIDocumentPickerViewController.m:320 - Scroll to the top when there’s no fileItem)");
             //[_mainScrollView scrollsToTop]; // this is a getter
         } else
             [_mainScrollView scrollItemToVisible:fileItem animated:animated];
@@ -438,44 +442,87 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
 
 - (IBAction)newDocument:(id)sender;
 {
+    [OUIDocumentAppController.controller unlockCreateNewDocumentWithCompletion:^(BOOL isUnlocked) {
+        if (isUnlocked) {
+            [self _newDocument:sender];
+        }
+    }];
+}
+
+- (IBAction)_newDocument:(id)sender;
+{
     OBPRECONDITION(_renameSession == nil); // Can't be renaming right now, so need to try to stop
 
-    if (![self canPerformAction:_cmd withSender:sender])
+    if (!OUIDocumentAppController.controller.canCreateNewDocument || ![self canPerformAction:_cmd withSender:sender])
         return;
-    
+
+    ODSDocumentType type = [self documentTypeForCurrentFilter];
+
+    // Use the new template picker if the internalTemplateDelegate is set
+    id<OUIInternalTemplateDelegate> internalTemplateDelegate = _documentPicker.internalTemplateDelegate;
+    if (internalTemplateDelegate != nil) {
+        UIStoryboard *storyboard = [UIStoryboard storyboardWithName:@"OUITemplatePicker" bundle:OUIDocumentPickerViewController.bundle];
+        OUITemplatePicker *viewController = (OUITemplatePicker *)[storyboard instantiateViewControllerWithIdentifier:@"templatePicker"];
+        viewController.documentPicker = _documentPicker;
+        viewController.folderItem = _folderItem;
+        viewController.navigationTitle = NSLocalizedStringWithDefaultValue(@"ouiTemplatePicker.navigationTitle", @"OmniUIDocument", OMNI_BUNDLE, @"Choose a Template", @"Navigation bar title: Choose a Template");
+        viewController.internalTemplateDelegate = internalTemplateDelegate;
+        viewController.templateDelegate = self;
+        // TODO: fix to support animations
+        [self.navigationController pushViewController:viewController animated:NO];
+        return;
+    }
+
+    // Use old style template picker if delegate implements documentPickerTemplateDocumentFilter:
     id <OUIDocumentPickerDelegate> delegate = _documentPicker.delegate;
     if ([delegate respondsToSelector:@selector(documentPickerTemplateDocumentFilter:)]) {
         OBASSERT([delegate documentPickerTemplateDocumentFilter:_documentPicker], @"Need to provide an actual filter for templates if you expect to use the template picker for new documents");
 
-        ODSDocumentType type = [self _documentTypeForCurrentFilter];
-        
         OUIDocumentCreationTemplatePickerViewController *templateChooser = [[OUIDocumentCreationTemplatePickerViewController alloc] initWithDocumentPicker:_documentPicker folderItem:_folderItem documentType:type];
         templateChooser.isReadOnly = YES;
         [self.navigationController pushViewController:templateChooser animated:YES];
-        
+    } else {
+        [self newDocumentWithTemplateFileItem:nil documentType:type completion:nil];
+    }
+}
+
+- (void)newDocumentWithContext:(OUINewDocumentCreationContext *)context completion:(void (^)(void))completion;
+{
+    [OUIDocumentAppController.controller unlockCreateNewDocumentWithCompletion:^(BOOL isUnlocked) {
+        if (isUnlocked) {
+            [self _newDocumentWithContext:context completion:completion];
+        }
+    }];
+}
+
+- (void)_newDocumentWithContext:(OUINewDocumentCreationContext *)context completion:(void (^)(void))completion;
+{
+    if (!OUIDocumentAppController.controller.canCreateNewDocument) {
+        if (completion != NULL)
+            completion();
         return;
     }
 
-    [self newDocumentWithTemplateFileItem:nil];
-}
-
-- (void)newDocumentWithTemplateFileItem:(ODSFileItem *)templateFileItem documentType:(ODSDocumentType)type completion:(void (^)(void))completion;
-{
     OUIInteractionLock *lock = [OUIInteractionLock applicationLock];
 
-    OUIActivityIndicator *activityIndicator = nil;
+    ODSScope *documentScope = context.scope;
+    ODSStore *documentStore = context.store;
+    ODSFolderItem *folderItem = context.folderItem;
+    ODSDocumentType type = context.documentType;
+    NSURL *templateURL = context.templateURL;
+    NSString *documentName = context.documentName;
+    UIView *animateFromView = context.animateFromView;
 
-    if (templateFileItem) {
-        OUIDocumentPickerFileItemView *fileItemView = [_documentPicker.selectedScopeViewController.mainScrollView fileItemViewForFileItem:templateFileItem];
+    OUIActivityIndicator *activityIndicator = nil;
+    if (animateFromView) {
+        activityIndicator = [OUIActivityIndicator showActivityIndicatorInView:animateFromView withColor:UIColor.whiteColor bezelColor:[UIColor.darkGrayColor colorWithAlphaComponent:0.9]];
+    } else {
         UIView *view = _documentPicker.navigationController.topViewController.view;
-        if (fileItemView)
-            activityIndicator = [OUIActivityIndicator showActivityIndicatorInView:fileItemView withColor:view.window.tintColor];
-        else
-            activityIndicator = [OUIActivityIndicator showActivityIndicatorInView:view withColor:view.window.tintColor];
+        activityIndicator = [OUIActivityIndicator showActivityIndicatorInView:view withColor:UIColor.whiteColor];
     }
 
     // Instead of duplicating the template file item's URL (if we have one), we always read it into a OUIDocument and save it out, letting the document know that this is for the purposes of instantiating a new document. The OUIDocument may do extra work in this case that wouldn't get done if we just cloned the file (and this lets the work be done atomically by saving the new file to a temporary location before moving to a visible location).
-    NSURL *temporaryURL = [_documentStore temporaryURLForCreatingNewDocumentOfType:type];
+    NSURL *temporaryURL = [documentStore temporaryURLForCreatingNewDocumentOfType:type];
 
     completion = [completion copy];
     void (^cleanup)(void) = ^{
@@ -492,30 +539,28 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
                 cleanup();
                 return;
             }
-            
-            ODSFileItem *fileItemToRevealFrom = templateFileItem ? templateFileItem : createdFileItem;
-            
+
             // We want the file item to have a new date, but this is the wrong place to do it. Want to do it in the document picker before it creates the item.
             // [[NSFileManager defaultManager] touchItemAtURL:createdItem.fileURL error:NULL];
-            
-            [self _revealAndActivateNewDocumentFileItem:createdFileItem fileItemToRevealFrom:fileItemToRevealFrom completionHandler:^{
+
+            // _revealAndActivateNewDocumentFileItem:... will dismiss any open template pickers, so we want to reveal from the createdFileItem which should be visible in the document browser.
+            [self _revealAndActivateNewDocumentFileItem:createdFileItem fileItemToRevealFrom:createdFileItem completionHandler:^{
                 cleanup();
             }];
         }];
     } copy];
-    
+
     NSOperationQueue *queue = [[NSOperationQueue alloc] init];
     [queue addOperationWithBlock:^{
         Class cls = [[OUIDocumentAppController controller] documentClassForURL:temporaryURL];
-        
+
         // This reads the document immediately, which is why we dispatch to a background queue before calling it. We do file coordination on behalf of the document here since we don't get the benefit of UIDocument's efforts during our synchronous read.
-        
+
         __block OUIDocument *document;
         __autoreleasing NSError *readError;
 
-        if (templateFileItem != nil) {
+        if (templateURL != nil) {
             NSFileCoordinator *coordinator = [[NSFileCoordinator alloc] initWithFilePresenter:nil];
-            NSURL *templateURL = templateFileItem.fileURL;
             [coordinator readItemAtURL:templateURL withChanges:YES error:&readError byAccessor:^BOOL(NSURL *newURL, NSError **outError) {
                 NSURL *securedURL = nil;
                 if ([newURL startAccessingSecurityScopedResource])
@@ -525,14 +570,16 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
                 return (document != nil);
             }];
         } else {
-            document = [[cls alloc] initWithContentsOfTemplateAtURL:nil toBeSavedToURL:temporaryURL error:&readError];
+            NSURL *blankURL = [cls builtInBlankTemplateURL]; // No coordination here since if this is non-nil it should be in the app wrapper.
+            OBASSERT_IF(blankURL != nil, OFURLContainsURL([[NSBundle mainBundle] bundleURL], blankURL));
+            document = [[cls alloc] initWithContentsOfTemplateAtURL:blankURL toBeSavedToURL:temporaryURL error:&readError];
         }
-        
+
         if (!document) {
             finish(nil, readError);
             return;
         }
-        
+
         [[NSOperationQueue mainQueue] addOperationWithBlock:^{
             // Save the document to our temporary location
             [document saveToURL:temporaryURL forSaveOperation:UIDocumentSaveForOverwriting completionHandler:^(BOOL saveSuccess){
@@ -540,7 +587,7 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
                 [[NSOperationQueue mainQueue] addOperationWithBlock:^{
                     [document closeWithCompletionHandler:^(BOOL closeSuccess){
                         [document didClose];
-                        
+
                         if (!saveSuccess) {
                             // The document instance should have gotten the real error presented some other way
                             NSError *cancelledError = [NSError errorWithDomain:NSCocoaErrorDomain code:NSUserCancelledError userInfo:nil];
@@ -548,14 +595,38 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
                             return;
                         }
 
-                        [_documentStore moveNewTemporaryDocumentAtURL:temporaryURL toScope:_documentScope folder:_folderItem documentType:type completionHandler:^(ODSFileItem *createdFileItem, NSError *error){
-                            finish(createdFileItem, error);
+                        [_documentStore moveNewTemporaryDocumentAtURL:temporaryURL toScope:documentScope folder:folderItem documentType:type documentName:documentName completionHandler:^(ODSFileItem *createdFileItem, NSError *error){
+                            // Add the item and make it visible in the doc picker
+                            [self setFilteredItems:[_filteredItems setByAddingObject:createdFileItem]];
+                            [self _propagateItems:_filteredItems toScrollView:self.mainScrollView withCompletionHandler:^{
+                                finish(createdFileItem, error);
+                            }];
                         }];
                     }];
                 }];
             }];
         }];
     }];
+}
+
+- (void)newDocumentWithTemplateFileItem:(ODSFileItem *)templateFileItem documentType:(ODSDocumentType)type preserveDocumentName:(BOOL)preserveDocumentName completion:(void (^)(void))completion;
+{
+    ODSScope *templateFileItemScope = templateFileItem.scope;
+    ODSScope *documentScope = preserveDocumentName ? templateFileItemScope : _documentScope;
+    ODSStore *documentStore = preserveDocumentName ? templateFileItemScope.documentStore : _documentStore;
+    ODSFolderItem *folderItem = preserveDocumentName ? templateFileItem.parentFolder : _folderItem;
+    NSString *documentName = preserveDocumentName ? templateFileItem.name : nil;
+    NSURL *templateURL = templateFileItem.fileURL;
+    OUIDocumentPickerFileItemView *fileItemView = [_documentPicker.selectedScopeViewController.mainScrollView fileItemViewForFileItem:templateFileItem];
+
+    OUINewDocumentCreationContext *context = [[OUINewDocumentCreationContext alloc] initWith:documentScope store:documentStore folderItem:folderItem documentType:type templateURL:templateURL documentName:documentName animateFromView:fileItemView];
+
+    [self newDocumentWithContext:context completion:completion];
+}
+
+- (void)newDocumentWithTemplateFileItem:(ODSFileItem *)templateFileItem documentType:(ODSDocumentType)type completion:(void (^)(void))completion;
+{
+    [self newDocumentWithTemplateFileItem:templateFileItem documentType:type preserveDocumentName:NO completion:completion];
 }
 
 - (void)newDocumentWithTemplateFileItem:(ODSFileItem *)templateFileItem;
@@ -586,8 +657,9 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
             return;
         }
         
-        if ([_documentPicker.delegate respondsToSelector:@selector(documentPicker:didDuplicateFileItem:toFileItem:)])
-            [_documentPicker.delegate documentPicker:_documentPicker didDuplicateFileItem:originalFileItemMotion.fileItem toFileItem:duplicateFileItemEditOrNil.fileItem];
+        id<OUIDocumentPickerDelegate> documentPickerDelegate = _documentPicker.delegate;
+        if ([documentPickerDelegate respondsToSelector:@selector(documentPicker:didDuplicateFileItem:toFileItem:)])
+            [documentPickerDelegate documentPicker:_documentPicker didDuplicateFileItem:originalFileItemMotion.fileItem toFileItem:duplicateFileItemEditOrNil.fileItem];
         
         // Copy document view state
         [OUIDocumentAppController copyDocumentStateFromFileEdit:originalFileItemMotion.originalItemEdit.originalFileEdit toFileEdit:duplicateFileItemEditOrNil.originalFileEdit];
@@ -690,7 +762,7 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
     }
 }
 
-- (void)addDocumentToSelectedScopeFromURL:(NSURL *)fromURL withOption:(ODSStoreAddOption)option openNewDocumentWhenDone:(BOOL)openWhenDone completion:(void (^)())completion
+- (void)addDocumentToSelectedScopeFromURL:(NSURL *)fromURL withOption:(ODSStoreAddOption)option openNewDocumentWhenDone:(BOOL)openWhenDone completion:(void (^)(void))completion
 {
     OUIInteractionLock *lock = [OUIInteractionLock applicationLock];
     __weak OUIDocumentPickerViewController *welf = self;
@@ -757,7 +829,7 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
         }
         
         if (!duplicateFileItem) {
-            OUI_PRESENT_ERROR_FROM(error, weakSelf);
+            OUI_PRESENT_ERROR_FROM(error, strongSelf);
             [lock unlock];
             completionHandler();
             return;
@@ -777,8 +849,6 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
 
 - (void)_revealButDontActivateNewDocumentFileItem:(ODSFileItem *)createdFileItem completionHandler:(void (^)(void))completionHandler;
 {
-    // Touch just to make sure the date is updated
-    [[NSFileManager defaultManager] touchItemAtURL:[createdFileItem fileURL] error:NULL];
     // do some scrolling
     [self ensureSelectedFilterMatchesFileItem:createdFileItem];
     [self scrollItemToVisible:createdFileItem animated:YES];
@@ -792,8 +862,9 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
 - (void)addSampleDocumentFromURL:(NSURL *)url;
 {
     BOOL copyAndOpen = YES;
-    if ([self.documentPicker.delegate respondsToSelector:@selector(documentPickerShouldOpenSampleDocuments)])
-        copyAndOpen = [self.documentPicker.delegate documentPickerShouldOpenSampleDocuments];
+    id<OUIDocumentPickerDelegate> documentPickerDelegate = self.documentPicker.delegate;
+    if ([documentPickerDelegate respondsToSelector:@selector(documentPickerShouldOpenSampleDocuments)])
+        copyAndOpen = [documentPickerDelegate documentPickerShouldOpenSampleDocuments];
     
     NSString *fileName = [url lastPathComponent];
     NSString *localizedBaseName = [[OUIDocumentAppController controller] localizedNameForSampleDocumentNamed:[fileName stringByDeletingPathExtension]];
@@ -866,8 +937,8 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
         return [NSString stringWithFormat:NSLocalizedStringFromTableInBundle(@"Delete %ld Documents", @"OmniUIDocument", OMNI_BUNDLE, @"delete button title"), count];
     } else if (self.selectedScope.isExternal) {
         if (count == 1)
-            return NSLocalizedStringFromTableInBundle(@"Remove Document", @"OmniUIDocument", OMNI_BUNDLE, @"remove button title");
-        return [NSString stringWithFormat:NSLocalizedStringFromTableInBundle(@"Remove %ld Documents", @"OmniUIDocument", OMNI_BUNDLE, @"remove button title"), count];
+            return NSLocalizedStringFromTableInBundle(@"Clear Document", @"OmniUIDocument", OMNI_BUNDLE, @"remove button title");
+        return [NSString stringWithFormat:NSLocalizedStringFromTableInBundle(@"Clear %ld Documents", @"OmniUIDocument", OMNI_BUNDLE, @"clear button title"), count];
     } else {
         if (count == 1)
             return NSLocalizedStringFromTableInBundle(@"Move to Trash", @"OmniUIDocument", OMNI_BUNDLE, @"move to trash button title");
@@ -940,8 +1011,8 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
     // Move submenu
     if (willAddNewFolder && [moveOptions count] > 0) {
         topLevelMenuTitle = NSLocalizedStringFromTableInBundle(@"Move", @"OmniUIDocument", OMNI_BUNDLE, @"Menu option in the document picker view");
-        [topLevelMenuOptions addObject:[[OUIMenuOption alloc] initWithTitle:moveMenuTitle image:[UIImage imageNamed:@"OUIMenuItemMoveToScope" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil]
-                                                                    options:moveOptions destructive:NO action:nil]];
+        UIImage *image = [UIImage imageNamed:@"OUIMenuItemMoveToScope" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil];
+        [topLevelMenuOptions addObject:[[OUIMenuOption alloc] initWithTitle:moveMenuTitle image:image options:moveOptions destructive:NO action:nil]];
     } else {
         topLevelMenuTitle = moveMenuTitle;
         [topLevelMenuOptions addObjectsFromArray:moveOptions];
@@ -950,7 +1021,7 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
     // New folder
     OUIMenuOption *newFolderOption = nil;
     if (willAddNewFolder) {
-        newFolderOption = [OUIMenuOption optionWithTitle:NSLocalizedStringFromTableInBundle(@"New folder", @"OmniUIDocument", OMNI_BUNDLE, @"Action sheet title for making a new folder from the selected documents") image:[UIImage imageNamed:@"OUIMenuItemNewFolder" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil] action:^{
+        newFolderOption = [OUIMenuOption optionWithTitle:NSLocalizedStringFromTableInBundle(@"New folder", @"OmniUIDocument", OMNI_BUNDLE, @"Action sheet title for making a new folder from the selected documents") image:[UIImage imageNamed:@"OUIMenuItemNewFolder" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil] action:^(OUIMenuInvocation *invocation){
             [self _makeFolderFromSelectedDocuments];
         }];
         [topLevelMenuOptions addObject:newFolderOption];
@@ -960,7 +1031,7 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
     menu.topOptions = topLevelMenuOptions;
     if (topLevelMenuTitle)
         menu.title = topLevelMenuTitle;
-    menu.tintColor = self.navigationController.navigationBar.tintColor;
+    menu.tintColor = UIColor.blackColor; // icons are colorful, untinted menu is most harmonious
     menu.popoverPresentationController.barButtonItem = _moveBarButtonItem;
     menu.didFinish = didFinishHandler;
     
@@ -1002,7 +1073,7 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
         }
     } else {
         // This is a valid destination. Great!
-        option = [[OUIMenuOption alloc] initWithTitle:candidateParentFolder.name image:folderImage action:^{
+        option = [[OUIMenuOption alloc] initWithTitle:candidateParentFolder.name image:folderImage action:^(OUIMenuInvocation *invocation){
             [self _moveSelectedDocumentsToFolder:candidateParentFolder];
         }];
     }
@@ -1055,8 +1126,9 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
 
     NSArray *availableFilters = nil;
 
-    if ([picker.delegate respondsToSelector:@selector(documentPickerAvailableFilters:)])
-        availableFilters = [picker.delegate documentPickerAvailableFilters:picker];
+    id<OUIDocumentPickerDelegate> pickerDelegate = picker.delegate;
+    if ([pickerDelegate respondsToSelector:@selector(documentPickerAvailableFilters:)])
+        availableFilters = [pickerDelegate documentPickerAvailableFilters:picker];
 
     if (availableFilters.count == 1)
         return availableFilters.lastObject;
@@ -1078,8 +1150,9 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
     NSString *identifier = [filterPreference stringValue];
     NSArray *availableFilters = nil;
     
-    if ([picker.delegate respondsToSelector:@selector(documentPickerAvailableFilters:)])
-        availableFilters = [picker.delegate documentPickerAvailableFilters:picker];
+    id<OUIDocumentPickerDelegate> pickerDelegate = picker.delegate;
+    if ([pickerDelegate respondsToSelector:@selector(documentPickerAvailableFilters:)])
+        availableFilters = [pickerDelegate documentPickerAvailableFilters:picker];
     
     OUIDocumentPickerFilter *filter = nil;
     NSUInteger filterIndex = 0;
@@ -1204,10 +1277,12 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
         
         CGRect offscreenRect = frame;
         offscreenRect.origin.x -= movement;
-        _mainScrollView.frame = offscreenRect;
         
         [[[self class] filterPreference] setStringValue:newFilterIdentifier];
         [_mainScrollView layoutIfNeeded];
+        
+        // The layout pass resets the scroll view's frame. We need to offset it after the layout pass is done.
+        _mainScrollView.frame = offscreenRect;
     }];
     [UIView animateWithDuration:0.4 delay:0 usingSpringWithDamping:0.75 initialSpringVelocity:0 options:0 animations:^{
         _mainScrollView.frame = frame;
@@ -1240,9 +1315,14 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
 
     // For now our filters are exclusive, but if they stop being so someday, we could filter our selection instead of clearing it entirely.
     [self clearSelection:NO];
-    
+
+    // Our overlay view message probably needs to change. Remove the old one and generate a new one.
+    [self _setEmptyOverlayView:nil];
+    [self _updateEmptyViewControlVisibility];
+
     // The delegate likely wants to update the title displayed in the document picker toolbar.
     [self updateTitle];
+
     [_mainScrollView previewedItemsChangedForGroups];
 }
 
@@ -1289,8 +1369,9 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
 - (void)updateTitle;
 {
     NSString *title;
-    if (_folderItem == _folderItem.scope.rootFolder)
-        title = _folderItem.scope.displayName;
+    ODSScope *folderItemScope = _folderItem.scope;
+    if (_folderItem == folderItemScope.rootFolder)
+        title = folderItemScope.displayName;
     else
         title = _folderItem.name;
 
@@ -1312,12 +1393,18 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
     self.displayedTitleString = title;
 }
 
+- (void)updateToolbarItemsEnabledness
+{
+    [self _updateToolbarItemsEnabledness];
+}
+
 - (NSString *)nameLabelForItem:(ODSItem *)item;
 {
     NSString *nameLabel = nil;
-    if ([self.documentPicker.delegate respondsToSelector:@selector(documentPicker:nameLabelForItem:)]) {
-        nameLabel = [self.documentPicker.delegate documentPicker:self.documentPicker nameLabelForItem:item];
-    } else if ([self _documentTypeForCurrentFilter] == ODSDocumentTypeTemplate) {
+    id<OUIDocumentPickerDelegate> documentPickerDelegate = self.documentPicker.delegate;
+    if ([documentPickerDelegate respondsToSelector:@selector(documentPicker:nameLabelForItem:)]) {
+        nameLabel = [documentPickerDelegate documentPicker:self.documentPicker nameLabelForItem:item];
+    } else if ([self documentTypeForCurrentFilter] == ODSDocumentTypeTemplate) {
         nameLabel =  NSLocalizedStringFromTableInBundle(@"Template:", @"OmniUIDocument", OMNI_BUNDLE, @"file name label for template filte types");
     }
     if (!nameLabel)
@@ -1326,6 +1413,15 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
 }
 
 #pragma mark - OUIDocumentExporterHost protocol
+
+- (NSArray *)fileItemsToExport
+{
+    NSMutableArray *files = [NSMutableArray array];
+    for (ODSFileItem *item in self.selectedItems)
+        if ([item isKindOfClass:[ODSFileItem class]])
+            [files addObject:item];
+    return files;
+}
 
 - (ODSFileItem *)fileItemToExport
 {
@@ -1350,26 +1446,28 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
 
 - (UIColor *)tintColorForExportMenu
 {
-    return self.navigationController.navigationBar.tintColor;
+    return [UIColor blackColor];
 }
 
 #pragma mark - UIViewController subclass
-
-- (BOOL)automaticallyAdjustsScrollViewInsets;
-{
-    return NO;
-}
 
 - (void)viewDidLoad;
 {
     [super viewDidLoad];
     self.view.clipsToBounds = YES;
     
+    _normalTitleView = [[OUIDocumentTitleView alloc] init];
+    _normalTitleView.syncAccountActivity = _accountActivity;
+    _normalTitleView.delegate = self;
+    _normalTitleView.hideTitle = YES;
+    _normalTitleView.hideSyncButton = YES;
+    self.navigationItem.titleView = _normalTitleView;
+    
     _backgroundView.image = [[OUIDocumentAppController controller] documentPickerBackgroundImage];
     if (!_backgroundView.image)
         _backgroundView.backgroundColor = [UIColor colorWithWhite:0.9 alpha:1.0];
     else
-        _backgroundView.contentMode = UIViewContentModeTop;
+        _backgroundView.contentMode = UIViewContentModeScaleAspectFill;
     
     OFPreference *sortPreference = [[self class] sortPreference];
     [OFPreference addObserver:self selector:@selector(selectedSortChanged) forPreference:sortPreference];
@@ -1387,13 +1485,44 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
         _filteredItems = nil;
         [self setFilteredItems:_current];
     }
-    
+
+    self.mainScrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
     // We sign up for this notification in -viewDidLoad, instead of -viewWillAppear: since we want to receive it when we are off screen (previews can be updated when a document is closing and we never get on screen -- for example if a document is open and another document is opened via tapping on Mail).
     NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
     [center addObserver:self selector:@selector(_previewsUpdateForFileItemNotification:) name:OUIDocumentPreviewsUpdatedForFileItemNotification object:nil];
 
     [center postNotificationName:@"DocumentPickerViewControllerViewDidLoadNotification"  object:nil];
+    
+    [self setUpActivityIndicator];
+
+    [self.mainScrollView addInteraction:[[UIDropInteraction alloc] initWithDelegate:self]];
 }
+
+@synthesize activityIndicator = _activityIndicator;
+- (UIActivityIndicatorView *)activityIndicator {
+    return _activityIndicator;
+}
+
+- (void)setUpActivityIndicator
+{
+    _activityIndicator = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhiteLarge];
+    
+    UIWindow *window = [[UIApplication sharedApplication] keyWindow];
+    UIColor *tintColor = window.tintColor;
+    if (tintColor) {
+        _activityIndicator.color = tintColor;
+    } else {
+        _activityIndicator.color = [OAAppearanceDefaultColors appearance].omniGreenColor;
+    }
+
+    _activityIndicator.hidesWhenStopped = YES;
+    _activityIndicator.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.mainScrollView.superview addSubview:_activityIndicator];
+    [NSLayoutConstraint activateConstraints:@[ [_activityIndicator.centerXAnchor constraintEqualToAnchor:_activityIndicator.superview.centerXAnchor],
+                                               [_activityIndicator.centerYAnchor constraintEqualToAnchor:_activityIndicator.superview.centerYAnchor]
+                                               ]];
+}
+
 
 - (void)viewDidLayoutSubviews;
 {
@@ -1413,7 +1542,7 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
             _mainScrollView.contentOffset = statusQuoOffset;
         }
     }
-    
+
     [super viewDidLayoutSubviews];
     if (_isAppearing || _needsDelayedHandleResize) {
         CGFloat yOffset = [self contentOffsetYAfterAdjustingInsetToShowTopControls:self.wasShowingTopControlsBeforeTransition];
@@ -1421,9 +1550,6 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
         _isAppearing = NO;
         _needsDelayedHandleResize = NO;
     }
-
-    // this forces the sync button to show/hide when the 6+ rotates
-    [self _updateToolbarItemsAnimated:NO];
 }
 
 - (BOOL)shouldAutorotate;
@@ -1461,9 +1587,9 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
     [super viewWillAppear:animated];
     
     if (!_topControls) {
-        [self _setupTitleLabelToUseInCompactWidth];
-        [self _setupTopControls];
+        [self setupTopControls];
     }
+    [self _adjustTopControlsAlphaForScrollViewYOffset:_mainScrollView.contentOffset.y];
     
     _mainScrollView.shouldHideTopControlsOnNextLayout = YES;
     
@@ -1475,7 +1601,6 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
     [self _performDelayedItemPropagationWithCompletionHandler:nil];
 
     [self _updateEmptyViewControlVisibility];
-    [self _updateToolbarItemsAnimated:NO];
     
     if (!_isObservingApplicationDidEnterBackground) { // Don't leak observations if view state transition calls are duplicated/dropped
         _isObservingApplicationDidEnterBackground = YES;
@@ -1492,7 +1617,7 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
 {
     [super viewDidAppear:animated];
     [self _updateEmptyViewControlVisibility];
-    [self _updateToolbarItemsAnimated:YES];
+    [self _updateToolbarItemsForTraitCollection:self.traitCollection animated:YES];
     
     if (self.traitCollection.forceTouchCapability) {
         self.previewingContext = [self registerForPreviewingWithDelegate:self sourceView:self.view];
@@ -1550,7 +1675,7 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
         [self clearSelection:NO];
     }
     
-    [self _updateToolbarItemsAnimated:YES];
+    [self _updateToolbarItemsForTraitCollection:self.traitCollection animated:YES];
     [self _updateToolbarItemsEnabledness];
 }
 
@@ -1598,17 +1723,18 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
         OUIDocumentPreview *documentPreview = [OUIDocumentPreview makePreviewForDocumentClass:cls fileItem:fileItem withArea:OUIDocumentPreviewAreaLarge];
         
         OUIDocumentPreviewingViewController *documentPreviewingViewController = [[OUIDocumentPreviewingViewController alloc] initWithFileItem:fileItem preview:documentPreview];
+        ODSScope *fileItemScope = fileItem.scope;
         if (self.canPerformActions) {
-            if (fileItem.scope.isTrash == NO) {
+            if (fileItemScope.isTrash == NO) {
                 // Export
                 UIPreviewAction *exportAction = [UIPreviewAction actionWithTitle:NSLocalizedStringFromTableInBundle(@"Export…", @"OmniUIDocument", OMNI_BUNDLE, @"Export document preview action title.")
                                                                            style:UIPreviewActionStyleDefault
                                                                          handler:^(UIPreviewAction * _Nonnull action, UIViewController * _Nonnull previewViewController) {
-                                                                             [_exporter exportItem:fileItem];
+                                                                             [_exporter exportItem:fileItem sender:nil];
                                                                          }];
                 [documentPreviewingViewController addPreviewAction:exportAction];
                 
-                if (fileItem.scope.isExternal == NO) {
+                if (fileItemScope.isExternal == NO) {
                     // Move
                     UIPreviewAction *moveAction = [UIPreviewAction actionWithTitle:NSLocalizedStringFromTableInBundle(@"Move…", @"OmniUIDocument", OMNI_BUNDLE, @"Move document preview action title.")
                                                                              style:UIPreviewActionStyleDefault
@@ -1625,7 +1751,7 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
                 }
             }
             
-            if ((fileItem.isDownloaded) && (fileItem.scope.isExternal == NO)) {
+            if ((fileItem.isDownloaded) && (fileItemScope.isExternal == NO)) {
                 // Duplicte
                 UIPreviewAction *duplicateAction = [UIPreviewAction actionWithTitle:NSLocalizedStringFromTableInBundle(@"Duplicate", @"OmniUIDocument", OMNI_BUNDLE, @"Duplicate document preview action title.")
                                                                               style:UIPreviewActionStyleDefault
@@ -1724,6 +1850,7 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
 - (UIViewController *)documentInteractionControllerViewControllerForPreview:(UIDocumentInteractionController *)controller;
 {
     NSLog(@"%s", __PRETTY_FUNCTION__);
+    OBAnalyzerNotReached(); // this resolves a clang static analyzer error. we should presumably always be subclassing this to actually return a non-nil value.
     return nil;
 }
 
@@ -1771,30 +1898,32 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
     }
 }
 
-- (void)documentPickerScrollView:(OUIDocumentPickerScrollView *)scrollView itemViewStartedEditingName:(OUIDocumentPickerItemView *)itemView;
+- (void)documentPickerScrollView:(OUIDocumentPickerScrollView *)scrollView itemViewStartedEditingName:(OUIDocumentPickerItemView *)itemView nameTextField:(UITextField *)nameTextField;
 {
     if (!_isReadOnly)
-        [self _startedRenamingInItemView:itemView];
+        [self _startedRenamingInItemView:itemView nameTextField:nameTextField];
 }
 
 - (void)documentPickerScrollView:(OUIDocumentPickerScrollView *)scrollView itemView:(OUIDocumentPickerItemView *)itemView finishedEditingName:(NSString *)name;
 {
     self.renameSession = nil;
-    [self _updateToolbarItemsAnimated:YES];
+    [self _updateToolbarItemsForTraitCollection:self.traitCollection animated:YES];
     _topControls.userInteractionEnabled = YES;
     _mainScrollView.scrollEnabled = YES;
 }
 
 - (void)documentPickerScrollView:(OUIDocumentPickerScrollView *)scrollView willDisplayItemView:(OUIDocumentPickerItemView *)itemView;
 {
-    if ([self.documentPicker.delegate respondsToSelector:@selector(documentPicker:willDisplayItemView:)])
-        [self.documentPicker.delegate documentPicker:self.documentPicker willDisplayItemView:itemView];
+    id<OUIDocumentPickerDelegate> documentPickerDelegate = self.documentPicker.delegate;
+    if ([documentPickerDelegate respondsToSelector:@selector(documentPicker:willDisplayItemView:)])
+        [documentPickerDelegate documentPicker:self.documentPicker willDisplayItemView:itemView];
 }
 
 - (void)documentPickerScrollView:(OUIDocumentPickerScrollView *)scrollView willEndDisplayingItemView:(OUIDocumentPickerItemView *)itemView;
 {
-    if ([self.documentPicker.delegate respondsToSelector:@selector(documentPicker:willEndDisplayingItemView:)])
-        [self.documentPicker.delegate documentPicker:self.documentPicker willEndDisplayingItemView:itemView];
+    id<OUIDocumentPickerDelegate> documentPickerDelegate = self.documentPicker.delegate;
+    if ([documentPickerDelegate respondsToSelector:@selector(documentPicker:willEndDisplayingItemView:)])
+        [documentPickerDelegate documentPicker:self.documentPicker willEndDisplayingItemView:itemView];
 }
 
 - (NSArray *)sortDescriptorsForDocumentPickerScrollView:(OUIDocumentPickerScrollView *)scrollView;
@@ -1807,10 +1936,21 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
     return self.isReadOnly;
 }
 
-- (ODSDocumentType)_documentTypeForCurrentFilter;
++ (ODSDocumentType)documentTypeForCurrentFilterWith:(OUIDocumentPicker *)documentPicker;
 {
-    OUIDocumentPickerFilter *currentFilter = [self.class selectedFilterForPicker:_documentPicker];
-    return [currentFilter.identifier isEqualToString:ODSDocumentPickerFilterTemplateIdentifier] ? ODSDocumentTypeTemplate : ODSDocumentTypeNormal;
+    OUIDocumentPickerFilter *currentFilter = [self.class selectedFilterForPicker:documentPicker];
+    if (currentFilter == nil || [currentFilter.identifier isEqualToString:ODSDocumentPickerFilterDocumentIdentifier]) {
+        return ODSDocumentTypeNormal;
+    } else if ([currentFilter.identifier isEqualToString:ODSDocumentPickerFilterTemplateIdentifier]) {
+        return ODSDocumentTypeTemplate;
+    } else {
+        return ODSDocumentTypeOther;
+    }
+}
+
+- (ODSDocumentType)documentTypeForCurrentFilter;
+{
+    return [self.class documentTypeForCurrentFilterWith:_documentPicker];
 }
 
 static void _setItemSelectedAndBounceView(OUIDocumentPickerViewController *self, OUIDocumentPickerItemView *itemView, BOOL selected)
@@ -1831,7 +1971,7 @@ static void _setItemSelectedAndBounceView(OUIDocumentPickerViewController *self,
         return;
     if (_renameSession){
         if (_renameSession.itemView == itemView) {
-            [_renameSession endRenaming];
+            [_renameSession endRenaming:NO];
             return;
         } else {
             return; // Another rename might be starting (we don't have a spot to start/stop ignore user interaction there since the keyboard drives the animation).
@@ -1842,7 +1982,7 @@ static void _setItemSelectedAndBounceView(OUIDocumentPickerViewController *self,
     if (self.editing) {
         _setItemSelectedAndBounceView(self, itemView, !item.selected);
         
-        [self _updateToolbarItemsAnimated:NO]; // Update the selected file item count
+        [self _updateToolbarItemsForTraitCollection:self.traitCollection animated:NO]; // Update the selected file item count
         [self _updateToolbarItemsEnabledness];
         return;
     }
@@ -1941,14 +2081,19 @@ static UIImage *ImageForScope(ODSScope *scope) {
     else
         menuTitle = NSLocalizedStringFromTableInBundle(@"Move to...", @"OmniUIDocument", OMNI_BUNDLE, @"Share menu title");
     
+    BOOL shouldShowExternalScope = OUIDocumentPicker.shouldShowExternalScope;
     for (ODSScope *scope in destinationScopes) {
         NSMutableArray *folderOptions = [NSMutableArray array];
-        if (scope.isExternal && selectedFolders.count != 0)
-            continue; // Don't offer to move a folder to an external scope
+        if (scope.isExternal) {
+            ODSExternalScope *externalScope = OB_CHECKED_CAST(ODSExternalScope, scope);
+            if (!shouldShowExternalScope || !externalScope.allowTransfers) {
+                continue;
+            }
+        }
 
         [self _addMoveToFolderOptions:folderOptions candidateParentFolder:scope.rootFolder currentFolder:currentFolder excludedTreeFolders:selectedFolders];
         
-        void (^moveToScopeRootAction)(void) = ^{
+        OUIMenuOptionAction moveToScopeRootAction = ^(OUIMenuInvocation *invocation){
             [self _moveSelectedDocumentsToFolder:scope.rootFolder];
         };
         
@@ -1983,17 +2128,19 @@ static UIImage *ImageForScope(ODSScope *scope) {
 
 #pragma mark - UIScrollView delegate
 
+- (void)_adjustTopControlsAlphaForScrollViewYOffset:(CGFloat)yOffset
+{
+    if (_topControls.subviews.count == 0) { return; }
+    CGFloat contentYOffsetForFullAlpha = [_mainScrollView contentOffsetYForTopControlsFullAlpha];
+    CGFloat contentYOffsetForZeroAlpha = [_mainScrollView contentOffsetYToHideTopControls];
+    _topControls.alpha = CLAMP((yOffset - contentYOffsetForZeroAlpha) / (contentYOffsetForFullAlpha - contentYOffsetForZeroAlpha), 0, 1);
+    _titleLabelToUseInCompactWidth.alpha = 1 - _topControls.alpha;
+}
+
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView;
 {
-    if (_freezeTopControlAlpha) {
-        return;
-    }
-    if (_topControls.subviews.count > 0) {
-        CGFloat contentYOffset = scrollView.contentOffset.y;
-        CGFloat contentYOffsetForFullAlpha = [_mainScrollView contentOffsetYForTopControlsFullAlpha];
-        CGFloat contentYOffsetForZeroAlpha = [_mainScrollView contentOffsetYToHideTopControls];
-        _topControls.alpha = CLAMP((contentYOffset - contentYOffsetForZeroAlpha) / (contentYOffsetForFullAlpha - contentYOffsetForZeroAlpha), 0, 1);
-        _titleLabelToUseInCompactWidth.alpha = 1 - _topControls.alpha;        
+    if (!_freezeTopControlAlpha) {
+        [self _adjustTopControlsAlphaForScrollViewYOffset:scrollView.contentOffset.y];
     }
 }
 
@@ -2046,11 +2193,12 @@ static UIImage *ImageForScope(ODSScope *scope) {
 
 - (CGFloat)_bottomContentInsetNecessaryToAllowContentOffsetY:(CGFloat)desiredOffsetY;
 {
+    CGFloat toolbarHeight = 44.0;
     CGFloat heightRemainingBelowOffset = _mainScrollView.contentSize.height - desiredOffsetY;
     if (heightRemainingBelowOffset < _mainScrollView.frame.size.height) {
-        return _mainScrollView.frame.size.height - heightRemainingBelowOffset;
+        return fmax(toolbarHeight, _mainScrollView.frame.size.height - heightRemainingBelowOffset);
     }
-    return 0;
+    return toolbarHeight;
 }
 
 #pragma mark - Accessibility
@@ -2086,6 +2234,136 @@ static UIImage *ImageForScope(ODSScope *scope) {
     return NO;
 }
 
+#pragma mark - UIDropInteractionDelegate protocol
+
+- (BOOL)dropInteraction:(UIDropInteraction *)interaction canHandleSession:(id<UIDropSession>)session;
+{
+    OUIDocumentAppController *appController = [OUIDocumentAppController controller];
+    for (UIDragItem *item in session.items) {
+        NSItemProvider *itemProvider = item.itemProvider;
+        for (NSString *registeredTypeIdentifier in itemProvider.registeredTypeIdentifiers) {
+            if ([appController canViewFileTypeWithIdentifier:[registeredTypeIdentifier lowercaseString]])
+                return YES;
+        }
+    }
+
+    return NO;
+}
+
+- (UIDropProposal *)dropInteraction:(UIDropInteraction *)interaction sessionDidUpdate:(id<UIDropSession>)session;
+{
+    UIDropOperation dropOperation = UIDropOperationCopy;
+    for (UIDragItem *dragItem in session.localDragSession.items) {
+        if ([dragItem.localObject isKindOfClass:[ODSItem class]]) {
+            dropOperation = UIDropOperationMove;
+            break;
+        }
+    }
+
+    if (self.selectedScope.isExternal) {
+        dropOperation = UIDropOperationCopy;
+    }
+
+    _latestDropProposal = [[UIDropProposal alloc] initWithDropOperation:dropOperation];
+    return _latestDropProposal;
+}
+
+- (void)dropInteraction:(UIDropInteraction *)interaction performDrop:(id<UIDropSession>)session;
+{
+    if (self.selectedScope.isExternal) {
+        [self _performLinkForDragItems:session.items];
+        return;
+    }
+    switch (_latestDropProposal.operation) {
+        case UIDropOperationMove:
+            [self _performMoveForDragItems:session.items];
+            break;
+        case UIDropOperationCopy:
+            [self _performCopyForDragItems:session.items];
+            break;
+        default:
+            break;
+    }
+}
+
+- (void)_performLinkForDragItems:(NSArray <UIDragItem *> *)dragItems;
+{
+    OUIDocumentAppController *appController = [OUIDocumentAppController controller];
+    for (UIDragItem *dragItem in dragItems) {
+        NSItemProvider *itemProvider = dragItem.itemProvider;
+        for (NSString *registeredTypeIdentifier in itemProvider.registeredTypeIdentifiers) {
+            if ([appController canViewFileTypeWithIdentifier:registeredTypeIdentifier]) {
+                [itemProvider loadInPlaceFileRepresentationForTypeIdentifier:registeredTypeIdentifier completionHandler:^(NSURL *url, BOOL isInPlace, NSError *error) {
+                    if (url != nil && isInPlace) {
+                        [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+                            [appController addRecentlyOpenedDocumentURL:url];
+                        }];
+                    }
+                }];
+                break;
+            }
+        }
+    }
+}
+
+- (void)_performMoveForDragItems:(NSArray <UIDragItem *> *)dragItems;
+{
+    ODSScope *targetScope = self.selectedScope;
+    ODSFolderItem *targetFolder = self.folderItem;
+
+    OFMultiValueDictionary <ODSScope *, ODSItem *> *itemsByScope = [[OFMultiValueDictionary alloc] init];
+    for (UIDragItem *dragItem in dragItems) {
+        ODSItem *item = dragItem.localObject;
+        if (![item isKindOfClass:[ODSItem class]])
+            continue; // Ignore items which aren't local file drags
+
+        ODSScope *itemScope = item.scope;
+        ODSFolderItem *itemFolder = item.parentFolder;
+        if (OFNOTEQUAL(itemScope, targetScope) || OFNOTEQUAL(itemFolder, targetFolder)) {
+            [itemsByScope addObject:item forKey:itemScope];
+        }
+    }
+
+    for (ODSScope *scope in itemsByScope.allKeys) {
+        NSArray <ODSItem *> *items = [itemsByScope arrayForKey:scope];
+        [_documentStore moveItems:[NSSet setWithArray:items] fromScope:scope toScope:targetScope inFolder:targetFolder completionHandler:NULL];
+    }
+}
+
+- (void)_performCopyForDragItems:(NSArray <UIDragItem *> *)dragItems;
+{
+    OUIDocumentAppController *appController = [OUIDocumentAppController controller];
+    NSSet *syncExtensionSet = [NSSet setWithArray:[OFXAgent defaultSyncPathExtensions]];
+    for (UIDragItem *dragItem in dragItems) {
+        NSItemProvider *itemProvider = dragItem.itemProvider;
+        for (NSString *registeredTypeIdentifier in itemProvider.registeredTypeIdentifiers) {
+            if ([appController canViewFileTypeWithIdentifier:registeredTypeIdentifier]) {
+                [itemProvider loadFileRepresentationForTypeIdentifier:registeredTypeIdentifier completionHandler:^(NSURL *url, NSError *error) {
+                    if (![syncExtensionSet containsObject:[url pathExtension]]) {
+                        return; // Don't copy in any files we wouldn't sync
+                    }
+
+                    // The file is in a temporary URL that will be removed when we return, but we're not ready to move it to its final location until we've coordinated with some other work queues. So we'll move the file to a temporary location for now, and move it to its final location later.
+                    NSURL *temporaryURL = [_documentStore temporaryURLForCreatingNewDocumentOfType:ODSDocumentTypeNormal];
+                    NSError *moveError = nil;
+                    if (![[NSFileManager defaultManager] moveItemAtURL:url toURL:temporaryURL error:&moveError]) {
+                        NSLog(@"Unable to move %@ to temporary file %@: %@", url, temporaryURL, [moveError toPropertyList]);
+                        return;
+                    }
+
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        [self.selectedScope addDocumentInFolder:self.folderItem baseName:[url.lastPathComponent stringByDeletingPathExtension] fileType:registeredTypeIdentifier fromURL:temporaryURL option:ODSStoreAddByMovingTemporarySourceToAvailableDestinationURL completionHandler:^(ODSFileItem *duplicateFileItem, NSError *addDocumentError) {
+                            if (duplicateFileItem == nil) {
+                                NSLog(@"Unable to add %@ (temporary file %@): %@", url, temporaryURL, [addDocumentError toPropertyList]);
+                            }
+                        }];
+                    });
+                }];
+                break;
+            }
+        }
+    }
+}
 
 #pragma mark - Internal
 
@@ -2195,7 +2473,7 @@ static UIImage *ImageForScope(ODSScope *scope) {
             deleteLabel = NSLocalizedStringFromTableInBundle(@"Delete", @"OmniUIDocument", OMNI_BUNDLE, @"Delete toolbar item accessibility label.");
             deleteImageName = @"OUIDeleteFromTrash";
         } else if (self.selectedScope.isExternal) {
-            deleteLabel = NSLocalizedStringFromTableInBundle(@"Remove", @"OmniUIDocument", OMNI_BUNDLE, @"Remove from external container toolbar item accessibility label.");
+            deleteLabel = NSLocalizedStringFromTableInBundle(@"Clear", @"OmniUIDocument", OMNI_BUNDLE, @"Clear from Recent Documents container toolbar item accessibility label.");
             deleteImageName = @"OUIDocumentRemoveFromExternal";
         } else {
             deleteLabel = NSLocalizedStringFromTableInBundle(@"Move to Trash", @"OmniUIDocument", OMNI_BUNDLE, @"Move to Trash toolbar item accessibility label.");
@@ -2209,7 +2487,7 @@ static UIImage *ImageForScope(ODSScope *scope) {
     return _deleteBarButtonItem;
 }
 
-- (void)_updateToolbarItemsAnimated:(BOOL)animated;
+- (void)_updateToolbarItemsForTraitCollection:(UITraitCollection *)traitCollection animated:(BOOL)animated;
 {
     OBPRECONDITION(_documentStore);
 
@@ -2266,7 +2544,7 @@ static UIImage *ImageForScope(ODSScope *scope) {
                     title = NSLocalizedStringFromTableInBundle(@"Rename Document", @"OmniUIDocument", OMNI_BUNDLE, @"toolbar prompt while renaming a document");
             }
         }
-        navigationItem.titleView = nil;
+        _normalTitleView.hideSyncButton = YES;
         self.displayedTitleString = title;
         [navigationItem setRightBarButtonItems:@[[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:self action:@selector(_cancelRenaming:)]] animated:animated];
         [navigationItem setHidesBackButton:YES animated:animated];
@@ -2279,6 +2557,7 @@ static UIImage *ImageForScope(ODSScope *scope) {
     } else {
         [navigationItem setHidesBackButton:NO animated:animated];
         _topControls.tintAdjustmentMode = UIViewTintAdjustmentModeAutomatic;
+        _normalTitleView.hideSyncButton = NO;
     }
     
     if (editing) {
@@ -2306,12 +2585,10 @@ static UIImage *ImageForScope(ODSScope *scope) {
     } else {
         [self updateTitle];
         // if we're displaying the title in the scrollview, we shouldn't use the titleview to show our sync button. instead, we add it to the right bar button items below.
-        // we're explicitly checking for compact or regular to avoid setting our titleView before we have a difinitive size class, which causes some constraint failures that aren't actually important, once the right size-class gets set.
-        if (self.traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassRegular) {
-            self.navigationItem.titleView = _normalTitleView;
-        } else if (self.traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassCompact) {
-            self.navigationItem.titleView = nil;
-        }
+        
+        BOOL shouldHideNavItemTitleAndSyncButton = (traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassCompact);
+        _normalTitleView.hideTitle = shouldHideNavItemTitleAndSyncButton;
+        _normalTitleView.hideSyncButton = shouldHideNavItemTitleAndSyncButton;
     }
     [navigationItem setLeftBarButtonItems:leftItems animated:animated];
 
@@ -2337,7 +2614,7 @@ static UIImage *ImageForScope(ODSScope *scope) {
                 if ([delegate respondsToSelector:@selector(documentPickerMainToolbarSelectionFormatForFileItems:)])
                     format = [delegate documentPickerMainToolbarSelectionFormatForFileItems:selectedItems];
                 
-                if ([NSString isEmptyString:format]) {
+                if (OFIsEmptyString(format)) {
                     if (selectedItemCount == 0)
                         format = NSLocalizedStringFromTableInBundle(@"Select a Document", @"OmniUIDocument", OMNI_BUNDLE, @"Main toolbar title for a no selected documents.");
                     else if (selectedItemCount == 1)
@@ -2348,7 +2625,7 @@ static UIImage *ImageForScope(ODSScope *scope) {
             }
         }
         
-        navigationItem.titleView = nil;
+        _normalTitleView.hideSyncButton = YES;
         self.displayedTitleString = [NSString stringWithFormat:format, [selectedItems count]];
         
 
@@ -2363,19 +2640,25 @@ static UIImage *ImageForScope(ODSScope *scope) {
         
         if ((_documentStore.documentTypeForNewFiles != nil) && !self.selectedScope.isTrash && [_documentStore.scopes containsObjectIdenticalTo:_documentScope]) {
             if (self.selectedScope.isExternal) {
-                OUIBarButtonItem *linkItem = [[OUIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"OUIToolbarAddDocument" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil] style:UIBarButtonItemStylePlain target:[OUIDocumentAppController controller] action:@selector(linkDocumentFromExternalContainer:)];
-                linkItem.accessibilityLabel = NSLocalizedStringFromTableInBundle(@"Link External Document", @"OmniUIDocument", OMNI_BUNDLE, @"Link External Document toolbar item accessibility label.");
-                [rightItems addObject:linkItem];
+                UIImage *openImage = [UIImage imageNamed:@"OUIToolbarButtonImport" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil];
+                OUIBarButtonItem *openItem = [[OUIBarButtonItem alloc] initWithImage:openImage style:UIBarButtonItemStylePlain target:[OUIDocumentAppController controller] action:@selector(openDocumentFromExternalContainer:)];
+                openItem.accessibilityLabel = NSLocalizedStringFromTableInBundle(@"Open External Document", @"OmniUIDocument", OMNI_BUNDLE, @"Open External Document toolbar item accessibility label.");
+                [rightItems addObject:openItem];
             } else {
                 if (!self.addDocumentButtonItem) {
-                    self.addDocumentButtonItem = [[OUIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"OUIToolbarAddDocument" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil] style:UIBarButtonItemStylePlain target:self action:@selector(newDocument:)];
+                    UIImage *addImage = [UIImage imageNamed:@"OUIToolbarAddDocument" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil];
+                    self.addDocumentButtonItem = [[OUIBarButtonItem alloc] initWithImage:addImage style:UIBarButtonItemStylePlain target:self action:@selector(newDocument:)];
                     self.addDocumentButtonItem.accessibilityLabel = NSLocalizedStringFromTableInBundle(@"New Document", @"OmniUIDocument", OMNI_BUNDLE, @"New Document toolbar item accessibility label.");
                 }
                 [rightItems addObject:self.addDocumentButtonItem];
             }
 
-            if ([_mainScrollView isShowingTitleLabel] && _normalTitleView.syncAccountActivity != nil) { // checks to see if we're compact
+            if ((traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassCompact) && _normalTitleView.syncAccountActivity != nil) { // checks to see if we're compact
                 [rightItems addObject:_normalTitleView.syncBarButtonItem];
+                _normalTitleView.hideSyncButton = YES;
+            }
+            else {
+                _normalTitleView.hideSyncButton = NO;
             }
         }
     }
@@ -2390,6 +2673,8 @@ static UIImage *ImageForScope(ODSScope *scope) {
     for (UIBarButtonItem *button in self.navigationItem.leftBarButtonItems) {
         button.tintColor = (editing) ? editingColor : nil;
     }
+    
+    [self _updateToolbarItemsEnabledness];
 }
 
 - (void)_updateToolbarItemsEnabledness;
@@ -2403,12 +2688,6 @@ static UIImage *ImageForScope(ODSScope *scope) {
             [self deleteBarButtonItem].enabled = NO;
         } else {
             BOOL isViewingTrash = self.selectedScope.isTrash;
-            ODSFileItem *singleSelectedFileItem = (count == 1) ? self.singleSelectedFileItem : nil;
-            
-            // Disable the export option while in the trash. We also don't support exporting multiple documents at the same time.
-            BOOL canExport = !isViewingTrash && (singleSelectedFileItem != nil);
-            if (canExport)
-                canExport = [_exporter canExportFileItem:singleSelectedFileItem];
             
             BOOL canMove;
             if (isViewingTrash)
@@ -2419,13 +2698,28 @@ static UIImage *ImageForScope(ODSScope *scope) {
                 canMove = YES; // Make new folder
             else
                 canMove = NO;
-            
-            _exportBarButtonItem.enabled = canExport;
+
+            // Exporting more than one thing is really fine, except when sending OmniPlan files via Mail. But we don't have a good way to restrict just that. bug:///147627
+            _exportBarButtonItem.enabled = (!isViewingTrash && count == 1);
+
             _moveBarButtonItem.enabled = canMove;
             _duplicateDocumentBarButtonItem.enabled = YES;
             [self deleteBarButtonItem].enabled = YES; // Deletion while in the trash is just an immediate removal.
         }
     }
+
+    // Disable adding new documents if we are not licensed
+    self.addDocumentButtonItem.enabled = [self _shouldEnableCreateNewDocument];
+}
+
+- (BOOL)_shouldEnableCreateNewDocument;
+{
+    if (!OUIAppController.controller.shouldEnableCreateNewDocument)
+        return NO;
+    OUIDocumentPickerFilter *filter = [OUIDocumentPickerViewController selectedFilterForPicker:self.documentPicker];
+    if (OFISEQUAL(filter.identifier, ODSDocumentPickerFilterPlugInIdentifier))
+        return NO;
+    return YES;
 }
 
 - (void)_ensureLegibilityOfSegmentedControl:(UISegmentedControl*)control{
@@ -2443,12 +2737,18 @@ static UIImage *ImageForScope(ODSScope *scope) {
 #define TOP_CONTROLS_SPACING 20.0
 #define TOP_CONTROLS_VERTICAL_SPACING 16.0
 
-- (void)_setupTopControls;
+- (void)setupTopControls;
 {
+    [self _setupTitleLabelToUseInCompactWidth];
+
     NSArray *availableFilters = [self availableFilters];
     BOOL willDisplayFilter = ([availableFilters count] > 1);
 
     CGRect topRect = CGRectZero;
+    if (_topControls) {
+        [_topControls removeFromSuperview];
+        _topControls = nil;
+    }
     _topControls = [[UIView alloc] initWithFrame:topRect];
 
     // Sort
@@ -2522,19 +2822,27 @@ static UIImage *ImageForScope(ODSScope *scope) {
         return OUIViewVisitorResultContinue;
     }];
 
+    [_mainScrollView addSubview:_topControls];
     _mainScrollView.topControls = _topControls;
+
+    [self _adjustTopControlsAlphaForScrollViewYOffset:_mainScrollView.contentOffset.y];
+
+    [self _updateToolbarItemsEnabledness];
 }
 
 #pragma mark Adaptability
 
 - (void)_setupTitleLabelToUseInCompactWidth;
 {
+    if (_titleLabelToUseInCompactWidth != nil)
+        return;
+
     _titleLabelToUseInCompactWidth = [[UILabel alloc] initWithFrame:CGRectZero];
     
     UIFont *titleFont = [UIFont preferredFontForTextStyle:UIFontTextStyleHeadline];
-    NSString *title = @"Title";
+    NSString *title = OBUnlocalized(@"Title"); // Configured later -- possibly remove this...
     _titleLabelToUseInCompactWidth.font = titleFont;
-    _titleLabelToUseInCompactWidth.textColor = [UIColor darkTextColor];
+    _titleLabelToUseInCompactWidth.textColor = [[OmniUIDocumentAppearance appearance] documentPickerTintColorAgainstBackground];
     _titleLabelToUseInCompactWidth.textAlignment = NSTextAlignmentCenter;
     _titleLabelToUseInCompactWidth.contentMode = UIViewContentModeBottom;
     _titleLabelToUseInCompactWidth.text = title;
@@ -2564,6 +2872,8 @@ static UIImage *ImageForScope(ODSScope *scope) {
     [self.mainScrollView setNeedsLayout];
     [self.mainScrollView layoutIfNeeded];
     
+    [self _updateToolbarItemsForTraitCollection:newCollection animated:YES];
+    
     [coordinator animateAlongsideTransition:nil
                                  completion:^(id<UIViewControllerTransitionCoordinatorContext> context) {
                                      CGFloat adjustedOffsetY = [self contentOffsetYAfterAdjustingInsetToShowTopControls:self.wasShowingTopControlsBeforeTransition];
@@ -2578,7 +2888,7 @@ static UIImage *ImageForScope(ODSScope *scope) {
     [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
     
     if (_renameSession) {
-        [_renameSession endRenaming];
+        [_renameSession endRenaming:YES];
     }
     
     if (!self.isTransitioningTraitCollection) {
@@ -2594,7 +2904,8 @@ static UIImage *ImageForScope(ODSScope *scope) {
             _freezeTopControlAlpha = NO;
             [self scrollViewDidScroll:self.mainScrollView];
             
-            if (_documentScope.isTrash && self.restoreToMenuController == self.presentedViewController) {
+            OUIMenuController *restoreToMenuController = self.restoreToMenuController;
+            if (_documentScope.isTrash && restoreToMenuController == self.presentedViewController) {
                 // Move popover to new frame of selected item. (While in trash, we only support single selection.)
                 ODSItem *firstSelected = nil;
                 for (ODSItem *item in self.mainScrollView.items) {
@@ -2605,8 +2916,8 @@ static UIImage *ImageForScope(ODSScope *scope) {
                 }
                 
                 UIView *view = [self.mainScrollView itemViewForItem:firstSelected];
-                self.restoreToMenuController.popoverPresentationController.sourceView = view;
-                self.restoreToMenuController.popoverPresentationController.sourceRect = view.bounds;
+                restoreToMenuController.popoverPresentationController.sourceView = view;
+                restoreToMenuController.popoverPresentationController.sourceRect = view.bounds;
             }
         }];
     } else {
@@ -2671,15 +2982,19 @@ static UIImage *ImageForScope(ODSScope *scope) {
         [viewsDict setValue:self.filtersSegmentedControl forKey:@"filters"];
     }
                                  
-    
-    if (traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassCompact) {
+    id <OUIDocumentPickerDelegate> delegate = _documentPicker.delegate;
+    if (traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassCompact || ([delegate respondsToSelector:@selector(documentPickerShouldAlwaysStackFilterControls)] && [delegate documentPickerShouldAlwaysStackFilterControls])) {
         // use short labels for the filters control
         filterTitles = [availableFilters arrayByPerformingBlock:^(OUIDocumentPickerFilter *filter) {
             return filter.localizedFilterChooserShortButtonLabel;
         }];
         for (NSUInteger i = 0; i < filterTitles.count; i++) {
             NSString *title = filterTitles[i];
-            [self.filtersSegmentedControl setTitle:title forSegmentAtIndex:i];
+            // it is possible to add filters when pro becomes unlocked, so need to handle additions
+            if (self.filtersSegmentedControl.numberOfSegments <= i)
+                [self.filtersSegmentedControl insertSegmentWithTitle:title atIndex:i animated:NO];
+            else
+                [self.filtersSegmentedControl setTitle:title forSegmentAtIndex:i];
         }
         [self.filtersSegmentedControl sizeToFit];
         
@@ -2689,10 +3004,12 @@ static UIImage *ImageForScope(ODSScope *scope) {
                                                                                              options:kNilOptions
                                                                                              metrics:metricsDict
                                                                                                views:viewsDict]];
-            [horizontalConstraints addObjectsFromArray:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|[sort]|"
-                                                                                               options:kNilOptions
-                                                                                               metrics:nil
-                                                                                                 views:viewsDict]];
+            [horizontalConstraints addObject:[NSLayoutConstraint constraintWithItem:self.sortSegmentedControl
+                                                                          attribute:NSLayoutAttributeCenterX
+                                                                          relatedBy:NSLayoutRelationEqual
+                                                                             toItem:self.filtersSegmentedControl
+                                                                          attribute:NSLayoutAttributeCenterX
+                                                                         multiplier:1.f constant:0.f]];
             [horizontalConstraints addObjectsFromArray:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|[filters]|"
                                                                                                options:kNilOptions
                                                                                                metrics:nil
@@ -2729,7 +3046,11 @@ static UIImage *ImageForScope(ODSScope *scope) {
         }];
         for (NSUInteger i = 0; i < filterTitles.count; i++) {
             NSString *title = filterTitles[i];
-            [self.filtersSegmentedControl setTitle:title forSegmentAtIndex:i];
+            // it is possible to add filters when pro becomes unlocked, so need to handle additions
+            if (self.filtersSegmentedControl.numberOfSegments <= i)
+                [self.filtersSegmentedControl insertSegmentWithTitle:title atIndex:i animated:NO];
+            else
+                [self.filtersSegmentedControl setTitle:title forSegmentAtIndex:i];
         }
         [self.filtersSegmentedControl sizeToFit];
         
@@ -2804,33 +3125,14 @@ static UIImage *ImageForScope(ODSScope *scope) {
 
 - (void)_checkTitleDisplay;
 {
-    if (!_normalTitleView) {
-        _normalTitleView = [[OUIDocumentTitleView alloc] init];
-        _normalTitleView.syncAccountActivity = _accountActivity;
-        _normalTitleView.delegate = self;
-    }
-    
     _titleLabelToUseInCompactWidth.text = self.displayedTitleString;
+    _normalTitleView.title = self.displayedTitleString;
 
-    if ([_mainScrollView isShowingTitleLabel]) {
-        _normalTitleView.title = @"";
-        _normalTitleView.hideTitle = YES;
-        self.navigationItem.title = @"";
-    } else {
-        if (self.navigationItem.titleView) {
-            _normalTitleView.title = self.displayedTitleString;
-        } else {
-            self.navigationItem.title = self.displayedTitleString;
-        }
-        _normalTitleView.hideTitle = NO;
-        
-        // get VO to read a hint for the navigationItem's titleView
-        _normalTitleView.isAccessibilityElement = YES;
-        _normalTitleView.accessibilityLabel = self.displayedTitleString;
-        _normalTitleView.accessibilityHint = NSLocalizedStringFromTableInBundle(@"Scroll down to show sort and filter controls", @"OmniUIDocument", OMNI_BUNDLE, @"document picker compact title view accessibility hint");
-
-    }
-    [_normalTitleView sizeToFit];
+    // get VO to read a hint for the navigationItem's titleView
+    _normalTitleView.isAccessibilityElement = YES;
+    _normalTitleView.accessibilityLabel = self.displayedTitleString;
+    _normalTitleView.accessibilityHint = NSLocalizedStringFromTableInBundle(@"Scroll down to show sort and filter controls", @"OmniUIDocument", OMNI_BUNDLE, @"document picker compact title view accessibility hint");
+    
     [_titleLabelToUseInCompactWidth sizeToFit];
     [_mainScrollView setNeedsLayout];
 }
@@ -2842,7 +3144,8 @@ static UIImage *ImageForScope(ODSScope *scope) {
     BOOL controlsWereHiddenBeforeDeletion = self.mainScrollView.contentOffset.y >= self.mainScrollView.contentOffsetYToHideTopControls;
     
     OBPRECONDITION([NSThread isMainThread]);
-    
+ 
+    [self.activityIndicator startAnimating];
     OUIInteractionLock *lock = [OUIInteractionLock applicationLock];
 
     [_documentScope deleteItems:selectedItems completionHandler:^(NSSet *deletedFileItems, NSArray *errorsOrNil) {
@@ -2858,12 +3161,13 @@ static UIImage *ImageForScope(ODSScope *scope) {
         if (controlsWereHiddenBeforeDeletion && self.mainScrollView.contentOffset.y < self.mainScrollView.contentOffsetYToHideTopControls) {
             self.mainScrollView.contentOffset = CGPointMake(self.mainScrollView.contentOffset.x, self.mainScrollView.contentOffsetYToHideTopControls);
         }
+        [self.activityIndicator stopAnimating];
     }];
 }
 
 - (void)_updateFieldsForSelectedFileItem;
 {
-    OBFinishPortingLater("Update the enabledness of the export/delete bar button items based on how many file items are selected");
+    OBFinishPortingLater("<bug:///147828> (iOS-OmniOutliner Bug: OUIDocumentPickerViewController.m: 2919 - Update the enabledness of the export/delete bar button items based on how many file items are selected)");
 #if 0
     _exportBarButtonItem.enabled = (proxy != nil);
     [self deleteBarButtonItem].enabled = (proxy != nil);
@@ -2899,7 +3203,7 @@ static UIImage *ImageForScope(ODSScope *scope) {
     [_mainScrollView previewsUpdatedForFileItem:fileItem];
 }
 
-- (void)_startedRenamingInItemView:(OUIDocumentPickerItemView *)itemView;
+- (void)_startedRenamingInItemView:(OUIDocumentPickerItemView *)itemView nameTextField:(UITextField *)nameTextField;
 {
     if (self.renameSession) {
         return;  // because this will get called on any size change
@@ -2908,9 +3212,9 @@ static UIImage *ImageForScope(ODSScope *scope) {
     OBPRECONDITION(_renameSession == nil);
     OBPRECONDITION(itemView);
 
-    self.renameSession = [[OUIDocumentRenameSession alloc] initWithDocumentPicker:self itemView:itemView];
+    self.renameSession = [[OUIDocumentRenameSession alloc] initWithDocumentPicker:self itemView:itemView nameTextField:nameTextField];
     
-    [self _updateToolbarItemsAnimated:YES];
+    [self _updateToolbarItemsForTraitCollection:self.traitCollection animated:YES];
     _topControls.userInteractionEnabled = NO;
     _mainScrollView.scrollEnabled = NO;
 }
@@ -2920,7 +3224,7 @@ static UIImage *ImageForScope(ODSScope *scope) {
     [_renameSession cancelRenaming];
     self.renameSession = nil;
     
-    [self _updateToolbarItemsAnimated:YES];
+    [self _updateToolbarItemsForTraitCollection:self.traitCollection animated:YES];
     _topControls.userInteractionEnabled = YES;
     _mainScrollView.scrollEnabled = YES;
 }
@@ -2946,6 +3250,7 @@ static UIImage *ImageForScope(ODSScope *scope) {
 {
     OBPRECONDITION(parentFolder);
     
+    [self.activityIndicator startAnimating];
     [self _beginIgnoringDocumentsDirectoryUpdates];
     OUIInteractionLock *lock = [OUIInteractionLock applicationLock];
     
@@ -2955,6 +3260,8 @@ static UIImage *ImageForScope(ODSScope *scope) {
         [self _performDelayedItemPropagationWithCompletionHandler:^{
             [lock unlock];
             [self clearSelection:YES];
+            
+            [self.activityIndicator stopAnimating];
             
             for (NSError *error in errorsOrNil)
                 OUI_PRESENT_ALERT_FROM(error, self);
@@ -2971,6 +3278,8 @@ static UIImage *ImageForScope(ODSScope *scope) {
 {
     NSSet *items = self.selectedItems;
     
+    [self.activityIndicator startAnimating];
+    
     [self _beginIgnoringDocumentsDirectoryUpdates];
     OUIInteractionLock *lock = [OUIInteractionLock applicationLock];
     
@@ -2982,6 +3291,7 @@ static UIImage *ImageForScope(ODSScope *scope) {
                 [lock unlock];
                 for (NSError *error in errorsOrNil)
                     OUI_PRESENT_ALERT_FROM(error, self);
+                [self.activityIndicator stopAnimating];
                 return;
             }
             
@@ -2995,6 +3305,8 @@ static UIImage *ImageForScope(ODSScope *scope) {
                 // In case only a portion of the moves worked
                 for (NSError *error in errorsOrNil)
                     OUI_PRESENT_ALERT_FROM(error, self);
+                
+                [self.activityIndicator stopAnimating];
             }];
         }];
     }];
@@ -3055,34 +3367,48 @@ static UIImage *ImageForScope(ODSScope *scope) {
     if (_filteredItems.count > 0)
         return nil; // Not empty
     
-    if (!_emptyOverlayView) {
+    if (_emptyOverlayView == nil)
         _emptyOverlayView = [self newEmptyOverlayView];
-    }
+
     return _emptyOverlayView;
 }
 
 - (OUIEmptyOverlayView *)newEmptyOverlayView;
 {
-    OUIEmptyOverlayView *newEmptyOverlayView = nil;
-    
+    NSString *buttonTitle;
+    NSString *buttonMessage;
+    void (^buttonAction)(void) = NULL;
+
     if (![_documentStore.scopes containsObjectIdenticalTo:_documentScope]) {
-        NSString *message = NSLocalizedStringFromTableInBundle(@"This Cloud Account no longer exists.", @"OmniUIDocument", OMNI_BUNDLE, @"empty picker because of removed account text");
-        newEmptyOverlayView = [OUIEmptyOverlayView overlayViewWithMessage:message buttonTitle:nil action:nil];
-    } else if (!_emptyOverlayView) {
-        NSString *buttonTitle;
-        if (_documentScope.isExternal) {
-            buttonTitle = NSLocalizedStringFromTableInBundle(@"Tap on the + in the toolbar to add a document stored on iCloud Drive or provided by another app.", @"OmniUIDocument", OMNI_BUNDLE, @"empty picker text for Other Documents");
+        buttonMessage = NSLocalizedStringFromTableInBundle(@"This Cloud Account no longer exists.", @"OmniUIDocument", OMNI_BUNDLE, @"empty picker because of removed account text");
+    } else {
+
+        BOOL isExternalScope = _documentScope.isExternal;
+        if (isExternalScope) {
+            buttonTitle = NSLocalizedStringFromTableInBundle(@"Open a document to add it to this view.", @"OmniUIDocument", OMNI_BUNDLE, @"empty picker text for Recent Documents");
+            buttonAction = ^{
+                [[OUIDocumentAppController controller] openDocumentFromExternalContainer:nil];
+            };
         } else {
-            buttonTitle = NSLocalizedStringFromTableInBundle(@"Tap here, or on the + in the toolbar, to add a document.", @"OmniUIDocument", OMNI_BUNDLE, @"empty picker button text");
+            __weak OUIDocumentPickerViewController *weakSelf = self;
+            buttonAction = ^{
+                [weakSelf newDocument:nil];
+            };
+
+            OUIDocumentPickerFilter *filter = [OUIDocumentPickerViewController selectedFilterForPicker:self.documentPicker];
+            if (OFISEQUAL(filter.identifier, ODSDocumentPickerFilterPlugInIdentifier)) {
+                buttonMessage = NSLocalizedStringFromTableInBundle(@"When plug-ins are installed, they will appear here.", @"OmniUIDocument", OMNI_BUNDLE, @"empty picker button text");
+                buttonAction = NULL;
+            } else if (OFISEQUAL(filter.identifier, ODSDocumentPickerFilterTemplateIdentifier)) {
+                buttonTitle = NSLocalizedStringFromTableInBundle(@"Tap here, or on the + in the toolbar, to add a custom template.", @"OmniUIDocument", OMNI_BUNDLE, @"empty picker button text");
+            } else {
+                buttonTitle = NSLocalizedStringFromTableInBundle(@"Tap here, or on the + in the toolbar, to add a document.", @"OmniUIDocument", OMNI_BUNDLE, @"empty picker button text");
+            }
         }
 
-        __weak OUIDocumentPickerViewController *weakSelf = self;
-        newEmptyOverlayView = [OUIEmptyOverlayView overlayViewWithMessage:nil buttonTitle:buttonTitle action:^{
-            [weakSelf newDocument:nil];
-        }];
     }
-    
-    return newEmptyOverlayView;
+    UIColor *fontColor = buttonAction != NULL ? [[OUIDocumentAppController controller] emptyOverlayViewTextColor] : [UIColor colorWithWhite:0.0 alpha:0.6667];
+    return [OUIEmptyOverlayView overlayViewWithMessage:buttonMessage buttonTitle:buttonTitle customFontColor:fontColor action:buttonAction];
 }
 
 - (void)_updateEmptyViewControlVisibility;
@@ -3091,8 +3417,16 @@ static UIImage *ImageForScope(ODSScope *scope) {
         return;  // in this situation, our constraints would be wrong
     }
     OUIEmptyOverlayView *emptyOverlayView = [self emptyOverlayView];
-    
-    if (!emptyOverlayView) {
+    [self _setEmptyOverlayView:emptyOverlayView];
+}
+
+- (void)_setEmptyOverlayView:(OUIEmptyOverlayView *)emptyOverlayView;
+{
+    if (!self.viewIfLoaded.window) {
+        return;  // in this situation, our constraints would be wrong
+    }
+
+    if (emptyOverlayView == nil) {
         // We shouldn't be displaying one now, let's make sure to remove one if we have one already.
         if (_emptyOverlayView && _emptyOverlayView.superview) {
             _removeEmptyOverlayViewAndConstraints(self);
@@ -3190,12 +3524,12 @@ static void _removeEmptyOverlayViewAndConstraints(OUIDocumentPickerViewControlle
 
     _filteredItems = [[NSSet alloc] initWithSet:newItems];
 
-    if (_ignoreDocumentsDirectoryUpdates == 0) {
+    if (_ignoreDocumentsDirectoryUpdates == 0 && self.isViewLoaded) {
         [self _propagateItems:_filteredItems toScrollView:_mainScrollView withCompletionHandler:nil];
         [self _updateToolbarItemsEnabledness];
         [self _updateEmptyViewControlVisibility];
     }
-}
+} 
 
 - (void)_explicitlyRemoveItems:(NSSet *)items;
 {

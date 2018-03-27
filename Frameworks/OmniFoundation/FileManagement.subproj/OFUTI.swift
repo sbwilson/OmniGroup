@@ -1,4 +1,4 @@
-// Copyright 2015-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2015-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -30,12 +30,20 @@ public struct UTI {
 
     public static let Zip = UTI("com.pkware.zip-archive") // This is the base type for public.zip-archive, but the latter defines a 'zip' extension, while this is usable for zip-formatted files that don't use that extension.
 
+    public static let UTF8PlainText = UTI(kUTTypeUTF8PlainText as String)
+    public static let PlainText = UTI(kUTTypePlainText as String)
+
     public static func fileType(forFileURL fileURL:URL, preferringNative:Bool = true) throws -> UTI {
         var error:NSError?
         if let rawFileType = OFUTIForFileURLPreferringNative(fileURL, &error) {
             return UTI(rawFileType)
         }
-        throw error!
+        if let error_ = error {
+            throw error_
+        } else {
+            assertionFailure("Should fill out the error")
+            throw NSError(domain: "UTI", code: 0) // some unknown error
+        }
     }
 
     public static func fileType(forPathExtension pathExtension:String, isDirectory:Bool?, preferringNative:Bool = true) throws -> UTI {
@@ -68,6 +76,33 @@ public struct UTI {
         self.rawFileType = fileType
     }
 
+    public static func fileTypePreperringNative(_ fileExtension: String) -> String? {
+        if let uti = try? fileType(forPathExtension: fileExtension, isDirectory: nil, preferringNative: true) {
+            return uti.rawFileType
+        }
+
+        return nil
+    }
+
+    public static func conforms(_ fileType: String?, to uti: String) -> Bool {
+        guard let fileType = fileType else { return false }
+
+        return UTTypeConformsTo(fileType as NSString, uti as NSString)
+    }
+
+    public static func conforms(_ fileType: String?, toAnyOf types: [String]) -> Bool {
+        guard let fileType = fileType else { return false }
+
+        if types.contains(fileType) {
+            return true // Avoid eventually calling UTTypeConformsTo when possible.
+        }
+        for uti in types {
+            if conforms(fileType, to: uti) {
+                return true
+            }
+        }
+        return false
+    }
     // NOTE: We could define the typical '~=' pattern comparison operator, but have chosen not to, since the two types passed in are the same. This would make it too easy to swap the order of the arguments to the operator and not be checking the desire condition.
 
 
@@ -76,7 +111,7 @@ public struct UTI {
         return UTTypeConformsTo(self.rawFileType as CFString, otherUTI.rawFileType as CFString)
     }
 
-    public func conformsToAny<T>(_ otherUTIs:T) -> Bool where T : Sequence, T.Iterator.Element == UTI {
+    public func conformsToAny<T>(_ otherUTIs:T) -> Bool where T : Sequence, T.Element == UTI {
         for e in otherUTIs {
             if self.conformsTo(e) {
                 return true

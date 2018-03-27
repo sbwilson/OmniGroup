@@ -31,6 +31,15 @@
 /* abbreviated string for hertz format */
 "%u Hz" = "%u Hz";
 
+/* summary text - document is encrypted using a password */
+"<Encryption: A password is set>" = "密码";
+
+/* summary text - document is not encrypted */
+"<Encryption: None>" = "无";
+
+/* summary text - document is encrypted using one or more public keys */
+"<Encryption: using %u key(s)>" = "%u 个键";
+
 /* approximate time interval: more than one hour */
 "about %.1f hours" = "大约 %.1f 小时";
 
@@ -56,15 +65,15 @@
 "Bundle requires additional software" = "包要求附加软件";
 
 /* compression error reason */
-"bzip2 library returned error code %d when finishing compression. %s." = "bzip2 资源库在完成压缩时返回错误代码 %1$d。%2$s。";
+"bzip2 library returned error code %d when finishing compression. %s." = "bzip2 资源库在完成压缩时返回错误代码 %1$d。 %2$s。";
 
 /* decompression error reason */
-"bzip2 library returned error code %d when reading data. %s." = "bzip2 资源库在读取数据时返回错误代码 %1$d。%2$s。";
+"bzip2 library returned error code %d when reading data. %s." = "bzip2 资源库在读取数据时返回错误代码 %1$d。 %2$s。";
 
 /* compression error reason */
-"bzip2 library returned error code %d when writing data. %s." = "bzip2 资源库在写入数据时返回错误代码 %1$d。%2$s。";
+"bzip2 library returned error code %d when writing data. %s." = "bzip2 资源库在写入数据时返回错误代码 %1$d。 %2$s。";
 
-/* OFMLockfile recovery option */
+/* OFLockFile recovery option */
 "Cancel" = "取消";
 
 /* error recovery option */
@@ -83,8 +92,11 @@
 
 "Could not create directory" = "无法创建目录";
 
+/* Provisioning profile parsing error general description */
+"Could not parse entitlements from embedded provisioning profile" = "无法从嵌入式配置文件解析权限";
+
 /* time span formatter span */
-"d" = "d";
+"d" = "天";
 
 /* time span formatter span */
 "day" = "天";
@@ -95,8 +107,41 @@
 /* invalid bundle reason */
 "Duplicate bundle name" = "复制包的名称";
 
+/* Error message when trying to use an elliptic-curve key on a MacOS or iOS version that does not support them */
+"EC public keys are not usable on this OS version" = "EC 公共密钥在该操作系统版本上不能使用";
+
+/* time span formatter span - DO NOT add leading or trailing whitespace */
+"ed" = "已用天";
+
+/* time span formatter span - DO NOT add leading or trailing whitespace */
+"eh" = "已用小时";
+
 /* exception reason */
-"Element '%@' not allowed at path: %@" = "元素 '%1$@' 不允许以下路径： %2$@";
+"Element '%@' not allowed at path: %@" = "以下路径不允许元素“%1$@”：%2$@";
+
+/* time span formatter span - DO NOT add leading or trailing whitespace */
+"em" = "已用分钟";
+
+/* Provisioning profile parsing error reason – invalid PKCS#7 file */
+"Embedded provisioning profile is not a valid PKCS#7 archive" = "嵌入式配置文件不是有效的 PKCS＃7 归档文件";
+
+/* Provisioning profile parsing error reason – no embedded.mobileprovision file */
+"Embedded provisioning profile not found" = "找不到嵌入式配置文件";
+
+/* Provisioning profile parsing error reason – embedded.mobileprovision unreadable */
+"Embedded provisioning profile not readable" = "嵌入式配置文件不可读";
+
+/* time span formatter span - DO NOT add leading or trailing whitespace */
+"emo" = "已用月";
+
+/* time span formatter span - DO NOT add leading or trailing whitespace */
+"es" = "已用秒";
+
+/* time span formatter span - DO NOT add leading or trailing whitespace */
+"ew" = "已用周";
+
+/* time span formatter span - DO NOT add leading or trailing whitespace */
+"ey" = "已用年";
 
 /* error reason */
 "Failed to create directory for lock file at \"%@\"." = "针对位于“%@”的锁定文件创建目录失败。";
@@ -108,7 +153,7 @@
 "Failed to write lock file.  %@" = "写入锁定文件失败。  %@";
 
 /* time span formatter span */
-"h" = "h";
+"h" = "小时";
 
 /* time span formatter span */
 "hour" = "小时";
@@ -122,8 +167,8 @@
 /* local bundle path readable string */
 "local configuration file" = "本地配置文件";
 
-/* time span formatter span */
-"m" = "m";
+/* time span formatter span (minute) */
+"m" = "分钟";
 
 /* time span formatter span */
 "minute" = "分钟";
@@ -131,8 +176,8 @@
 /* time span formatter span */
 "minutes" = "分钟";
 
-/* time span formatter span */
-"mo" = "mo";
+/* time span formatter span (month) */
+"mo" = "月";
 
 /* time span formatter span */
 "month" = "月";
@@ -146,8 +191,11 @@
 /* invalid bundle reason */
 "Not a valid bundle" = "不是有效的包";
 
-/* OFMLockfile recovery option */
+/* OFLockFile recovery option */
 "Override Lock" = "覆盖锁定";
+
+/* Provisioning profile parsing error reason – invalid plist */
+"PKCS#7 contents of embedded provisioning profile were not a valid plist" = "嵌入式供应配置文件的 PKCS＃7 内容不是有效的 plist";
 
 /* alert message format when clicking on a configuration value URL */
 "Restore \"%@\" to its default value" = "将“%@”还原到默认值";
@@ -156,7 +204,7 @@
 "Restore all internal configuration settings to defaults" = "将所有内部配置设置还原为默认值";
 
 /* time span formatter span */
-"s" = "s";
+"s" = "秒";
 
 /* time span formatter span */
 "second" = "秒";
@@ -167,20 +215,23 @@
 /* alert message format when clicking on a configuration value URL */
 "Set \"%@\" to \"%@\"" = "将“%1$@”设置为“%2$@”";
 
+/* Document decryption error message - a file within the encrypted file wrapper can't be read */
+"The encrypted item \"%@\" is missing or unreadable." = "缺少加密项“%@”或无法读取。";
+
 /* server certificate rejected */
-"The server certificate for \"%@\" does not seem to be valid. This site may not be trustworthy. Would you like to connect anyway?" = "“%@”的服务器证书似乎无效。 此站点不受信任。 是否仍要连接？";
+"The server certificate for \"%@\" does not seem to be valid. This site may not be trustworthy. Would you like to connect anyway?" = "“%@”的服务器证书似乎无效。此站点不受信任。是否仍要连接？";
 
 /* server certificate out of date */
-"The server certificate for \"%@\" has an invalid date. It may be expired, or not yet active. Would you like to connect anyway?" = "“%@”服务器证书的日期无效。 该证书可能已过期，或尚未激活。 是否仍要连接？";
+"The server certificate for \"%@\" has an invalid date. It may be expired, or not yet active. Would you like to connect anyway?" = "“%@”服务器证书的日期无效。该证书可能已过期，或尚未激活。是否仍要连接？";
 
 /* server certificate has unknown root */
-"The server certificate for \"%@\" is not signed by any root server. This site may not be trustworthy. Would you like to connect anyway?" = "“%@”的服务器证书未得到任何根服务器的签名。 此站点不受信任。 是否仍要连接？";
+"The server certificate for \"%@\" is not signed by any root server. This site may not be trustworthy. Would you like to connect anyway?" = "“%@”的服务器证书未得到任何根服务器的签名。此站点不受信任。是否仍要连接？";
 
 /* server certificate not yet valid */
-"The server certificate for \"%@\" is not yet valid. This site may not be trustworthy. Would you like to connect anyway?" = "“%@”的服务器证书无效。 此站点不受信任。 是否仍要连接？";
+"The server certificate for \"%@\" is not yet valid. This site may not be trustworthy. Would you like to connect anyway?" = "“%@”的服务器证书无效。此站点不受信任。是否仍要连接？";
 
 /* server certificate untrusted */
-"The server certificate for \"%@\" is signed by an untrusted root server. This site may not be trustworthy. Would you like to connect anyway?" = "“%@”的服务器证书由不受信任的根服务器签名。 此站点不受信任。 是否仍要连接？";
+"The server certificate for \"%@\" is signed by an untrusted root server. This site may not be trustworthy. Would you like to connect anyway?" = "“%@”的服务器证书由不受信任的根服务器签名。此站点不受信任。是否仍要连接？";
 
 /* alert message header when clicking on a configuration value URL */
 "This configuration link will make the following changes:" = "本配置链接会进行以下更改：";
@@ -209,14 +260,28 @@
 /* error description */
 "Unable to lock document." = "不能锁定文稿。";
 
+/* Document decryption error - unexpected content-type found while unwrapping a Cryptographic Message Syntax object
+   Document decryption error - unknown content-type found while unwrapping a Cryptographic Message Syntax object */
+
+"Unexpected CMS content-type" = "未预期的 CMS 内容类型";
+
+/* error message - CMS object has an unknown algorithm identifier for compression of its content */
+"Unknown compression algorithm" = "未知压缩算法";
+
+/* Error message when a CMS KeyTransport algorithm is not recognized */
+"Unknown public key algorithm" = "未知的公开密钥算法";
+
 /* Name used for unknown algorithm (instead of RSA, DSA, ECDH, etc.) */
 "Unknown(cryptographic algorithm)" = "未知的";
 
 /* decompression error reason */
 "unrecognized compression format." = "无法识别的压缩格式。";
 
+/* error message - CMS object has an unknown algorithm identifier for encryption of its content */
+"Unsupported encryption algorithm" = "不支持的加密算法";
+
 /* time span formatter span */
-"w" = "w";
+"w" = "周";
 
 /* error description */
 "Warning encountered while loading XML." = "载入 XML 时遇到警告。";
@@ -228,7 +293,7 @@
 "weeks" = "周";
 
 /* time span formatter span */
-"y" = "y";
+"y" = "年";
 
 /* time span formatter span */
 "year" = "年";

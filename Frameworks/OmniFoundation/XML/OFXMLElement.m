@@ -1,4 +1,4 @@
-// Copyright 2003-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2003-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -156,7 +156,7 @@ static NSString * _Nullable LastAttributeName(OFXMLElement *self)
     return self->_attribute.single.name;
 }
 
-- initWithName:(NSString *)name attributeOrder:(nullable NSMutableArray *)attributeOrder attributes:(nullable NSMutableDictionary *)attributes; // RECIEVER TAKES OWNERSHIP OF attributeOrder and attributes!
+- (instancetype)initWithName:(NSString *)name attributeOrder:(nullable NSMutableArray *)attributeOrder attributes:(nullable NSMutableDictionary *)attributes; // RECIEVER TAKES OWNERSHIP OF attributeOrder and attributes!
 {
     self = [super init];
 
@@ -176,7 +176,7 @@ static NSString * _Nullable LastAttributeName(OFXMLElement *self)
     return self;
 }
 
-- initWithName:(NSString *)name attributeName:(NSString *)attributeName attributeValue:(NSString *)attributeValue;
+- (instancetype)initWithName:(NSString *)name attributeName:(NSString *)attributeName attributeValue:(NSString *)attributeValue;
 {
     self = [super init];
     
@@ -190,7 +190,7 @@ static NSString * _Nullable LastAttributeName(OFXMLElement *self)
     return self;
 }
 
-- initWithName:(NSString *)name;
+- (instancetype)initWithName:(NSString *)name;
 {
     return [self initWithName:name attributeOrder:nil attributes:nil];
 }
@@ -501,7 +501,11 @@ static void ApplyBlock(OFXMLElement *self, void (^block)(id child))
         }
     } else if (self->_child.single) {
         id child = self->_child.single;
-        block(child);
+        if ([child isKindOfClass:[OFXMLElement class]]) {
+            ApplyBlock(child, block);
+        } else {
+            block(child);
+        }
     }
 }
 
@@ -520,7 +524,18 @@ static void ApplyBlock(OFXMLElement *self, void (^block)(id child))
     return result;
 }
 
-- (nullable NSArray *)attributeNames;
+- (NSUInteger)attributeCount;
+{
+    if (_multipleAttributes) {
+        return [_attribute.multiple.order count];
+    }
+    if (_attribute.single.name) {
+        return 1;
+    }
+    return 0;
+}
+
+- (nullable NSArray<NSString *> *)attributeNames;
 {
     if (_multipleAttributes) {
         return _attribute.multiple.order;
@@ -762,6 +777,30 @@ static void ApplyBlock(OFXMLElement *self, void (^block)(id child))
     }
 }
 
+- (void)applyBlockToAllChildren:(void (^ NS_NOESCAPE)(id child))applierBlock;
+{
+    OBPRECONDITION(applierBlock != nil);
+    
+    applierBlock(self);
+    
+    if (_multipleChildren) {
+        for (id child in _child.multiple) {
+            if ([child isKindOfClass:[OFXMLElement class]]) {
+                [child applyBlockToAllChildren:applierBlock];
+            } else {
+                applierBlock(child);
+            }
+        }
+    } else if (_child.single) {
+        id child = _child.single;
+        if ([child isKindOfClass:[OFXMLElement class]]) {
+            [child applyBlockToAllChildren:applierBlock];
+        } else {
+            applierBlock(child);
+        }
+    }
+}
+
 - (nullable NSData *)xmlDataAsFragment:(NSError **)outError; // Mostly useful for debugging since this assumes no whitespace is important
 {
     OFXMLWhitespaceBehavior *whitespace = [[OFXMLWhitespaceBehavior alloc] init];
@@ -812,7 +851,8 @@ static void ApplyBlock(OFXMLElement *self, void (^block)(id child))
 
         if (value) {
             OFXMLBufferAppendUTF8CString(xml, "=\"");
-            NSString *quotedString = OFXMLCreateStringWithEntityReferencesInCFEncoding(value, OFXMLBasicEntityMask, nil, encoding);
+            // OPML includes user text in attributes, which may contain newlines, which should be converted to &#10;.
+            NSString *quotedString = OFXMLCreateStringWithEntityReferencesInCFEncoding(value, OFXMLBasicEntityMask | OFXMLNewlineEntityMask, @"&#10;", encoding);
             OFXMLBufferAppendString(xml, (__bridge CFStringRef)quotedString);
             [quotedString release];
             OFXMLBufferAppendUTF8CString(xml, "\"");

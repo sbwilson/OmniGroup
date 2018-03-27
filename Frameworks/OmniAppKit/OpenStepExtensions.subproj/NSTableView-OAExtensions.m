@@ -1,4 +1,4 @@
-// Copyright 1997-2016 Omni Development, Inc. All rights reserved.
+// Copyright 1997-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -48,12 +48,12 @@ static NSIndexSet * _Nullable OATableViewRowsInCurrentDrag = nil;
 // you'd think this should be instance-specific, but it doesn't have to be -- only one drag can be happening at a time.
 
 
-+ (void)didLoad;
-{
+OBDidLoad(^{
+    Class self = [NSTableView class];
     originalTextDidEndEditing = (typeof(originalTextDidEndEditing))OBReplaceMethodImplementationWithSelector(self, @selector(textDidEndEditing:), @selector(_replacementTextDidEndEditing:));
     
     originalDragImageForRows = (typeof(originalDragImageForRows))OBReplaceMethodImplementationWithSelector(self, @selector(dragImageForRowsWithIndexes:tableColumns:event:offset:), @selector(_replacement_dragImageForRowsWithIndexes:tableColumns:event:offset:));
-}
+});
 
 
 // NSTableView method replacements
@@ -385,21 +385,25 @@ static NSIndexSet * _Nullable OATableViewRowsInCurrentDrag = nil;
 
 - (IBAction)delete:(nullable id)sender;
 {
-    if ([self.dataSource respondsToSelector:@selector(delete:)])
-        [(id)self.dataSource delete:sender];
-    else if ([self.delegate respondsToSelector:@selector(delete:)])
-        [(id)self.delegate delete:sender];
+    id<NSTableViewDataSource> dataSource = self.dataSource;
+    id<NSTableViewDelegate> delegate = self.delegate;
+    
+    if ([dataSource respondsToSelector:@selector(delete:)])
+        [(id)dataSource delete:sender];
+    else if ([delegate respondsToSelector:@selector(delete:)])
+        [(id)delegate delete:sender];
     else
         [self deleteBackward:sender];
 }
 
 - (IBAction)cut:(nullable id)sender;
 {
-    id <NSTableViewDataSource> dataSource = self.dataSource;
+    id<NSTableViewDataSource> dataSource = self.dataSource;
+    id<NSTableViewDelegate> delegate = self.delegate;
     if ([dataSource respondsToSelector:@selector(cut:)]) {
         [(id)dataSource cut:sender];
-    } else if ([self.delegate respondsToSelector:@selector(cut:)]) {
-        [(id)self.delegate cut:sender];
+    } else if ([delegate respondsToSelector:@selector(cut:)]) {
+        [(id)delegate cut:sender];
     } else {
         if ([self _copyToPasteboard:[NSPasteboard generalPasteboard]])
             [self delete:sender];
@@ -408,10 +412,13 @@ static NSIndexSet * _Nullable OATableViewRowsInCurrentDrag = nil;
 
 - (IBAction)copy:(nullable id)sender;
 {
-    if ([self.dataSource respondsToSelector:@selector(copy:)]) {
-        [(id)self.dataSource copy:sender];
-    } else if ([self.delegate respondsToSelector:@selector(copy:)]) {
-        [(id)self.delegate copy:sender];
+    id<NSTableViewDataSource> dataSource = self.dataSource;
+    id<NSTableViewDelegate> delegate = self.delegate;
+    
+    if ([dataSource respondsToSelector:@selector(copy:)]) {
+        [(id)dataSource copy:sender];
+    } else if ([delegate respondsToSelector:@selector(copy:)]) {
+        [(id)delegate copy:sender];
     } else {
         [self _copyToPasteboard:[NSPasteboard generalPasteboard]];
     }
@@ -419,10 +426,13 @@ static NSIndexSet * _Nullable OATableViewRowsInCurrentDrag = nil;
 
 - (IBAction)paste:(nullable id)sender;
 {
-    if ([self.dataSource respondsToSelector:@selector(paste:)]) {
-        [(id)self.dataSource paste:sender];
-    } else if ([self.delegate respondsToSelector:@selector(paste:)]) {
-        [(id)self.delegate paste:sender];
+    id<NSTableViewDataSource> dataSource = self.dataSource;
+    id<NSTableViewDelegate> delegate = self.delegate;
+    
+    if ([dataSource respondsToSelector:@selector(paste:)]) {
+        [(id)dataSource paste:sender];
+    } else if ([delegate respondsToSelector:@selector(paste:)]) {
+        [(id)delegate paste:sender];
     } else {
         if ([self _dataSourceHandlesPaste])
             [self _pasteFromPasteboard:[NSPasteboard generalPasteboard]];
@@ -447,20 +457,20 @@ static NSIndexSet * _Nullable OATableViewRowsInCurrentDrag = nil;
 
     BOOL (^validateMenuItem)(NSMenuItem *item) = ^BOOL(NSMenuItem *menuItem) {
         SEL action = menuItem.action;
+        id<NSTableViewDataSource> dataSource = self.dataSource;
+        id<NSTableViewDelegate> delegate = self.delegate;
 
-        if ([self.dataSource respondsToSelector:action]) {
-            if ([self.dataSource respondsToSelector:@selector(validateMenuItem:)]) {
-                id dataSource = self.dataSource;
-                return [dataSource validateMenuItem:menuItem];
+        if ([dataSource respondsToSelector:action]) {
+            if ([dataSource respondsToSelector:@selector(validateMenuItem:)]) {
+                return [(id)dataSource validateMenuItem:menuItem];
             } else {
                 return YES;
             }
         }
         
-        if ([self.delegate respondsToSelector:action] && [self.delegate respondsToSelector:@selector(validateMenuItem:)]) {
-            if ([self.dataSource respondsToSelector:@selector(validateMenuItem:)]) {
-                id delegate = self.delegate;
-                return [delegate validateMenuItem:menuItem];
+        if ([delegate respondsToSelector:action] && [delegate respondsToSelector:@selector(validateMenuItem:)]) {
+            if ([dataSource respondsToSelector:@selector(validateMenuItem:)]) {
+                return [(id)delegate validateMenuItem:menuItem];
             } else {
                 return YES;
             }
@@ -509,10 +519,13 @@ static NSIndexSet * _Nullable OATableViewRowsInCurrentDrag = nil;
 
 - (IBAction)duplicate:(nullable id)sender; // duplicate == copy + paste (but it doesn't use the general pasteboard)
 {
-    if ([self.dataSource respondsToSelector:@selector(duplicate:)]) {
-        [(id)self.dataSource duplicate:sender];
-    } else if ([self.delegate respondsToSelector:@selector(duplicate:)]) {
-        [(id)self.delegate duplicate:sender];
+    id<NSTableViewDataSource> dataSource = self.dataSource;
+    id<NSTableViewDelegate> delegate = self.delegate;
+    
+    if ([dataSource respondsToSelector:@selector(duplicate:)]) {
+        [(id)dataSource duplicate:sender];
+    } else if ([delegate respondsToSelector:@selector(duplicate:)]) {
+        [(id)delegate duplicate:sender];
     } else {
         NSPasteboard *tempPasteboard = [NSPasteboard pasteboardWithUniqueName];
         if ([self _copyToPasteboard:tempPasteboard] && [self _dataSourceHandlesPaste])
@@ -530,8 +543,9 @@ static NSIndexSet * _Nullable OATableViewRowsInCurrentDrag = nil;
 {
     // We get NSDragOperationDelete now for dragging to the Trash.
     if (operation == NSDragOperationDelete && OATableViewRowsInCurrentDrag != nil) {
-        if ([self.dataSource respondsToSelector:@selector(tableView:deleteRowsAtIndexes:)]) {
-            [(id <OAExtendedTableViewDataSource>)self.dataSource tableView:self deleteRowsAtIndexes:OATableViewRowsInCurrentDrag];
+        id<NSTableViewDataSource> dataSource = self.dataSource;
+        if ([dataSource respondsToSelector:@selector(tableView:deleteRowsAtIndexes:)]) {
+            [(id <OAExtendedTableViewDataSource>)dataSource tableView:self deleteRowsAtIndexes:OATableViewRowsInCurrentDrag];
             [self reloadData];
         }
     }
@@ -612,7 +626,13 @@ static NSIndexSet * _Nullable OATableViewRowsInCurrentDrag = nil;
         }
     } else {
         id <NSTableViewDataSource> dataSource = self.dataSource;
-        if (self.numberOfSelectedRows > 0 && [dataSource respondsToSelector:@selector(tableView:writeRowsWithIndexes:toPasteboard:)]) {
+        if (self.numberOfSelectedRows == 0) {
+            return NO;
+        }
+        if ([dataSource respondsToSelector:@selector(tableView:pasteboardWriterForRow:)]) {
+            return YES;
+        }
+        if ([dataSource respondsToSelector:@selector(tableView:writeRowsWithIndexes:toPasteboard:)]) {
             return YES;
         }
     }
@@ -625,18 +645,50 @@ static NSIndexSet * _Nullable OATableViewRowsInCurrentDrag = nil;
     if ([self isKindOfClass:[NSOutlineView class]]) {
         NSOutlineView *outlineView = (id)self;
         id <NSOutlineViewDataSource> dataSource = outlineView.dataSource;
-        if (self.numberOfSelectedRows > 0 && [dataSource respondsToSelector:@selector(outlineView:writeItems:toPasteboard:)]) {
-            return [dataSource outlineView:outlineView writeItems:[outlineView selectedItems] toPasteboard:pasteboard];
-        } else {
+        if (self.numberOfSelectedRows == 0) {
             return NO;
         }
+        if ([dataSource respondsToSelector:@selector(outlineView:pasteboardWriterForItem:)]) {
+            NSMutableArray *items = [NSMutableArray array];
+            [[outlineView selectedItems] enumerateObjectsUsingBlock:^(id  item, NSUInteger idx, BOOL * _Nonnull stop) {
+                id <NSPasteboardWriting> writing = [dataSource outlineView:outlineView pasteboardWriterForItem:item];
+                if (writing) {
+                    [items addObject:writing];
+                }
+            }];
+            if ([items count] == 0) {
+                return NO;
+            }
+            [pasteboard prepareForNewContentsWithOptions:0];
+            return [pasteboard writeObjects:items];
+        }
+        if ([dataSource respondsToSelector:@selector(outlineView:writeItems:toPasteboard:)]) {
+            return [dataSource outlineView:outlineView writeItems:[outlineView selectedItems] toPasteboard:pasteboard];
+        }
+        return NO;
     } else {
         id <NSTableViewDataSource> dataSource = self.dataSource;
-        if (self.numberOfSelectedRows > 0 && [dataSource respondsToSelector:@selector(tableView:writeRowsWithIndexes:toPasteboard:)]) {
-            return [dataSource tableView:self writeRowsWithIndexes:[self selectedRowIndexes] toPasteboard:pasteboard];
-        } else {
+        if (self.numberOfSelectedRows == 0) {
             return NO;
         }
+        if ([dataSource respondsToSelector:@selector(tableView:pasteboardWriterForRow:)]) {
+            NSMutableArray *items = [NSMutableArray array];
+            [[self selectedRowIndexes] enumerateIndexesUsingBlock:^(NSUInteger row, BOOL * _Nonnull stop) {
+                id <NSPasteboardWriting> writing = [dataSource tableView:self pasteboardWriterForRow:row];
+                if (writing) {
+                    [items addObject:writing];
+                }
+            }];
+            if ([items count] == 0) {
+                return NO;
+            }
+            [pasteboard prepareForNewContentsWithOptions:0];
+            return [pasteboard writeObjects:items];
+        }
+        if ([dataSource respondsToSelector:@selector(tableView:writeRowsWithIndexes:toPasteboard:)]) {
+            return [dataSource tableView:self writeRowsWithIndexes:[self selectedRowIndexes] toPasteboard:pasteboard];
+        }
+        return NO;
     }
 }
 
@@ -679,16 +731,18 @@ static NSIndexSet * _Nullable OATableViewRowsInCurrentDrag = nil;
 
 - (BOOL)_shouldShowDragImageForRow:(NSInteger)row;
 {
-    if ([self.dataSource respondsToSelector:@selector(tableView:shouldShowDragImageForRow:)])
-        return [(id <OAExtendedTableViewDataSource>)self.dataSource tableView:self shouldShowDragImageForRow:row];
+    id<NSTableViewDataSource> dataSource = self.dataSource;
+    if ([dataSource respondsToSelector:@selector(tableView:shouldShowDragImageForRow:)])
+        return [(id <OAExtendedTableViewDataSource>)dataSource tableView:self shouldShowDragImageForRow:row];
     else
         return YES;
 }
 
 - (nullable NSArray *)_columnIdentifiersForDragImage;
 {
-    if ([self.dataSource respondsToSelector:@selector(tableViewColumnIdentifiersForDragImage:)]) {
-        NSArray *identifiers = [(id <OAExtendedTableViewDataSource>)self.dataSource tableViewColumnIdentifiersForDragImage:self];
+    id<NSTableViewDataSource> dataSource = self.dataSource;
+    if ([dataSource respondsToSelector:@selector(tableViewColumnIdentifiersForDragImage:)]) {
+        NSArray *identifiers = [(id <OAExtendedTableViewDataSource>)dataSource tableViewColumnIdentifiersForDragImage:self];
         if ([identifiers count] < 1)
             [NSException raise:NSInvalidArgumentException format:@"-tableViewColumnIdentifiersForDragImage: must return at least one valid column identifier"];
         else
@@ -700,8 +754,9 @@ static NSIndexSet * _Nullable OATableViewRowsInCurrentDrag = nil;
 
 - (BOOL)_shouldEditNextItemWhenEditingEnds;
 {
-    if ([self.dataSource respondsToSelector:@selector(tableViewShouldEditNextItemWhenEditingEnds:)])
-        return [(id <OAExtendedTableViewDataSource>)self.dataSource tableViewShouldEditNextItemWhenEditingEnds:self];
+    id<NSTableViewDataSource> dataSource = self.dataSource;
+    if ([dataSource respondsToSelector:@selector(tableViewShouldEditNextItemWhenEditingEnds:)])
+        return [(id <OAExtendedTableViewDataSource>)dataSource tableViewShouldEditNextItemWhenEditingEnds:self];
     else
         return YES;
 }

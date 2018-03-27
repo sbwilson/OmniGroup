@@ -2,26 +2,27 @@
 "%@ of %@" = "%1$@ von %2$@";
 
 /* Default title for the About menu item */
-
 "About %@" = "Über %@";
 
-/* No purchases found message format */
-"All purchases for your current App Store account have been restored, but %@ wasn't one of those purchases." = "Alle Käufe für Ihren aktuellen App Store-Account wurden wiederhergestellt, aber %@ war nicht unter diesen Käufen.";
+/* MultiPane Back button title, when system is compact */
+"Back" = "Zurück";
 
 /* Bold button accessibility label */
 "Bold" = "Fett";
 
-/* 'Buy' button title format. The currency symbol will be provided at run time. */
-"Buy %@" = "Für %@ kaufen";
-
 /* button title
+   button title - password/passphrase prompt
    cancel button title
+   Cancel button title
    toolbar item title */
 
 
 
 
 "Cancel" = "Abbrechen";
+
+/* alert title */
+"Cannot Email Diagnostics" = "Cannot Email Diagnostics";
 
 /* Center Text Align button accessibility label. */
 "Center text align" = "Zentriert ausrichten";
@@ -32,8 +33,8 @@
 /* alert message */
 "Changed the '%@' preference from '%@' to '%@'" = "Einstellung „%1$@“ wurde von „%2$@“ in „%3$@“ geändert";
 
-/* Button title that, when tapped, will display an alert explaining to the user how to check to see if they are eligilbe for a free upgrade. */
-"Check for Free Upgrade" = "Nach kostenlosem Upgrade suchen";
+/* placeholder text - password/passphrase confirmation field in prompt */
+"confirm" = "Bestätigen";
 
 /* Certificate trust alert button title */
 "Continue" = "Fortfahren";
@@ -41,8 +42,8 @@
 /* increment button accessibility label */
 "Decrement" = "Reduzieren";
 
-/* Button is disabled due to purchase restrictions */
-"Disabled" = "Deaktiviert";
+/* Accessibility label for dismissing a sliding overlay pane */
+"Dismiss overlay" = "Überlagerung ausblenden";
 
 /* Done
    toolbar item title */
@@ -52,11 +53,8 @@
 /* toolbar item title */
 "Edit" = "Bearbeiten";
 
-/* Title explaining that user is eligible for discounted upgrade */
-"Eligible for free upgrade" = "Zu kostenlosem Upgrade berechtigt";
-
-/* In app Buy button error title */
-"Error" = "Fehler";
+/* password field placeholder text */
+"enter password" = "Kennwort eingeben";
 
 /* disabled for demo */
 "Feature not enabled for this demo" = "Funktion ist für diese Demo nicht aktiviert";
@@ -64,11 +62,11 @@
 /* Overlay text when zoomed to fit screen */
 "Fit" = "Anpassen";
 
+/* button title - password/passphrase prompt */
+"Help" = "Hilfe";
+
 /* Help and Settings toolbar item accessibility label. */
 "Help and Settings" = "Hilfe und Einstellungen";
-
-/* Purchasing is disabled details */
-"In-App Purchasing is unavailable or not allowed on this device. To enable purchasing, check Restrictions in the Settings app." = "In-App-Käufe sind auf diesem Gerät nicht erhältlich oder nicht zugelassen. Überprüfen Sie zum Aktivieren von Käufen in der App „Einstellungen“ die Option „Einschränkungen“.";
 
 /* increment button accessibility label */
 "Increment" = "Erhöhen";
@@ -91,8 +89,8 @@
 /* Web view error opening URL title. */
 "Link could not be opened. Please check Safari restrictions in Settings." = "Der Link konnte nicht geöffnet werden. Überprüfen Sie in der App „Einstellungen“ die Safari-Einschränkungen.";
 
-/* Button title that will launch safari to give the user more information about getting the disscounted/free upgrade. */
-"More Info" = "Weitere Informationen";
+/* message format */
+"Mail has not been set up on this %@." = "Mail wurde auf diesem %@ nicht konfiguriert.";
 
 /* News menu item
    News view title */
@@ -105,32 +103,27 @@
 /* Full screen note editor title */
 "Note" = "Notiz";
 
+/* Text letting the user know why nothing is showing in the inspector */
+"Nothing to Inspect" = "Nichts zu prüfen";
+
 /* button title
-   Dismiss failed purchase alert
-   Dismiss failed restore alert
-   OK button label
+   button title - password/passphrase prompt
    Web view error opening URL cancel button. */
-
-
-
 
 
 "OK" = "OK";
 
-/* placeholder text */
+/* Menu item to subscribe to Omni's newsletter */
+"Omni Newsletter Signup" = "Omni-Newsletter – Anmeldung";
+
+/* placeholder text - password/passphrase field of login/password prompt */
 "password" = "Kennwort";
 
 /* alert title */
 "Preference changed" = "Einstellung wurde geändert";
 
-/* Purchase failed alert title */
-"Purchase Failed" = "Fehler beim Kaufen";
-
-/* Buy button thank you message */
-"Purchased. Thank you!" = "Gekauft. Vielen Dank!";
-
-/* Purchasing is disabled alert title */
-"Purchasing is Disabled" = "Käufe sind deaktiviert";
+/* button title */
+"Quit" = "Beenden";
 
 /* Redo button title */
 "Redo" = "Wiederholen";
@@ -140,14 +133,8 @@
 
 "Release Notes" = "Versionshinweise";
 
-/* No purchases found title */
-"Restore Complete" = "Wiederherstellung abgeschlossen";
-
-/* Restore failed alert title */
-"Restore Failed" = "Wiederherstellung fehlgeschlagen";
-
-/* 'Restore Purchases' button title string */
-"Restore Purchases" = "Käufe wiederherstellen";
+/* When displaying a generic error, this is the option to report the error. */
+"Report Error" = "Fehler melden";
 
 /* Right Text Align button accessibility label. */
 "Right text align" = "Rechtsbündig ausrichten";
@@ -155,17 +142,14 @@
 /* Search field placeholder text */
 "Search" = "Suchen";
 
+/* Show hint label - password/passphrase prompt */
+"Show hint…" = "Merkhilfe einblenden …";
+
 /* Strike Through button accessibility label */
 "Strike Through" = "Durchgestrichen";
 
-/* Alert description for error loading product information */
-"This device might not be connected to the Internet." = "Dieses Gerät ist möglicherweise nicht mit dem Internet verbunden.";
-
 /* Certificate trust alert button title */
 "Trust Always" = "Immer vertrauen";
-
-/* Alert title for error loading product information */
-"Unable to reach App Store" = "App Store konnte nicht erreicht werden";
 
 /* Underline button accessibility label */
 "Underline" = "Unterstrichen";
@@ -173,7 +157,7 @@
 /* Undo button title */
 "Undo" = "Widerrufen";
 
-/* placeholder text */
+/* placeholder text - username field of login/password prompt */
 "username" = "Benutzername";
 
 /* alert message */

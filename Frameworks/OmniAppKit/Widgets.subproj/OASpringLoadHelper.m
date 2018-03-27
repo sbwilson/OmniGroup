@@ -1,4 +1,4 @@
-// Copyright 2003-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2003-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -83,7 +83,7 @@ RCS_ID("$Id$");
 
     // As of 10.5, Finder's spring-loaded folder preference is in the global domain under com.apple.springing.delay, as seconds.
     NSNumber *springLoadedFolderDelayNumber = [[NSUserDefaults standardUserDefaults] objectForKey:@"com.apple.springing.delay"];
-    if (springLoadedFolderDelayNumber) {
+    if (springLoadedFolderDelayNumber != nil) {
         // Might be a different type than we expect; be careful.
         if ([springLoadedFolderDelayNumber respondsToSelector:@selector(doubleValue)])
             springingDelaySeconds = [springLoadedFolderDelayNumber doubleValue];
@@ -130,12 +130,13 @@ RCS_ID("$Id$");
     NSLog(@"-[%@ %@]", OBShortObjectDescription(self), NSStringFromSelector(_cmd));
 #endif
 
+    id<OASpringLoadHelper> delegate = self.delegate;
     if (flashCount++ == 4) {
         // The spring load action invoked by -springLoadHelperWantsSpringLoad: may leave the target selected, but we don't necessarily want to leave the flash on since the delegate might not actually select the target on spring load (OmniOutliner might focus or expand a row, for example).
-        [self.delegate springLoadHelper:self wantsFlash:NO];
+        [delegate springLoadHelper:self wantsFlash:NO];
         [self _springLoad];
     } else {
-        [self.delegate springLoadHelper:self wantsFlash:!(flashCount % 2 == 0)];
+        [delegate springLoadHelper:self wantsFlash:!(flashCount % 2 == 0)];
     }
 }
 

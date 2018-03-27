@@ -1,4 +1,4 @@
-// Copyright 2004-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2004-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -9,9 +9,12 @@
 
 #import <OmniFoundation/OFObject.h>
 
+NS_ASSUME_NONNULL_BEGIN
+
 @interface OFBindingPoint : OFObject
 
-- (id)initWithObject:(id)object keyPath:(NSString *)keyPath;
+- (instancetype)init NS_UNAVAILABLE;
+- (instancetype)initWithObject:(id)object keyPath:(NSString *)keyPath NS_DESIGNATED_INITIALIZER;
 
 @property(nonatomic, readonly) id object;
 @property(nonatomic, readonly) NSString *keyPath;
@@ -28,10 +31,11 @@ static inline OFBindingPoint * OFBindingPointMake(id object, NSString *keyPath)
 #endif
 }
 
-#define OFValidateKeyPath(object, keyPath) (NO && (object).keyPath ? @#keyPath : @#keyPath)
+#define OFValidateKeyPath(object, keyPath) ((NO && (object).keyPath != 0) ? @#keyPath : @#keyPath)
 #define OFKeyPathWithClass(cls, keyPath) OFValidateKeyPath((cls *)nil, keyPath)
 #define OFKeyPathWithProtocol(protocol, keyPath) OFValidateKeyPath((id <protocol>)nil, keyPath)
 #define OFBindingKeyPath(object, keyPath) OFBindingPointMake(object, OFValidateKeyPath(object, keyPath))
 
 extern BOOL OFBindingPointsEqual(OFBindingPoint *a, OFBindingPoint *b);
 
+NS_ASSUME_NONNULL_END

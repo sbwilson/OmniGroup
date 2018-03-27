@@ -2,26 +2,27 @@
 "%@ of %@" = "%1$@ sur %2$@";
 
 /* Default title for the About menu item */
+"About %@" = "À propos d’%@";
 
-"About %@" = "À propos de %@";
-
-/* No purchases found message format */
-"All purchases for your current App Store account have been restored, but %@ wasn't one of those purchases." = "Tous les achats de votre compte App Store ont été restaurés, mais %@ n’en faisait pas partie.";
+/* MultiPane Back button title, when system is compact */
+"Back" = "Précédent";
 
 /* Bold button accessibility label */
 "Bold" = "Gras";
 
-/* 'Buy' button title format. The currency symbol will be provided at run time. */
-"Buy %@" = "Acheter %@";
-
 /* button title
+   button title - password/passphrase prompt
    cancel button title
+   Cancel button title
    toolbar item title */
 
 
 
 
 "Cancel" = "Annuler";
+
+/* alert title */
+"Cannot Email Diagnostics" = "Cannot Email Diagnostics";
 
 /* Center Text Align button accessibility label. */
 "Center text align" = "Texte centré";
@@ -32,8 +33,8 @@
 /* alert message */
 "Changed the '%@' preference from '%@' to '%@'" = "Préférence “%1$@” modifié de “%2$@” à “%3$@”";
 
-/* Button title that, when tapped, will display an alert explaining to the user how to check to see if they are eligilbe for a free upgrade. */
-"Check for Free Upgrade" = "Vérifier s’il y a une mise à niveau gratuite";
+/* placeholder text - password/passphrase confirmation field in prompt */
+"confirm" = "confirmer";
 
 /* Certificate trust alert button title */
 "Continue" = "Continuer";
@@ -41,8 +42,8 @@
 /* increment button accessibility label */
 "Decrement" = "Diminuer";
 
-/* Button is disabled due to purchase restrictions */
-"Disabled" = "Désactivé";
+/* Accessibility label for dismissing a sliding overlay pane */
+"Dismiss overlay" = "Annuler la superposition";
 
 /* Done
    toolbar item title */
@@ -52,11 +53,8 @@
 /* toolbar item title */
 "Edit" = "Modifier";
 
-/* Title explaining that user is eligible for discounted upgrade */
-"Eligible for free upgrade" = "Mise à niveau gratuite disponible";
-
-/* In app Buy button error title */
-"Error" = "Erreur";
+/* password field placeholder text */
+"enter password" = "taper le mot de passe";
 
 /* disabled for demo */
 "Feature not enabled for this demo" = "Fonction inactive pour cette démo";
@@ -64,11 +62,11 @@
 /* Overlay text when zoomed to fit screen */
 "Fit" = "Ajuster";
 
+/* button title - password/passphrase prompt */
+"Help" = "Aide";
+
 /* Help and Settings toolbar item accessibility label. */
 "Help and Settings" = "Aide et réglages";
-
-/* Purchasing is disabled details */
-"In-App Purchasing is unavailable or not allowed on this device. To enable purchasing, check Restrictions in the Settings app." = "L’achat intégré n’est pas disponible ou autorisé sur cet appareil. Pour activer l’achat, vérifiez les restrictions dans l’app Réglages.";
 
 /* increment button accessibility label */
 "Increment" = "Augmenter";
@@ -91,8 +89,8 @@
 /* Web view error opening URL title. */
 "Link could not be opened. Please check Safari restrictions in Settings." = "Impossible d’ouvrir le lien. Vérifiez les restrictions de Safari dans Réglages.";
 
-/* Button title that will launch safari to give the user more information about getting the disscounted/free upgrade. */
-"More Info" = "En savoir plus";
+/* message format */
+"Mail has not been set up on this %@." = "Mail n'a pas été configuré sur cet %@.";
 
 /* News menu item
    News view title */
@@ -105,32 +103,27 @@
 /* Full screen note editor title */
 "Note" = "Note";
 
+/* Text letting the user know why nothing is showing in the inspector */
+"Nothing to Inspect" = "Rien à inspecter";
+
 /* button title
-   Dismiss failed purchase alert
-   Dismiss failed restore alert
-   OK button label
+   button title - password/passphrase prompt
    Web view error opening URL cancel button. */
-
-
-
 
 
 "OK" = "OK";
 
-/* placeholder text */
+/* Menu item to subscribe to Omni's newsletter */
+"Omni Newsletter Signup" = "Abonnement au bulletin Omni";
+
+/* placeholder text - password/passphrase field of login/password prompt */
 "password" = "mot de passe";
 
 /* alert title */
 "Preference changed" = "Préférence modifiée";
 
-/* Purchase failed alert title */
-"Purchase Failed" = "Échec de l’achat";
-
-/* Buy button thank you message */
-"Purchased. Thank you!" = "Acheté. Merci !";
-
-/* Purchasing is disabled alert title */
-"Purchasing is Disabled" = "L’achat est désactivé";
+/* button title */
+"Quit" = "Quitter";
 
 /* Redo button title */
 "Redo" = "Rétablir";
@@ -140,14 +133,8 @@
 
 "Release Notes" = "Notes sur la version";
 
-/* No purchases found title */
-"Restore Complete" = "Restauration terminée";
-
-/* Restore failed alert title */
-"Restore Failed" = "Échec de la restauration";
-
-/* 'Restore Purchases' button title string */
-"Restore Purchases" = "Restaurer les achats";
+/* When displaying a generic error, this is the option to report the error. */
+"Report Error" = "Signaler une erreur";
 
 /* Right Text Align button accessibility label. */
 "Right text align" = "Texte aligné à droite";
@@ -155,17 +142,14 @@
 /* Search field placeholder text */
 "Search" = "Rechercher";
 
+/* Show hint label - password/passphrase prompt */
+"Show hint…" = "Afficher l’indice…";
+
 /* Strike Through button accessibility label */
 "Strike Through" = "Barré";
 
-/* Alert description for error loading product information */
-"This device might not be connected to the Internet." = "Cet appareil n’est peut-être pas connecté à Internet.";
-
 /* Certificate trust alert button title */
 "Trust Always" = "Toujours faire confiance";
-
-/* Alert title for error loading product information */
-"Unable to reach App Store" = "Impossible de joindre l’App Store.";
 
 /* Underline button accessibility label */
 "Underline" = "Souligné";
@@ -173,7 +157,7 @@
 /* Undo button title */
 "Undo" = "Annuler";
 
-/* placeholder text */
+/* placeholder text - username field of login/password prompt */
 "username" = "nom d’utilisateur";
 
 /* alert message */
@@ -183,7 +167,7 @@
 "You have tapped on a link which will run the following debugging command:\n\n\"%@\"\n\nIf you weren’t instructed to do this by Omni Support Humans, please don’t.\nDo you wish to run this command?" = "Vous avez touché un lien qui exécutera la commande de débogage suivante :\n\n“%@”\n\nSi cela ne vous a pas été recommandé par des techniciens d’assistance Omni, ne le faites pas.\nSouhaitez-vous exécuter cette commande ?";
 
 /* default special URL alert message */
-"You have tapped on an Omni special URL:\n\n\"%@\"\n\nRun this command?" = "Vous avez touché une URL spéciale Omni :\n\n« %@ »\n\nVoulez-vous exécuter cette commande ?";
+"You have tapped on an Omni special URL:\n\n\"%@\"\n\nRun this command?" = "Vous avez touché une URL spéciale Omni :\n\n“%@”\n\nVoulez-vous exécuter cette commande ?";
 
 /* zoom label */
 "Zoom" = "Réduire/agrandir";

@@ -1,4 +1,4 @@
-// Copyright 1997-2016 Omni Development, Inc. All rights reserved.
+// Copyright 1997-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -32,7 +32,7 @@ RCS_ID("$Id$")
 NSString * const OAFlagsChangedNotification = @"OAFlagsChangedNotification";
 NSString * const OAFlagsChangedQueuedNotification = @"OAFlagsChangedNotification (Queued)";
 
-static NSUInteger launchModifierFlags;
+static NSEventModifierFlags launchModifierFlags;
 static BOOL OATargetSelection;
 
 BOOL OATargetSelectionEnabled(void)
@@ -44,6 +44,12 @@ BOOL OATargetSelectionEnabled(void)
 OBDEPRECATED_METHOD(-handleRunException:)
 OBDEPRECATED_METHOD(-handleInitException:)
 OBDEPRECATED_METHOD(-currentRunExceptionPanel)
+
+@interface OAApplication ()
+
+@property (nonatomic, assign) BOOL isTerminating;
+
+@end
 
 @implementation OAApplication
 {
@@ -71,14 +77,24 @@ static NSImage *CautionIcon = nil;
 + (instancetype)sharedApplication;
 {
     static OAApplication *omniApplication = nil;
+    if (omniApplication == nil) {
+        if (OFIsRunningUnitTests()) {
+            // If we are running tests, xctest will look at the test bundle's princial class and create one. If we set the test bundle's class to OAApplication, that means we'll get two instances of OAApplication, one from the xctest and one from NSApplicationMain. If xctest is running standalone w/o a host app, it's fine to have it create an OAApplication since there isn't one otherwise.
+            return [super sharedApplication];
+        }
 
-    if (omniApplication) {
-        OBASSERT([omniApplication isKindOfClass:self]);
-        return omniApplication;
+        Class principalClass = [OFControllingBundle() principalClass];
+        if (principalClass != self) {
+            assert(OBClassIsSubclassOfClass(principalClass, self));
+            return [principalClass sharedApplication]; // Let our intended principal class allocate its shared application
+        } else {
+            __kindof NSApplication *sharedApplication = [super sharedApplication];
+            assert([sharedApplication isKindOfClass:principalClass]); // Someone called +[NSApplication sharedApplication] directly before calling NSApplicationMain() and accidentally allocated the wrong class. Fix by deferring the early call or changing it to +[OAApplication sharedApplication].
+            omniApplication = OB_CHECKED_CAST(OAApplication, sharedApplication);
+            [self _setupOmniApplication]; // We don't call this in -init so because we want to be able to call +sharedApplication
+        }
     }
 
-    omniApplication = OB_CHECKED_CAST(OAApplication, [super sharedApplication]);
-    [self _setupOmniApplication];
     return omniApplication;
 }
 
@@ -187,12 +203,12 @@ static NSArray *flagsChangedRunLoopModes;
 
     @try {
         switch ([event type]) {
-            case NSSystemDefined:
+            case NSEventTypeSystemDefined:
                 if ([event subtype] == OASystemDefinedEvent_MouseButtonsChangedSubType)
                     [self processMouseButtonsChangedEvent:event];
                 [super sendEvent:event];
                 break;
-            case NSFlagsChanged:
+            case NSEventTypeFlagsChanged:
                 [super sendEvent:event];
                 [[NSNotificationCenter defaultCenter] postNotificationName:OAFlagsChangedNotification object:event];
                 if (!flagsChangedRunLoopModes)
@@ -205,10 +221,10 @@ static NSArray *flagsChangedRunLoopModes;
                                                            coalesceMask:NSNotificationCoalescingOnName
                                                                forModes:flagsChangedRunLoopModes];
                 break;
-            case NSLeftMouseDown:
+            case NSEventTypeLeftMouseDown:
             {
                 NSUInteger modifierFlags = [event modifierFlags];
-                BOOL justControlDown = (modifierFlags & NSControlKeyMask) && !(modifierFlags & NSShiftKeyMask) && !(modifierFlags & NSCommandKeyMask) && !(modifierFlags & NSAlternateKeyMask);
+                BOOL justControlDown = (modifierFlags & NSEventModifierFlagControl) && !(modifierFlags & NSEventModifierFlagShift) && !(modifierFlags & NSEventModifierFlagCommand) && !(modifierFlags & NSEventModifierFlagOption);
                 
                 if (justControlDown) {
                     NSView *contentView = [[event window] contentView];
@@ -224,10 +240,10 @@ static NSArray *flagsChangedRunLoopModes;
                 break;
             }
 #ifdef OMNI_ASSERTIONS_ON
-            case NSKeyDown:
+            case NSEventTypeKeyDown:
                 if ([[event charactersIgnoringModifiers] isEqualToString:@"\033"] && [OAViewPicker cancelActivePicker]) {
                     break;
-                } else if ([[event charactersIgnoringModifiers] isEqualToString:@"V"] && [event checkForAllModifierFlags:NSControlKeyMask|NSCommandKeyMask|NSAlternateKeyMask|NSShiftKeyMask without:0]) {
+                } else if ([[event charactersIgnoringModifiers] isEqualToString:@"V"] && [event checkForAllModifierFlags:NSEventModifierFlagControl|NSEventModifierFlagCommand|NSEventModifierFlagOption|NSEventModifierFlagShift without:0]) {
                     NSUInteger windowNumberUnderMouse = [NSWindow windowNumberAtPoint:[NSEvent mouseLocation] belowWindowWithWindowNumber:0];
                     if (windowNumberUnderMouse) {
                         NSWindow *window = [self windowWithWindowNumber:windowNumberUnderMouse];
@@ -269,8 +285,12 @@ BOOL OADebugTargetSelection = NO;
     OBRecordBacktrace(sel_getName(theAction), OBBacktraceBuffer_PerformSelector);
 
     if (OATargetSelection) {
+        NSWindow *keyWindow = [self keyWindow];
+        DEBUG_TARGET_SELECTION(@"Checking for modal panel with target %@, key window %@, is modal %d", OBShortObjectDescription(theTarget), OBShortObjectDescription(keyWindow), [keyWindow isModalPanel]);
+
         // The normal NSApplication version, sadly, uses internal target lookup for the nil case. It should really call -targetForAction:to:from:.
-        if (!theTarget)
+        // The AppKit version of this uses _NSTargetForSendAction() which has fewer restrictions on the nil target case (since it 'knows' it will pick the right thing _objectFromResponderChainWhichRespondsToAction()). Even if we return the exact same result as it would have calculated, it bails when we are in a modal session and have a menu item targetting a view in the modal window. See bug:///136395 (Mac-OmniOutliner Bug: Should allow pasting into the password decryption field)
+        if (!theTarget && ![keyWindow isModalPanel])
             theTarget = [self targetForAction:theAction to:nil from:sender];
     }
     
@@ -391,8 +411,10 @@ static void _applyFullSearch(OAApplication *self, SEL theAction, id theTarget, i
 {
     if (!theAction || !OATargetSelection)
         return [super targetForAction:theAction];
-    else
+    else {
+        DEBUG_TARGET_SELECTION(@"Forwarding -targetForAction: to targetForAction:to:from: for action %@", NSStringFromSelector(theAction));
         return [self targetForAction:theAction to:nil from:nil];
+    }
 }
 
 - (id)targetForAction:(SEL)theAction to:(id)theTarget from:(id)sender;
@@ -460,6 +482,12 @@ static void _applyFullSearch(OAApplication *self, SEL theAction, id theTarget, i
         [super reportException:anException];
 }
 
+- (void)terminate:(id)sender
+{
+    self.isTerminating = YES;
+    [super terminate:sender];
+}
+
 #pragma mark NSResponder subclass
 
 - (void)presentError:(NSError *)error modalForWindow:(NSWindow *)window delegate:(id)delegate didPresentSelector:(SEL)didPresentSelector contextInfo:(void *)contextInfo;
@@ -475,7 +503,13 @@ static void _applyFullSearch(OAApplication *self, SEL theAction, id theTarget, i
         NSBeep();
         return;
     }
-    
+
+    if (self.isTerminating) {
+        // Can’t run a modal error while terminating. This avoids a crash-on-quit.
+        NSLog(@"%s called while terminating with error: %@", __PRETTY_FUNCTION__, error);
+        return;
+    }
+
     // nil/NULL here can crash in the superclass crash trying to build an NSInvocation from this goop.  Let's not.
     if (!delegate) {
         delegate = self;
@@ -529,7 +563,7 @@ static void _applyFullSearch(OAApplication *self, SEL theAction, id theTarget, i
     return [self mouseButtonIsDownAtIndex:2];
 }
 
-- (NSUInteger)launchModifierFlags;
+- (NSEventModifierFlags)launchModifierFlags;
 {
     return launchModifierFlags;
 }
@@ -629,6 +663,16 @@ static void _applyFullSearch(OAApplication *self, SEL theAction, id theTarget, i
     NSBeep();
 }
 
+- (NSString *)helpIndexFilename;
+{
+    return @"index";
+}
+
+- (NSString *)anchorsPlistFilename;
+{
+    return @"anchors";
+}
+
 - (NSURL *)builtInHelpURLForHelpURLString:(NSString *)helpURLString;
 {
     NSBundle *mainBundle = [NSBundle mainBundle];
@@ -636,11 +680,11 @@ static void _applyFullSearch(OAApplication *self, SEL theAction, id theTarget, i
     NSString *helpFolder = [infoDict objectForKey:@"OAHelpFolder"];
 
     if (helpFolder != nil) {
-        NSURL *indexPageURL = [[NSBundle mainBundle] URLForResource:@"index" withExtension:@"html" subdirectory:helpFolder];
+        NSURL *indexPageURL = [[NSBundle mainBundle] URLForResource:[self helpIndexFilename] withExtension:@"html" subdirectory:helpFolder];
         NSURL *targetURL = [NSURL URLWithString:helpURLString relativeToURL:indexPageURL];
 
         if (OFISEQUAL([targetURL scheme], @"anchor")) {
-            NSURL *anchorsPlistURL = [[NSBundle mainBundle] URLForResource:@"anchors" withExtension:@"plist" subdirectory:helpFolder];
+            NSURL *anchorsPlistURL = [[NSBundle mainBundle] URLForResource:[self anchorsPlistFilename] withExtension:@"plist" subdirectory:helpFolder];
             NSDictionary *anchorsDictionary = [NSDictionary dictionaryWithContentsOfURL:anchorsPlistURL];
             NSString *anchorURLString = [anchorsDictionary objectForKey:helpURLString];
             if (anchorURLString == nil) {
@@ -911,7 +955,7 @@ static void _applyFullSearch(OAApplication *self, SEL theAction, id theTarget, i
 {
     // Probably not worth building a hash table for the (likely) low number of documents.
     for (OADocument *document in [self orderedDocuments]) {
-        // Needed so that -identifer on OADocument(Scriptability) doesn't recurse infinitely
+        // Needed so that -identifier on OADocument(Scriptability) doesn't recurse infinitely
         if (document == ignoringDocument)
             continue;
         
@@ -945,9 +989,9 @@ static void _applyFullSearch(OAApplication *self, SEL theAction, id theTarget, i
 
 + (void)_setupOmniApplication;
 {
-    [OBObject self]; // Trigger +[OBPostLoader processClasses]
+    [OBObject self]; // Trigger OBInvokeRegisteredLoadActions()
     
-    // Wait until defaults are registered with OBPostLoader to look this up.
+    // Wait until defaults are registered via OBInvokeRegisteredLoadActions() to look this up.
     OATargetSelection = [[NSUserDefaults standardUserDefaults] boolForKey:@"OATargetSelection"];
 
     // make these images available to client nibs and whatnot (retaining them so they stick around in cache).

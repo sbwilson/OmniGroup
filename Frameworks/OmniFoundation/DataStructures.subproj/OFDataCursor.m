@@ -1,4 +1,4 @@
-// Copyright 1997-2015 Omni Development, Inc. All rights reserved.
+// Copyright 1997-2017 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -417,12 +417,12 @@ SKIP_DATA_OF_TYPE(OFByte, Byte);
 
 - (NSString *)readStringOfLength:(size_t)aLength;
 {
-    NSData *someData;
-    NSString *aString;
-
     ENSURE_ENOUGH_DATA(aLength);
-    someData = [[NSData alloc] initWithBytes:currentPosition length:aLength];
-    aString = [NSString stringWithData:someData encoding:stringEncoding];
+    NSData *someData = [[NSData alloc] initWithBytes:currentPosition length:aLength];
+    NSString *aString = [NSString stringWithData:someData encoding:stringEncoding];
+    if (aString == nil) {
+        (void)[NSString stringEncodingForData:someData encodingOptions:@{NSStringEncodingDetectionSuggestedEncodingsKey: @[@(NSUTF8StringEncoding), @(NSWindowsCP1252StringEncoding)]} convertedString:&aString usedLossyConversion:NULL];
+    }
     [someData release];
     currentPosition += aLength;
     return aString;

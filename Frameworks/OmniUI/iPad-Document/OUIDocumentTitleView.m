@@ -1,4 +1,4 @@
-// Copyright 2010-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -10,89 +10,130 @@
 #import <OmniFoundation/OFBindingPoint.h>
 #import <OmniFileExchange/OFXAccountActivity.h>
 #import <OmniUIDocument/OmniUIDocumentAppearance.h>
+#import <OmniUIDocument/OUIDocumentAppController.h>
 
 RCS_ID("$Id$");
 
-typedef enum{
-    TitleActiveViewsNone,
-    TitleActiveViewsTitleOnly,
-    TitleActiveViewsButtonOnly,
-    TitleActiveViewsAll
-}TitleActiveViews;
-
 @interface OUIDocumentTitleView ()
 
+@property (nonatomic, strong) UIStackView *stackView;
+@property (nonatomic, readwrite, strong) UIButton *closeDocumentButton;
 @property (nonatomic, strong) UIButton *syncButton;
+@property (nonatomic, strong) UIButton *syncBarButtonItemButton;
 @property (nonatomic, strong) UIButton *documentTitleButton;
 @property (nonatomic, strong) UILabel *documentTitleLabel;
-@property BOOL generatedConstraints;
 
-@property (nonatomic, strong) NSMutableArray *buttonOnlyConstraints;
-@property (nonatomic, strong) NSMutableArray *titleOnlyConstraints;
-@property (nonatomic, strong) NSMutableArray *buttonAndTitleConstraints;
-@property (nonatomic, strong) NSArray *activeConstraints;
+@property (nonatomic, assign) BOOL syncButtonShowingActiveState;
+@property (nonatomic, assign) NSTimeInterval syncButtonActivityStartedTimeInterval;
+@property (nonatomic, assign) NSTimeInterval syncButtonLastActivityTimeInterval;
+@property (nonatomic, strong) NSTimer *syncButtonActivityFinishedTimer;
+
+@property (nonatomic, readwrite, strong) UIBarButtonItem *closeDocumentBarButtonItem;
+@property (nonatomic, readwrite, strong) UIBarButtonItem *syncBarButtonItem;
+
 @end
 
 @implementation OUIDocumentTitleView
-{
-    BOOL _syncButtonShowingActiveState;
-    NSTimeInterval _syncButtonActivityStartedTimeInterval;
-    NSTimeInterval _syncButtonLastActivityTimeInterval;
-    NSTimer *_syncButtonActivityFinishedTimer;
-}
 
 static void _commonInit(OUIDocumentTitleView *self)
 {
     self.autoresizingMask = UIViewAutoresizingFlexibleHeight;
-    
+#ifdef DEBUG_kc0
+    self.backgroundColor = [[UIColor redColor] colorWithAlphaComponent:0.1];
+#endif
+
+    NSBundle *bundle = OMNI_BUNDLE;
+
     self->_documentTitleLabel = [[UILabel alloc] init];
     self->_documentTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self->_documentTitleLabel.textAlignment = NSTextAlignmentCenter;
     [self->_documentTitleLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
     [self->_documentTitleLabel setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
-    [self addSubview:self->_documentTitleLabel];
     
     self->_documentTitleButton = [UIButton buttonWithType:UIButtonTypeSystem];
     self->_documentTitleButton.translatesAutoresizingMaskIntoConstraints = NO;
+    self->_documentTitleButton.titleLabel.textAlignment = NSTextAlignmentCenter;
     [self->_documentTitleButton setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
     [self->_documentTitleButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
     [self->_documentTitleButton addTarget:self action:@selector(_documentTitleButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
     self->_documentTitleButton.hidden = YES;
-    self->_documentTitleButton.accessibilityHint = NSLocalizedStringFromTableInBundle(@"Edits the document's title.", @"OmniUIDocument", OMNI_BUNDLE, @"title view edit button item accessibility hint.");
-    
-    [self addSubview:self->_documentTitleButton];
+    self->_documentTitleButton.accessibilityHint = NSLocalizedStringFromTableInBundle(@"Edits the document's title.", @"OmniUIDocument", bundle, @"title view edit button item accessibility hint.");
     
     self->_titleColor = [UIColor blackColor];
     [self _updateTitles];
     
-    self->_syncButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    [self->_syncButton setImage:[UIImage imageNamed:@"OmniPresenceToolbarIcon" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil] forState:UIControlStateNormal];
-    self->_syncButton.translatesAutoresizingMaskIntoConstraints = NO;
-    [self->_syncButton setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-    [self->_syncButton setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
-    self->_syncButton.accessibilityLabel = NSLocalizedStringFromTableInBundle(@"Sync Now", @"OmniUIDocument", OMNI_BUNDLE, @"Presence toolbar item accessibility label.");
-    [self->_syncButton addTarget:self action:@selector(_syncButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
-    self->_syncButton.hidden = YES;
-    [self addSubview:self->_syncButton];
+    self->_syncButton = [self _createSyncButton];
     
-    self.syncBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"OmniPresenceToolbarIcon" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil] style:UIBarButtonItemStylePlain target:self action:@selector(_syncButtonTapped:)];
+    UIImage *closeDocumentImage = [UIImage imageNamed:@"OUIToolbarDocumentClose" inBundle:bundle compatibleWithTraitCollection:nil];
+    self->_closeDocumentButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    [self->_closeDocumentButton setImage:closeDocumentImage forState:UIControlStateNormal];
+    self->_closeDocumentButton.translatesAutoresizingMaskIntoConstraints = NO;
+    [self->_closeDocumentButton setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [self->_closeDocumentButton setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
+    self->_closeDocumentButton.accessibilityLabel = NSLocalizedStringFromTableInBundle(@"Close Document", @"OmniUIDocument", bundle, @"Close Document toolbar item accessibility label.");
+    [self->_closeDocumentButton addTarget:self action:@selector(_closeDocument:) forControlEvents:UIControlEventTouchUpInside];
+    self->_closeDocumentButton.hidden = YES;
+
+    self.closeDocumentBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"OUIToolbarDocumentClose" inBundle:bundle compatibleWithTraitCollection:nil]
+                                     style:UIBarButtonItemStylePlain target:self action:@selector(_closeDocument:)];
+    self.closeDocumentBarButtonItem.accessibilityIdentifier = @"BackToDocuments";
+    
+    self->_syncBarButtonItemButton = [self _createSyncButton];
+    self.syncBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:self->_syncBarButtonItemButton];
 
     self->_hideTitle = YES;
-    self->_generatedConstraints = NO;
+    
+    self->_stackView = [[UIStackView alloc] init];
+    self->_stackView.translatesAutoresizingMaskIntoConstraints = NO;
+    self->_stackView.axis = UILayoutConstraintAxisHorizontal;
+    self->_stackView.alignment = UIStackViewAlignmentCenter;
+    self->_stackView.spacing = 8.0f;
+    [self addSubview:self->_stackView];
 
-    [self setNeedsUpdateConstraints];
-    [self updateConstraintsIfNeeded];
-    
-#if 0 && defined(DEBUG_rachael)
-    self.backgroundColor = [[UIColor purpleColor] colorWithAlphaComponent:0.4];
-    self->_documentTitleButton.backgroundColor = [[UIColor greenColor] colorWithAlphaComponent:0.4];
-    self->_documentTitleLabel.backgroundColor = [[UIColor blueColor] colorWithAlphaComponent:0.4];
-    self->_syncButton.backgroundColor = [[UIColor redColor] colorWithAlphaComponent:0.4];
-#endif
-    
+    [self->_stackView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor].active = YES;
+    [self->_stackView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor].active = YES;
+    [self->_stackView.topAnchor constraintEqualToAnchor:self.topAnchor].active = YES;
+    [self->_stackView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor].active = YES;
+
+    [self->_stackView addArrangedSubview:self->_syncButton];
+    [self->_stackView addArrangedSubview:self->_closeDocumentButton];
+    [self->_stackView addArrangedSubview:self->_documentTitleButton];
+    [self->_stackView addArrangedSubview:self->_documentTitleLabel];
+
+    UIImage *syncImage = [[self class] _syncImage];
     self.frame = (CGRect) {
         .origin = CGPointZero,
-        .size = [self systemLayoutSizeFittingSize:UILayoutFittingCompressedSize]
+        .size = (CGSize) {
+            .width = 0, // Width will be resized via UINavigationBar during its layout.
+            .height = MAX(syncImage.size.height, closeDocumentImage.size.height) // UINavigationBar will never change our size, so we need to set that up here.
+        }
     };
+}
+
++ (UIImage *)_syncImage;
+{
+    static UIImage *syncImage;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        syncImage = [UIImage imageNamed:@"OmniPresenceToolbarIcon" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil];
+    });
+    return syncImage;
+}
+
+- (UIButton *)_createSyncButton;
+{
+    UIImage *syncImage = [[self class] _syncImage];
+    UIButton *syncButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    [syncButton setImage:syncImage forState:UIControlStateNormal];
+    syncButton.imageView.contentMode = UIViewContentModeCenter;
+    syncButton.translatesAutoresizingMaskIntoConstraints = NO;
+    [syncButton setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [syncButton setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
+    syncButton.accessibilityLabel = NSLocalizedStringFromTableInBundle(@"Sync Now", @"OmniUIDocument", OMNI_BUNDLE, @"Presence toolbar item accessibility label.");
+    [syncButton addTarget:self action:@selector(_syncButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
+    syncButton.hidden = YES;
+
+    return syncButton;
 }
 
 - (id)initWithFrame:(CGRect)frame;
@@ -121,14 +162,15 @@ static void _commonInit(OUIDocumentTitleView *self)
     [_syncButtonActivityFinishedTimer invalidate];
 }
 
-#pragma mark - API
-
-@synthesize syncAccountActivity=_syncAccountActivity;
-
-- (OFXAccountActivity *)syncAccountActivity;
-{
-    return _syncAccountActivity;
+- (BOOL)shouldShowCloseDocumentButton {
+    return !self.closeDocumentButton.hidden;
 }
+
+- (void)setShouldShowCloseDocumentButton:(BOOL)shouldShowCloseDocumentButton {
+    self.closeDocumentButton.hidden = !shouldShowCloseDocumentButton;
+}
+
+#pragma mark - API
 
 - (void)setSyncAccountActivity:(OFXAccountActivity *)syncAccountActivity;
 {
@@ -145,24 +187,14 @@ static void _commonInit(OUIDocumentTitleView *self)
     }
 }
 
-@synthesize title=_title;
-
-- (NSString *)title;
-{
-    return _title;
-}
-
 - (void)setTitle:(NSString *)title;
 {
+    if ([_title isEqualToString:title]) {
+        return;
+    }
+    
     _title = title;
     [self _updateTitles];
-}
-
-@synthesize titleCanBeTapped=_titleCanBeTapped;
-
-- (BOOL)titleCanBeTapped;
-{
-    return _titleCanBeTapped;
 }
 
 - (void)setTitleCanBeTapped:(BOOL)flag;
@@ -175,23 +207,10 @@ static void _commonInit(OUIDocumentTitleView *self)
     [self setNeedsLayout];
 }
 
-@synthesize titleColor=_titleColor;
-
-- (UIColor *)titleColor;
-{
-    return _titleColor;
-}
-
 - (void)setTitleColor:(UIColor *)aColor;
 {
     _titleColor = aColor;
     [self _updateTitles];
-}
-
-@synthesize hideTitle = _hideTitle;
-- (BOOL)hideTitle;
-{
-    return _hideTitle;
 }
 
 - (void)setHideTitle:(BOOL)hideTitle;
@@ -199,17 +218,17 @@ static void _commonInit(OUIDocumentTitleView *self)
     _hideTitle = hideTitle;
     [self _updateTitleVisibility];
 }
+
+- (void)setHideSyncButton:(BOOL)hideSyncButton {
+    _hideSyncButton = hideSyncButton;
+    
+    [self _updateSyncButtonIconForAccountActivity];
+}
 #pragma mark - UIView subclass
 
 + (BOOL)requiresConstraintBasedLayout;
 {
     return YES;
-}
-
-- (void)updateConstraints;
-{
-    [self _createConstraintsIfNeeded];
-    [super updateConstraints];
 }
 
 - (CGSize)sizeThatFits:(CGSize)size;
@@ -245,42 +264,15 @@ static void *SyncAccountActivityContext = &SyncAccountActivityContext;
     NSAttributedString *attributedTitle = [[NSAttributedString alloc] initWithString:plainTitle attributes:@{NSForegroundColorAttributeName : _titleColor, NSFontAttributeName : [UIFont boldSystemFontOfSize:17.0f]}];
     _documentTitleLabel.attributedText = attributedTitle;
     [_documentTitleButton setAttributedTitle:attributedTitle forState:UIControlStateNormal];
-}
-
-- (void)_activateConstraintsForTitleActiveViews:(TitleActiveViews)titleActiveViews{
-    NSArray *constraintsToActivate;
-    switch (titleActiveViews) {
-        case TitleActiveViewsNone:
-            constraintsToActivate = nil;
-            break;
-        case TitleActiveViewsAll:
-            constraintsToActivate = self.buttonAndTitleConstraints;
-            break;
-        case TitleActiveViewsButtonOnly:
-            constraintsToActivate = self.buttonOnlyConstraints;
-            break;
-        case TitleActiveViewsTitleOnly:
-            constraintsToActivate = self.titleOnlyConstraints;
-            break;
-    }
-    if (constraintsToActivate != self.activeConstraints) {
-        [NSLayoutConstraint deactivateConstraints:self.activeConstraints];
-        self.activeConstraints = constraintsToActivate;
-        [NSLayoutConstraint activateConstraints:constraintsToActivate];
-    }
+    
+    // Make sure the title didn't get too long and bleed into the bar button items
+    [self setNeedsLayout];
+    [self layoutIfNeeded];
 }
 
 - (void)_updateTitleVisibility;
 {
     if (self.hideTitle == NO) {
-        if ([self.documentTitleLabel superview] == nil) {
-            [self addSubview:self.documentTitleLabel];
-        }
-
-        if ([self.documentTitleButton superview] == nil) {
-            [self addSubview:self.documentTitleButton];
-        }
-
         if (_titleCanBeTapped) {
             _documentTitleLabel.hidden = YES;
             _documentTitleButton.hidden = NO;
@@ -288,84 +280,59 @@ static void *SyncAccountActivityContext = &SyncAccountActivityContext;
             _documentTitleButton.hidden = YES;
             _documentTitleLabel.hidden = NO;
         }
-
-        if (self.syncButton.hidden == YES) {
-            [self _activateConstraintsForTitleActiveViews:TitleActiveViewsTitleOnly];
-        } else {
-            [self _activateConstraintsForTitleActiveViews:TitleActiveViewsAll];
-        }
-
     } else {
         _documentTitleButton.hidden = YES;
         _documentTitleLabel.hidden = YES;
-
-        if (self.syncButton.hidden == YES) {
-            [self _activateConstraintsForTitleActiveViews:TitleActiveViewsNone];
-        } else {
-            [self _activateConstraintsForTitleActiveViews:TitleActiveViewsButtonOnly];
-        }
-        [self.documentTitleButton removeFromSuperview];
-        [self.documentTitleLabel removeFromSuperview];
-
     }
-    [self setNeedsUpdateConstraints];
 }
 
 - (void)_documentTitleButtonTapped:(id)sender;
 {
-    if ([_delegate respondsToSelector:@selector(documentTitleView:titleTapped:)])
-        [_delegate documentTitleView:self titleTapped:sender];
+    id<OUIDocumentTitleViewDelegate> delegate = _delegate;
+    if ([delegate respondsToSelector:@selector(documentTitleView:titleTapped:)])
+        [delegate documentTitleView:self titleTapped:sender];
+}
+
+- (void)_closeDocument:(id)sender {
+    OUIDocumentAppController *docAppController = (OUIDocumentAppController *)[(UIApplication *)[UIApplication sharedApplication] delegate];
+    [docAppController closeDocument:sender];
 }
 
 - (void)_syncButtonTapped:(id)sender;
 {
-    if ([_delegate respondsToSelector:@selector(documentTitleView:syncButtonTapped:)])
-        [_delegate documentTitleView:self syncButtonTapped:sender];
+    id<OUIDocumentTitleViewDelegate> delegate = _delegate;
+    if ([delegate respondsToSelector:@selector(documentTitleView:syncButtonTapped:)])
+        [delegate documentTitleView:self syncButtonTapped:sender];
 }
 
 - (void)_updateSyncButtonIconForAccountActivity;
 {
     if (!_syncAccountActivity) {
         _syncButton.hidden = YES;
-        [_syncButton removeFromSuperview];
-        
-        self.syncBarButtonItem.image = nil;
-
-        if (self.hideTitle == YES) {
-            [self _activateConstraintsForTitleActiveViews:TitleActiveViewsTitleOnly];
-        } else {
-            [self _activateConstraintsForTitleActiveViews:TitleActiveViewsNone];
-        }
+        _syncBarButtonItemButton.hidden = YES;
     } else {
         _syncButton.hidden = NO;
-        [self addSubview:_syncButton];
-
-        if (self.hideTitle == YES) {
-            [self _activateConstraintsForTitleActiveViews:TitleActiveViewsButtonOnly];
-        } else {
-            [self _activateConstraintsForTitleActiveViews:TitleActiveViewsAll];
-        }
+        _syncBarButtonItemButton.hidden = NO;
     }
     
-    [self setNeedsUpdateConstraints];
+    if (self.hideSyncButton) {
+        self.syncButton.hidden = YES;
+    }
     
     if ([_syncAccountActivity lastError] != nil) {
         _syncButtonShowingActiveState = NO;
         [_syncButtonActivityFinishedTimer invalidate];
         _syncButtonActivityFinishedTimer = nil;
         if ([[_syncAccountActivity lastError] causedByUnreachableHost]) {
-            [_syncButton setImage:[UIImage imageNamed:@"OmniPresenceToolbarIcon-Offline" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil] forState:UIControlStateNormal];
-            self.syncBarButtonItem.image = [UIImage imageNamed:@"OmniPresenceToolbarIcon-Offline" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil];
+            [self _updateSyncButtonsWithImageNamed:@"OmniPresenceToolbarIcon-Offline"];
         } else {
-            [_syncButton setImage:[UIImage imageNamed:@"OmniPresenceToolbarIcon-Error" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil] forState:UIControlStateNormal];
-            self.syncBarButtonItem.image = [UIImage imageNamed:@"OmniPresenceToolbarIcon-Error" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil];
+            [self _updateSyncButtonsWithImageNamed:@"OmniPresenceToolbarIcon-Error"];
         }
     } else if ([_syncAccountActivity isActive]) {
         if (!_syncButtonShowingActiveState) {
             _syncButtonShowingActiveState = YES;
             _syncButtonActivityStartedTimeInterval = [NSDate timeIntervalSinceReferenceDate];
-            [_syncButton setImage:[UIImage imageNamed:@"OmniPresenceToolbarIcon-Active" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil] forState:UIControlStateNormal];
-            self.syncBarButtonItem.image = [UIImage imageNamed:@"OmniPresenceToolbarIcon-Active" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil];
+            [self _updateSyncButtonsWithImageNamed:@"OmniPresenceToolbarIcon-Active"];
         }
         _syncButtonLastActivityTimeInterval = [NSDate timeIntervalSinceReferenceDate];
         
@@ -389,6 +356,13 @@ static void *SyncAccountActivityContext = &SyncAccountActivityContext;
     }
 }
 
+- (void)_updateSyncButtonsWithImageNamed:(NSString *)imageName;
+{
+    UIImage *updatedSyncButtonImage = [UIImage imageNamed:imageName inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil];
+    [_syncButton setImage:updatedSyncButtonImage forState:UIControlStateNormal];
+    [_syncBarButtonItemButton setImage:updatedSyncButtonImage forState:UIControlStateNormal];
+}
+
 - (void)_activityFinishedTimerFired:(NSTimer *)timer;
 {
     OBPRECONDITION(_syncButtonActivityFinishedTimer == timer);
@@ -397,72 +371,7 @@ static void *SyncAccountActivityContext = &SyncAccountActivityContext;
     _syncButtonActivityFinishedTimer = nil;
     
     _syncButtonShowingActiveState = NO;
-    [_syncButton setImage:[UIImage imageNamed:@"OmniPresenceToolbarIcon" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil] forState:UIControlStateNormal];
-    self.syncBarButtonItem.image = [UIImage imageNamed:@"OmniPresenceToolbarIcon" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil];
-}
-
-- (void)_createConstraintsIfNeeded;
-{
-    if (!self.generatedConstraints) {
-        self.generatedConstraints = YES;
-        NSDictionary *views = @{@"syncButton" : _syncButton, @"documentTitleLabel" : _documentTitleLabel, @"documentTitleButton" : _documentTitleButton};
-        
-        // ***buttonOnlyConstraints
-        OBASSERT(self.buttonOnlyConstraints == nil);
-        self.buttonOnlyConstraints = [NSMutableArray array];
-        
-        // Pin the button to the superview
-        [self.buttonOnlyConstraints addObject:[NSLayoutConstraint constraintWithItem:self.syncButton attribute:NSLayoutAttributeLeading relatedBy:NSLayoutRelationEqual toItem:self attribute:NSLayoutAttributeLeading multiplier:1.0 constant:0.0]];
-        [self.buttonOnlyConstraints addObject:[NSLayoutConstraint constraintWithItem:self.syncButton attribute:NSLayoutAttributeTrailing relatedBy:NSLayoutRelationEqual toItem:self attribute:NSLayoutAttributeTrailing multiplier:1.0 constant:0.0]];
-        [self.buttonOnlyConstraints addObject:[NSLayoutConstraint constraintWithItem:self.syncButton attribute:NSLayoutAttributeTop relatedBy:NSLayoutRelationEqual toItem:self attribute:NSLayoutAttributeTop multiplier:1.0 constant:0.0]];
-        [self.buttonOnlyConstraints addObject:[NSLayoutConstraint constraintWithItem:self.syncButton attribute:NSLayoutAttributeBottom relatedBy:NSLayoutRelationEqual toItem:self attribute:NSLayoutAttributeBottom multiplier:1.0 constant:0.0]];
-        
-        // ***titleOnlyConstraints
-        OBASSERT(self.titleOnlyConstraints == nil);
-        self.titleOnlyConstraints = [NSMutableArray array];
-        
-        // Keep the label from spilling out of our size
-        [self.titleOnlyConstraints addObjectsFromArray:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|-(0@999)-[documentTitleLabel]|" options:0 metrics:0 views:views]];
-        [self.titleOnlyConstraints addObjectsFromArray:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|-(0@999)-[documentTitleLabel]-(0@999)-|" options:NSLayoutFormatAlignAllCenterY metrics:nil views:views]];
-        
-        // Vertically center the label
-        [self.titleOnlyConstraints addObject:[NSLayoutConstraint constraintWithItem:_documentTitleLabel attribute:NSLayoutAttributeCenterY relatedBy:NSLayoutRelationEqual toItem:self attribute:NSLayoutAttributeCenterY multiplier:1 constant:0]];
-        
-        // Make the title button always the same size as the label
-        [self.titleOnlyConstraints addObject:[NSLayoutConstraint constraintWithItem:_documentTitleButton attribute:NSLayoutAttributeWidth relatedBy:NSLayoutRelationEqual toItem:_documentTitleLabel attribute:NSLayoutAttributeWidth multiplier:1 constant:0]];
-        [self.titleOnlyConstraints addObject:[NSLayoutConstraint constraintWithItem:_documentTitleButton attribute:NSLayoutAttributeHeight relatedBy:NSLayoutRelationEqual toItem:_documentTitleLabel attribute:NSLayoutAttributeHeight multiplier:1 constant:0]];
-        [self.titleOnlyConstraints addObject:[NSLayoutConstraint constraintWithItem:_documentTitleButton attribute:NSLayoutAttributeLeft relatedBy:NSLayoutRelationEqual toItem:_documentTitleLabel attribute:NSLayoutAttributeLeft multiplier:1 constant:0]];
-        [self.titleOnlyConstraints addObject:[NSLayoutConstraint constraintWithItem:_documentTitleButton attribute:NSLayoutAttributeTop relatedBy:NSLayoutRelationEqual toItem:_documentTitleLabel attribute:NSLayoutAttributeTop multiplier:1 constant:0]];
-        
-        [self.titleOnlyConstraints addObjectsFromArray:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|-(0)-[documentTitleLabel]" options:0 metrics:0 views:views]];
-        
-        
-        // ***buttonAndTitleConstraints
-        OBASSERT(self.buttonAndTitleConstraints == nil);
-        self.buttonAndTitleConstraints = [NSMutableArray array];
-        
-        // line up sync button and title
-        [self.buttonAndTitleConstraints addObjectsFromArray:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|-(0)-[syncButton]-(7)-[documentTitleLabel]" options:0 metrics:0 views:views]];
-        
-        // Keep the label from spilling out of our size
-        [self.buttonAndTitleConstraints addObjectsFromArray:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|-(0@999)-[documentTitleLabel]|" options:0 metrics:0 views:views]];
-        [self.buttonAndTitleConstraints addObjectsFromArray:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|-(0@999)-[documentTitleLabel]-(0@999)-|" options:NSLayoutFormatAlignAllCenterY metrics:nil views:views]];
-        
-        // Vertically center the label
-        [self.buttonAndTitleConstraints addObject:[NSLayoutConstraint constraintWithItem:_documentTitleLabel attribute:NSLayoutAttributeCenterY relatedBy:NSLayoutRelationEqual toItem:self attribute:NSLayoutAttributeCenterY multiplier:1 constant:0]];
-        
-        // Make the title button always the same size as the label
-        [self.buttonAndTitleConstraints addObject:[NSLayoutConstraint constraintWithItem:_documentTitleButton attribute:NSLayoutAttributeWidth relatedBy:NSLayoutRelationEqual toItem:_documentTitleLabel attribute:NSLayoutAttributeWidth multiplier:1 constant:0]];
-        [self.buttonAndTitleConstraints addObject:[NSLayoutConstraint constraintWithItem:_documentTitleButton attribute:NSLayoutAttributeHeight relatedBy:NSLayoutRelationEqual toItem:_documentTitleLabel attribute:NSLayoutAttributeHeight multiplier:1 constant:0]];
-        [self.buttonAndTitleConstraints addObject:[NSLayoutConstraint constraintWithItem:_documentTitleButton attribute:NSLayoutAttributeLeft relatedBy:NSLayoutRelationEqual toItem:_documentTitleLabel attribute:NSLayoutAttributeLeft multiplier:1 constant:0]];
-        [self.buttonAndTitleConstraints addObject:[NSLayoutConstraint constraintWithItem:_documentTitleButton attribute:NSLayoutAttributeTop relatedBy:NSLayoutRelationEqual toItem:_documentTitleLabel attribute:NSLayoutAttributeTop multiplier:1 constant:0]];
-        
-        // Keep the sync button from spilling out of our size
-        [self.buttonAndTitleConstraints addObjectsFromArray:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|-(0@999)-[syncButton]-(0@999)-|" options:0 metrics:0 views:views]];
-        
-        // Vertically center the sync button
-        [self.buttonAndTitleConstraints addObject:[NSLayoutConstraint constraintWithItem:_syncButton attribute:NSLayoutAttributeCenterY relatedBy:NSLayoutRelationEqual toItem:self attribute:NSLayoutAttributeCenterY multiplier:1 constant:0]];
-    }
+    [self _updateSyncButtonsWithImageNamed:@"OmniPresenceToolbarIcon"];
 }
 
 @end

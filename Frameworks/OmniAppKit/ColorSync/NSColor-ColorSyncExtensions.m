@@ -1,4 +1,4 @@
-// Copyright 2003-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2003-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -24,15 +24,15 @@ static void (*originalDeviceRGBImp)(NSColor *color, SEL _cmd);
 static void (*originalDeviceGrayImp)(NSColor *color, SEL _cmd);
 static void (*originalDeviceCMYKImp)(NSColor *color, SEL _cmd);
 
-+ (void)performPosing;
-{
+OBPerformPosing(^{
+    Class self = objc_getClass("NSColor");
     originalPatternImp = (typeof(originalPatternImp))OBReplaceMethodImplementationWithSelectorOnClass(NSClassFromString(@"NSPatternColor"), @selector(set), self, @selector(_setPattern));
     originalCalibratedRGBImp = (typeof(originalCalibratedRGBImp))OBReplaceMethodImplementationWithSelectorOnClass(NSClassFromString(@"NSCalibratedRGBColor"), @selector(set), self, @selector(_setCalibratedRGB));
     originalCalibratedGrayImp = (typeof(originalCalibratedGrayImp))OBReplaceMethodImplementationWithSelectorOnClass(NSClassFromString(@"NSCalibratedWhiteColor"), @selector(set), self, @selector(_setCalibratedGray));
     originalDeviceRGBImp = (typeof(originalDeviceRGBImp))OBReplaceMethodImplementationWithSelectorOnClass(NSClassFromString(@"NSDeviceRGBColor"), @selector(set), self, @selector(_setDeviceRGB));
     originalDeviceGrayImp = (typeof(originalDeviceGrayImp))OBReplaceMethodImplementationWithSelectorOnClass(NSClassFromString(@"NSDeviceWhiteColor"), @selector(set), self, @selector(_setDeviceGray));
     originalDeviceCMYKImp = (typeof(originalDeviceCMYKImp))OBReplaceMethodImplementationWithSelectorOnClass(NSClassFromString(@"NSDeviceCMYKColor"), @selector(set), self, @selector(_setDeviceCMYK));
-}
+});
 
 - (void)setCoreGraphicsRGBValues;
 {
@@ -172,7 +172,8 @@ static void (*originalDeviceCMYKImp)(NSColor *color, SEL _cmd);
     if (colorWorldRef == NULL)
         return self;
 
-    float colorFrom[3] = {self.redComponent, self.greenComponent, self.blueComponent};
+    // There doesn't seem to be a 64-bit analog to kColorSync32BitFloat.
+    float colorFrom[3] = {(float)self.redComponent, (float)self.greenComponent, (float)self.blueComponent};
     float colorTo[3];
     
     BOOL success = ColorSyncTransformConvert(colorWorldRef, 1, 1, colorTo, kColorSync32BitFloat, kColorSyncByteOrderDefault | kColorSyncAlphaNone, sizeof(colorTo), colorFrom, kColorSync32BitFloat, kColorSyncByteOrderDefault | kColorSyncAlphaNone, sizeof(colorFrom), NULL);
@@ -189,7 +190,8 @@ static void (*originalDeviceCMYKImp)(NSColor *color, SEL _cmd);
     if (colorWorldRef == NULL)
         return self;
     
-    float colorFrom[4] = {self.cyanComponent, self.magentaComponent, self.yellowComponent, self.blackComponent};
+    // There doesn't seem to be a 64-bit analog to kColorSync32BitFloat.
+    float colorFrom[4] = {(float)self.cyanComponent, (float)self.magentaComponent, (float)self.yellowComponent, (float)self.blackComponent};
 
     if (intoRGB) {
         float colorTo[3];
@@ -218,7 +220,8 @@ static void (*originalDeviceCMYKImp)(NSColor *color, SEL _cmd);
     if (colorWorldRef == NULL)
         return self;
     
-    float colorFrom[1] = {self.whiteComponent};
+    // There doesn't seem to be a 64-bit analog to kColorSync32BitFloat.
+    float colorFrom[1] = {(float)self.whiteComponent};
 
     if (intoRGB) {
         float colorTo[3];

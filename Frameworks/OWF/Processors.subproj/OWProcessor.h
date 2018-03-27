@@ -1,4 +1,4 @@
-// Copyright 1997-2016 Omni Development, Inc. All rights reserved.
+// Copyright 1997-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -10,9 +10,10 @@
 #import <Foundation/NSObject.h>
 #import <OmniFoundation/OFObject.h>
 
-#import <OmniFoundation/OFSimpleLock.h>
+#import <OmniFoundation/OFBundleRegistryTarget.h>
 #import <OmniFoundation/OFMessageQueuePriorityProtocol.h>
 #import <OWF/OWTargetProtocol.h>
+#import <os/lock.h>
 
 @class NSArray, NSDate, NSException, NSNumber;
 @class OFMessageQueue, OFPreference;
@@ -109,7 +110,7 @@ typedef enum {
 @end
 
 
-@interface OWProcessor : OFObject <OFMessageQueuePriority>
+@interface OWProcessor : OFObject <OFMessageQueuePriority, OFBundleRegistryTarget>
 {
     OWContent *originalContent;
 }

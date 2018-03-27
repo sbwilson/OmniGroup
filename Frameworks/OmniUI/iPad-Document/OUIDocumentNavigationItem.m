@@ -1,4 +1,4 @@
-// Copyright 2010-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -76,14 +76,15 @@ NSString * const OUIDocumentNavigationItemOriginalDocumentNameUserInfoKey = @"OU
         _documentTitleView.delegate = self;
         _documentTitleView.hideTitle = NO;
         
-        if ([fileItem.scope isKindOfClass:[OFXDocumentStoreScope class]]) {
-            OFXDocumentStoreScope *scope = (OFXDocumentStoreScope *)fileItem.scope;
+        ODSScope *fileItemScope = fileItem.scope;
+        if ([fileItemScope isKindOfClass:[OFXDocumentStoreScope class]]) {
+            OFXDocumentStoreScope *scope = (OFXDocumentStoreScope *)fileItemScope;
             OFXAgentActivity *agentActivity = [OUIDocumentAppController controller].agentActivity;
             _documentTitleView.syncAccountActivity = [agentActivity activityForAccount:scope.account];
             OBASSERT(_documentTitleView.syncAccountActivity != nil);
         }
         
-        _documentTitleView.titleCanBeTapped = fileItem.scope.canRenameDocuments;
+        _documentTitleView.titleCanBeTapped = fileItemScope.canRenameDocuments;
         self.title = title;
         
         self.titleView = _documentTitleView;
@@ -138,6 +139,9 @@ NSString * const OUIDocumentNavigationItemOriginalDocumentNameUserInfoKey = @"OU
 
 - (void)dealloc;
 {
+    self.usersLeftBarButtonItems = nil;
+    self.usersRightBarButtonItems = nil;
+    self.renaming = NO;
     [_fileNameBinding invalidate];
     _documentTitleView.delegate = nil;
 }
@@ -165,7 +169,6 @@ NSString * const OUIDocumentNavigationItemOriginalDocumentNameUserInfoKey = @"OU
 {
     [super setTitle:title];
     _documentTitleView.title = title;
-    [_documentTitleView sizeToFit];
 }
 
 // We allow overriding the title temporarily (while in Edit mode on the toolbar, for example, to display instructional text). When the titleView is set back to nil we use our normal rename UI.
@@ -207,10 +210,11 @@ NSString * const OUIDocumentNavigationItemOriginalDocumentNameUserInfoKey = @"OU
     OBPRECONDITION(textField == _documentTitleTextField);
     OBPRECONDITION(_hasAttemptedRename == NO);
     
-    [_document willEditDocumentTitle];
+    OUIDocument *document = _document;
+    [document willEditDocumentTitle];
     textField.keyboardAppearance = [OUIAppController controller].defaultKeyboardAppearance;
 
-    ODSFileItem *fileItem = _document.fileItem;
+    ODSFileItem *fileItem = document.fileItem;
     OBASSERT(fileItem);
     
     textField.text = fileItem.editingName;
@@ -221,12 +225,13 @@ NSString * const OUIDocumentNavigationItemOriginalDocumentNameUserInfoKey = @"OU
 {
     // If we are new, there will be no fileItem.
     // Actually, we give documents default names and load their fileItem up immediately on creation...
-    ODSFileItem *fileItem = _document.fileItem;
+    OUIDocument *document = _document;
+    ODSFileItem *fileItem = document.fileItem;
     NSString *originalName = fileItem.editingName;
     OBASSERT(originalName);
     
     NSString *newName = [textField text];
-    if (_hasAttemptedRename || [NSString isEmptyString:newName] || [newName isEqualToString:originalName] || _document.editingDisabled) {
+    if (_hasAttemptedRename || [NSString isEmptyString:newName] || [newName isEqualToString:originalName] || document.editingDisabled) {
         _hasAttemptedRename = NO; // This rename finished (or we are going to discard it due to an incoming iCloud edit); prepare for the next one.
         textField.text = originalName;
         return YES;
@@ -243,7 +248,7 @@ NSString * const OUIDocumentNavigationItemOriginalDocumentNameUserInfoKey = @"OU
 //    OUIDocumentPicker *documentPicker = self.documentPicker;
     
     // Tell the document that the rename is local
-    [_document _willBeRenamedLocally];
+    [document _willBeRenamedLocally];
     self.title = newName; // edit field will be dismissed and the title label displayed before the rename is completed so this will make sure that the label shows the updated name
     
     // Make sure we don't close the document while the rename is happening, or some such. It would probably be OK with the synchronization API, but there is no reason to allow it.
@@ -278,12 +283,19 @@ NSString * const OUIDocumentNavigationItemOriginalDocumentNameUserInfoKey = @"OU
     return NO;
 }
 
+- (void)setRenaming:(BOOL)isRenaming;
+{
+    if (_renaming == isRenaming)
+        return;
+
+    _renaming = isRenaming;
+    [self _updateItemsForRenaming];
+}
+
 - (void)textFieldDidEndEditing:(UITextField *)textField;
 {
     OBPRECONDITION(textField == _documentTitleTextField);
-    
-    _renaming = NO;
-    [self _updateItemsForRenaming];
+    self.renaming = NO;
 }
 
 - (BOOL)textField:(UITextField *)textField shouldChangeCharactersInRange:(NSRange)range replacementString:(NSString *)string;
@@ -318,75 +330,88 @@ NSString * const OUIDocumentNavigationItemOriginalDocumentNameUserInfoKey = @"OU
 
 - (void)documentTitleView:(OUIDocumentTitleView *)documentTitleView titleTapped:(id)sender;
 {
-    _renaming = YES;
-    [self _updateItemsForRenaming];
+    if (_renaming) {
+        return;
+    }
+
+    self.renaming = YES;
 }
 
 #pragma mark - Helpers
+
+- (void)_finishUpdateItemsForRenaming;
+{
+    // Prevent rotation while in rename mode.
+    self.renamingRotationLock = [OUIRotationLock rotationLock];
+
+    // Make sure we're prepared to switch into rename mode.
+    OBASSERT(self.usersLeftBarButtonItems == nil);
+    OBASSERT(self.usersRightBarButtonItems == nil);
+
+    // Cache user's items.
+    self.usersLeftBarButtonItems = self.leftBarButtonItems;
+    self.usersRightBarButtonItems = self.rightBarButtonItems;
+
+    // Remove user's item.
+    self.leftBarButtonItems = nil;
+    self.rightBarButtonItems = nil;
+
+    // Set our textField as the titleView and give it focus.
+    self.titleView = _documentTitleTextFieldView;
+    _documentTitleTextField.returnKeyType = UIReturnKeyDone;
+    [_documentTitleTextField becomeFirstResponder];
+
+    // Add Shield View
+    UIWindow *window = [OUIAppController controller].window;
+    UITapGestureRecognizer *shieldViewTapRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(_shieldViewTapped:)];
+    NSArray *passthroughViews = [NSArray arrayWithObject:_documentTitleTextField];
+    OUIShieldView *shieldView = [OUIShieldView shieldViewWithView:window];
+    [shieldView addGestureRecognizer:shieldViewTapRecognizer];
+    shieldView.passthroughViews = passthroughViews;
+    self.shieldView = shieldView;
+    [window addSubview:shieldView];
+    [window bringSubviewToFront:shieldView];
+}
 
 - (void)_updateItemsForRenaming;
 {
     if (_renaming) {
         DEBUG_EDIT_MODE(@"Switching to rename mode.");
-        // save the document
-        [self.document saveToURL:self.document.fileURL forSaveOperation:UIDocumentSaveForOverwriting completionHandler:^(BOOL success) {           
-            // Prevent rotation while in rename mode.
-            self.renamingRotationLock = [OUIRotationLock rotationLock];
-            
-            // Make sure we're prepared to switch into rename mode.
-            OBASSERT(self.usersLeftBarButtonItems == nil);
-            OBASSERT(self.usersRightBarButtonItems == nil);
-            
-            // Cache user's items.
-            self.usersLeftBarButtonItems = self.leftBarButtonItems;
-            self.usersRightBarButtonItems = self.rightBarButtonItems;
-            
-            // Remove user's item.
-            self.leftBarButtonItems = nil;
-            self.rightBarButtonItems = nil;
-            
-            // Set our textField as the titleView and give it focus.
-            self.titleView = _documentTitleTextFieldView;
-            [_documentTitleTextField becomeFirstResponder];
-            
-            // Add Shild View
-            UIWindow *window = [OUIAppController controller].window;
-            UITapGestureRecognizer *shieldViewTapRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(_shieldViewTapped:)];
-            NSArray *passthroughViews = [NSArray arrayWithObject:_documentTitleTextField];
-            self.shieldView = [OUIShieldView shieldViewWithView:window];
-            [self.shieldView addGestureRecognizer:shieldViewTapRecognizer];
-            self.shieldView.passthroughViews = passthroughViews;
-            [window addSubview:self.shieldView];
-            [window bringSubviewToFront:self.shieldView];
-        }];
+        // only save the document if there are changes
+        OUIDocument *document = self.document;
+        if (document.hasUnsavedChanges) {
+            [document saveToURL:document.fileURL forSaveOperation:UIDocumentSaveForOverwriting completionHandler:^(BOOL success) {
+                [self _finishUpdateItemsForRenaming];
+            }];
+        } else {
+            [self _finishUpdateItemsForRenaming];
+        }
         
     }
     else {
         DEBUG_EDIT_MODE(@"Switching to non-rename mode.");
         
         // Allow rotation again.
-        [self.renamingRotationLock unlock];
-        self.renamingRotationLock = nil;
-        
-        // Can't make these assertions becuase these items may have never been set.
-        //        OBASSERT(self.usersLeftBarButtonItems);
-        //        OBASSERT(self.usersRightBarButtonItems);
+        [_renamingRotationLock unlock];
+        _renamingRotationLock = nil;
         
         // Add user's items back.
-        self.leftBarButtonItems = self.usersLeftBarButtonItems;
-        self.rightBarButtonItems = self.usersRightBarButtonItems;
-        
-        // Clear cached user's items.
-        self.usersLeftBarButtonItems = nil;
-        self.usersRightBarButtonItems = nil;
+        if (_usersLeftBarButtonItems != nil) {
+            self.leftBarButtonItems = _usersLeftBarButtonItems;
+            _usersLeftBarButtonItems = nil;
+        }
+        if (_usersRightBarButtonItems != nil) {
+            self.rightBarButtonItems = _usersRightBarButtonItems;
+            _usersRightBarButtonItems = nil;
+        }
         
         // Set our titleView back.
         self.titleView = _documentTitleView;
         
         // Remove Shield View
-        if (self.shieldView) {
-            [self.shieldView removeFromSuperview];
-            self.shieldView = nil;
+        if (_shieldView) {
+            [_shieldView removeFromSuperview];
+            _shieldView = nil;
         }
     }
 }

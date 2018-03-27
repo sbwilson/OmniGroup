@@ -1,4 +1,4 @@
-// Copyright 2008-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2008-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -11,12 +11,15 @@
 
 RCS_ID("$Id$")
 
+NS_ASSUME_NONNULL_BEGIN
+
 // OFIndexPath is a NSIndexPath workalike.
 //
 // It doesn't have the thread safety and pathological performance problems NSIndexPath suffers due to uniquing.
 //
 // These issues appear to be resolved on OS X 10.8 and later, and iOS 6.0 and later.
 // When our base system requirements allow, we can consider deprecating OFIndexPath.
+// NOTE: Did some performance testing on 10.13.2 and OFIndexPath performs just as well, slightly better maybe, and gives us some fast paths we don't have with NSIndexPath (-enumerateIndexesUsingBlock: and -parentsLastCompare:).
 
 @implementation OFIndexPath {
   @private
@@ -195,9 +198,17 @@ static void _getIndexes(OFIndexPath *indexPath, NSUInteger *indexes, NSUInteger 
     return [self description];
 }
 
-#pragma mark -
+#pragma mark NSCopying
 
-- (id)_initWithParent:(OFIndexPath *)parent index:(NSUInteger)anIndex length:(NSUInteger)aLength;
+- (id)copyWithZone:(nullable NSZone *)zone;
+{
+    // Instance are immutable.
+    return [self retain];
+}
+
+#pragma mark Private
+
+- (id)_initWithParent:(nullable OFIndexPath *)parent index:(NSUInteger)anIndex length:(NSUInteger)aLength;
 {
     _parent = [parent retain];
     _index = anIndex;
@@ -206,3 +217,36 @@ static void _getIndexes(OFIndexPath *indexPath, NSUInteger *indexes, NSUInteger 
 }
 
 @end
+
+#pragma mark -
+
+@implementation OFIndexPath (PropertyListSerialization)
+
++ (OFIndexPath *)indexPathWithPropertyListRepresentation:(NSArray<NSNumber *> *)propertyListRepresentation;
+{
+    OFIndexPath *indexPath = [OFIndexPath emptyIndexPath];
+    
+    for (NSNumber *value in propertyListRepresentation) {
+        OBASSERT([value isKindOfClass:[NSNumber class]]);
+        NSUInteger index = value.unsignedIntegerValue;
+        indexPath = [indexPath indexPathByAddingIndex:index];
+    }
+    
+    return indexPath;
+}
+
+- (NSArray<NSNumber *> *)propertyListRepresentation;
+{
+    NSMutableArray *propertyListRepresentation = [NSMutableArray array];
+    
+    [self enumerateIndexesUsingBlock:^(NSUInteger index, BOOL * _Nonnull stop) {
+        [propertyListRepresentation addObject:@(index)];
+    }];
+    
+    return propertyListRepresentation;
+}
+
+@end
+
+NS_ASSUME_NONNULL_END
+

@@ -1,4 +1,4 @@
-// Copyright 2010-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -10,6 +10,9 @@
 #import <UIKit/UITextView.h>
 
 #import <OmniUI/OUIInspector.h>
+#import <OmniUI/OUIKeyCommands.h>
+
+NS_ASSUME_NONNULL_BEGIN
 
 @class OUITextView, OUITextSelectionSpan;
 
@@ -23,7 +26,7 @@ extern NSString * const OUITextViewInsertionPointDidChangeNotification;
 
 // Both of these should be implemented if either are
 - (NSArray *)textViewReadablePasteboardTypes:(OUITextView *)textView;
-- (NSAttributedString *)textView:(OUITextView *)textView readTextFromItemSet:(NSIndexSet *)itemSet inPasteboard:(UIPasteboard *)pasteboard;
+- (nullable NSAttributedString *)textView:(OUITextView *)textView readTextFromItemSet:(NSIndexSet *)itemSet inPasteboard:(UIPasteboard *)pasteboard;
 
 - (BOOL)textViewShouldPreserveStylesWhenPasting:(OUITextView *)textView defaultValue:(BOOL)defaultValue sender:(id)sender;
 
@@ -40,26 +43,27 @@ extern NSString * const OUITextViewInsertionPointDidChangeNotification;
 
 @end
 
-@interface OUITextView : UITextView <OUIInspectorDelegate>
+@interface OUITextView : UITextView <OUIInspectorDelegate, OUIKeyCommandProvider, UITextDragDelegate>
 
 + (OUITextView *)activeFirstResponderTextView;
 
-@property(nonatomic,weak) id <OUITextViewDelegate> delegate;
+@property(nullable,nonatomic,weak) id <OUITextViewDelegate> delegate;
 
 // UITextView currently has top/bottom padding that we cannot turn off/change
 + (CGFloat)oui_defaultTopAndBottomPadding;
 
+@property (nonatomic, copy) NSString *placeholder;
+
 @property(nonatomic,readonly) CGFloat textHeight;
 @property(nonatomic,readonly) CGSize textUsedSize;
 
-@property(nonatomic,readonly) CGFloat firstLineAscent;
-
+@property (nonatomic) IBInspectable BOOL shouldAutomaticallyUpdateColorsForCurrentTheme;
 @property(nonatomic) BOOL keepContextualMenuHidden;
 
 - (NSDictionary *)typingAttributesWithAllAttributes; // allow subclasses to ensure that the typing attributes contain the extra attributes which are sometimes stripped out by the runtime.
 - (void)ensureLayout;
 
-- (UITextRange *)selectionRangeForPoint:(CGPoint)pt granularity:(UITextGranularity)granularity;
+- (nullable UITextRange *)selectionRangeForPoint:(CGPoint)pt granularity:(UITextGranularity)granularity;
 - (void)selectForInitialTapAtPoint:(CGPoint)pt;
 
 - (CGRect)boundsOfRange:(UITextRange *)range;
@@ -70,15 +74,15 @@ extern NSString * const OUITextViewInsertionPointDidChangeNotification;
 
 - (NSArray *)inspectableObjects; // Full list of inspectable objects; defaults to -inspectableTextSpans
 - (NSArray *)inspectableTextSpans; // Array of OUITextSelectionSpans
-- (OUITextSelectionSpan *)firstNonEmptyInspectableTextSpan; // Nil if there is no selection or the selection length is zero.
+- (nullable OUITextSelectionSpan *)firstNonEmptyInspectableTextSpan; // Nil if there is no selection or the selection length is zero.
 - (BOOL)isEmptyInspectableTextSpans:(NSArray *)spans;
 
 - (OUIInspector *)textInspector;
 - (void)dismissInspectorImmediatelyIfVisible;
-- (void)inspectSelectedTextWithViewController:(UIViewController *)viewController fromBarButtonItem:(UIBarButtonItem *)barButtonItem withSetupBlock:(void (^)(OUIInspector *))setupBlock NS_EXTENSION_UNAVAILABLE_IOS("");
+- (void)inspectSelectedTextWithViewController:(UIViewController *)viewController fromBarButtonItem:(UIBarButtonItem *)barButtonItem withSetupBlock:(void (^ _Nullable)(OUIInspector *))setupBlock NS_EXTENSION_UNAVAILABLE_IOS("");
 
 - (void)selectAllShowingMenu:(BOOL)show;
-- (void)setSelectedTextRange:(UITextRange *)newRange showingMenu:(BOOL)show;
+- (void)setSelectedTextRange:(nullable UITextRange *)newRange showingMenu:(BOOL)show;
 
 - (NSDictionary *)attributesInRange:(UITextRange *)range;
 - (id <NSObject>)attribute:(NSString *)attr inRange:(UITextRange *)range;
@@ -96,6 +100,8 @@ extern NSString * const OUITextViewInsertionPointDidChangeNotification;
 - (void)performUndoableReplacementOnSelectedRange:(NSAttributedString *)replacement;
 
 @property (nonatomic, assign) BOOL alwaysHighlightSelectedText;
+@property (nonatomic, assign) BOOL shouldDragAttributedText;
 
 @end
 
+NS_ASSUME_NONNULL_END

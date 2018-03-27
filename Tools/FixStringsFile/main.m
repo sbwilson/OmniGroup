@@ -1,4 +1,4 @@
-// Copyright 2010-2012 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2017 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -90,7 +90,7 @@ static NSString *_transformedTranslation(NSString *translation)
     // Replace "..." with curly quotes
     translation = _smartQuotedString(translation, @"\"", 8220, 8221);
     
-    // This gets quite a few bad matches due to contractions and possessives.  We could be smarter by requiring the starting quote to be at the beginning of the string or have a preceeding non-alpha character (likewise for the ending quote).  This would be significantly more complicated and really we should just use "..." in most places.  We won't need embedded quotes in UI strings.
+    // This gets quite a few bad matches due to contractions and possessives.  We could be smarter by requiring the starting quote to be at the beginning of the string or have a preceding non-alpha character (likewise for the ending quote).  This would be significantly more complicated and really we should just use "..." in most places.  We won't need embedded quotes in UI strings.
     //translation = _smartQuotedString(translation, @"'", 8216, 8217);
     
     return translation;

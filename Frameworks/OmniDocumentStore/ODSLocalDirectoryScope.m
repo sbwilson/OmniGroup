@@ -1,4 +1,4 @@
-// Copyright 2010-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -37,6 +37,25 @@ RCS_ID("$Id$");
     BOOL _presentedItemDidChangeCalledWhileRescanning;
 }
 
++ (void)initialize;
+{
+    OBINITIALIZE;
+    
+    ODSLocalDirectoryScope.localDocumentsDisplayName = NSLocalizedStringFromTableInBundle(@"Local Documents", @"OmniDocumentStore", OMNI_BUNDLE, @"Document store scope display name");
+}
+
+static NSString *_customLocalDocumentsDisplayName;
+
++ (void)setLocalDocumentsDisplayName:(NSString *)localDocumentsDisplayName;
+{
+    _customLocalDocumentsDisplayName = [localDocumentsDisplayName copy];
+}
+
++ (NSString *)localDocumentsDisplayName;
+{
+    return _customLocalDocumentsDisplayName != nil ? _customLocalDocumentsDisplayName : NSLocalizedStringFromTableInBundle(@"Local Documents", @"OmniDocumentStore", OMNI_BUNDLE, @"Document store scope display name");
+}
+
 + (NSURL *)userDocumentsDirectoryURL;
 {
     static NSURL *documentDirectoryURL = nil; // Avoid trying the creation on each call.
@@ -54,6 +73,7 @@ RCS_ID("$Id$");
     return documentDirectoryURL;
 }
 
+// This is for the trash scope for the OmniDocumentStore-based document picker. Note that Files.app on iOS 11 will create a .Trash directory inside the ~/Documents container for an app and move files there (which every application then needs to know to not look at).
 + (NSURL *)trashDirectoryURL;
 {
     static NSURL *trashDirectoryURL = nil; // Avoid trying the creation on each call.
@@ -329,7 +349,7 @@ RCS_ID("$Id$");
     else if (_isTemplate)
         return NSLocalizedStringFromTableInBundle(@"Built-in", @"OmniDocumentStore", OMNI_BUNDLE, @"Document store scope display name");
     else
-        return NSLocalizedStringFromTableInBundle(@"Local Documents", @"OmniDocumentStore", OMNI_BUNDLE, @"Document store scope display name");
+        return ODSLocalDirectoryScope.localDocumentsDisplayName;
 }
 
 static void _updateObjectValue(ODSFileItem *fileItem, NSString *bindingKey, id newValue)
@@ -376,7 +396,7 @@ static void _updateFlag(ODSFileItem *fileItem, NSString *bindingKey, BOOL value)
 - (NSMutableSet *)copyCurrentlyUsedFileNamesInFolderAtURL:(NSURL *)folderURL ignoringFileURL:(NSURL *)fileURLToIgnore;
 {
     // Collecting the names asynchronously from filesystem edits will yield out of date results. We still have race conditions with cloud services adding/removing files since coordinated reads of whole Documents directories does nothing to block writers.
-    OBPRECONDITION([self isRunningOnActionQueue]);
+    OBPRECONDITION([self isRunningOnActionQueue], "bug:///137297");
     
     if (!folderURL)
         folderURL = _directoryURL;
@@ -394,7 +414,7 @@ static void _updateFlag(ODSFileItem *fileItem, NSString *bindingKey, BOOL value)
     };
     OFScanErrorHandler errorHandler = nil;
     
-    OFScanDirectory(folderURL, NO/*shouldRecurse*/, ODSScanDirectoryExcludeInboxItemsFilter(), isPackage, itemHandler, errorHandler);
+    OFScanDirectory(folderURL, NO/*shouldRecurse*/, ODSScanDirectoryExcludeSytemFolderItemsFilter(), isPackage, itemHandler, errorHandler);
     
     return usedFileNames;
 }
@@ -458,24 +478,8 @@ static void _updateFlag(ODSFileItem *fileItem, NSString *bindingKey, BOOL value)
                     NSString *fileType = OFUTIForFileExtensionPreferringNative([fileURL pathExtension], @(fileEdit.directory));
 
                     if (![self.documentStore canViewFileTypeWithIdentifier:fileType]) {
-                        [self performAsynchronousFileAccessUsingBlock:^{
-                            // Passing nil for the presenter so that we get our normal deletion notification via file coordination.
-                            NSFileCoordinator *coordinator = [[NSFileCoordinator alloc] initWithFilePresenter:nil];
-                            __autoreleasing NSError *error = nil;
-                            [coordinator removeItemAtURL:fileURL error:&error byAccessor:^BOOL(NSURL *newURL, NSError **outError){
-                                DEBUG_STORE(@"  coordinator issued URL to delete %@", newURL);
-
-                                __autoreleasing NSError *deleteError = nil;
-                                if (![[NSFileManager defaultManager] removeItemAtURL:newURL error:&deleteError]) {
-                                    NSLog(@"Error deleting %@: %@", [newURL absoluteString], [deleteError toPropertyList]);
-                                    if (outError)
-                                        *outError = deleteError;
-                                    return NO;
-                                }
-
-                                return YES;
-                            }];
-                        }];
+                        // Can't open a file of this type, so don't make a fileItem for it.
+                        // We used to outright delete it, but that seems poor form in the age of iOS 11 Files access.
                         return;
                     }
 
@@ -521,7 +525,7 @@ static void _updateFlag(ODSFileItem *fileItem, NSString *bindingKey, BOOL value)
             return YES; // Keep trying to get as many as we can...
         };
         
-        OFScanDirectory(_directoryURL, YES/*shouldRecurse*/, ODSScanDirectoryExcludeInboxItemsFilter(), isPackage, itemBlock, errorHandler);
+        OFScanDirectory(_directoryURL, YES/*shouldRecurse*/, ODSScanDirectoryExcludeSytemFolderItemsFilter(), isPackage, itemBlock, errorHandler);
         
         if (scanFinished)
             [[NSOperationQueue mainQueue] addOperationWithBlock:scanFinished];

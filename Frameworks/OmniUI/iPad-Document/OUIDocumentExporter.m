@@ -1,9 +1,20 @@
-// Copyright 2015-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2015-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
 // distributed with this project and can also be found at
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
+
+#import <OmniUIDocument/OUIDocumentExporter.h>
+
+#import <OmniUIDocument/OUIDocumentAppController.h>
+#import <OmniUIDocument/OUIDocumentPicker.h>
+#import <OmniUIDocument/OUIDocumentPickerViewController.h>
+#import <OmniUIDocument/OUIErrors.h>
+#import <OmniUIDocument/ODSFileItem-OUIDocumentExtensions.h>
+
+#import "OUIExportOptionsController.h"
+#import "OUIImportExportAccountListViewController.h"
 
 @import OmniBase;
 @import OmniFoundation;
@@ -11,19 +22,9 @@
 @import MobileCoreServices;
 @import Photos;
 @import OmniUI;
+@import OmniFileExchange;
 
 RCS_ID("$Id$")
-
-#import <OmniUI/OUIAppController.h>
-#import <OmniUIDocument/OUIDocumentAppController.h>
-#import <OmniUIDocument/OUIDocumentExporter.h>
-#import <OmniUIDocument/OUIDocumentPicker.h>
-#import <OmniUIDocument/OUIDocumentPickerViewController.h>
-#import <OmniUIDocument/OUIDocumentProviderPreferencesViewController.h>
-#import <OmniUIDocument/OUIErrors.h>
-
-#import "OUIExportOptionsController.h"
-#import "OUIImportExportAccountListViewController.h"
 
 @implementation OUIDocumentExporter
 
@@ -67,33 +68,31 @@ RCS_ID("$Id$")
 
 - (UIBarButtonItem *)barButtonItem
 {
-    NSString *imageName = @"OUIDocumentExport";
-    BOOL useCompactBarButtonItemsIfApplicable = ([self.hostViewController respondsToSelector:@selector(useCompactBarButtonItemsIfApplicable)] && [self.hostViewController useCompactBarButtonItemsIfApplicable]);
-    if (useCompactBarButtonItemsIfApplicable) {
-        BOOL isHorizontallyCompact = self.hostViewController.traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassCompact;
-        BOOL isVerticallyCompact = self.hostViewController.traitCollection.verticalSizeClass == UIUserInterfaceSizeClassCompact;
-        if (isHorizontallyCompact || isVerticallyCompact) {
-            imageName = @"OUIDocumentExport-Compact";
-        }
-    }
+    UIImage *image = [[OUIAppController controller] exportBarButtonItemImageInHostViewController:self.hostViewController];
+
     if (!_barButtonItem) {
-        _barButtonItem = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:imageName inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil] style:UIBarButtonItemStylePlain target:self action:@selector(export:)];
+        _barButtonItem = [[UIBarButtonItem alloc] initWithImage:image style:UIBarButtonItemStylePlain target:self action:@selector(export:)];
         _barButtonItem.accessibilityLabel = NSLocalizedStringFromTableInBundle(@"Export", @"OmniUIDocument", OMNI_BUNDLE, @"Export toolbar item accessibility label.");
-    } else if (useCompactBarButtonItemsIfApplicable) {
-        _barButtonItem.image = [UIImage imageNamed:imageName inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil];
+    } else {
+        _barButtonItem.image = image; // compactness might have changed
     }
     return _barButtonItem;
 }
 
+- (void)exportItem:(ODSFileItem *)fileItem
+{
+    [self exportItem:fileItem sender:nil];
+}
 
-- (void)exportItem:(ODSFileItem *)fileItem;
+- (void)exportItem:(ODSFileItem *)fileItem sender:(id)sender;
 {
     if (fileItem == nil || fileItem.scope.isTrash) {
         return;
     }
     
-    if ([self.hostViewController respondsToSelector:@selector(prepareToExport)]) {
-        [self.hostViewController prepareToExport];
+    UIViewController<OUIDocumentExporterHost, OUIDisabledDemoFeatureAlerter> *hostViewController = self.hostViewController;
+    if ([hostViewController respondsToSelector:@selector(prepareToExport)]) {
+        [hostViewController prepareToExport];
     }
     
     // Single file export options
@@ -113,43 +112,44 @@ RCS_ID("$Id$")
     if ([MFMailComposeViewController canSendMail]) {
         // All email options should go here (within the test for whether we can send email)
         // more than one option? Display the 'export options sheet'
-        [topLevelMenuOptions addObject:[OUIMenuOption optionWithTitle:NSLocalizedStringFromTableInBundle(@"Send via Mail", @"OmniUIDocument", OMNI_BUNDLE, @"Menu option in the document picker view") image:[UIImage imageNamed:@"OUIMenuItemSendToMail" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil] action:^{
-            if (availableExportTypes.count > 0) {
-                [self _displayExportOptionsControllerForFileItem:fileItem exportType:OUIExportOptionsEmail];
-            }
-            else {
+        [topLevelMenuOptions addObject:[OUIMenuOption optionWithTitle:NSLocalizedStringFromTableInBundle(@"Send via Mail", @"OmniUIDocument", OMNI_BUNDLE, @"Menu option in the document picker view") image:[UIImage imageNamed:@"OUIMenuItemSendToMail" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil] action:^(OUIMenuInvocation *invocation){
+            NSUInteger typeCount = [availableExportTypes count];
+            if (typeCount == 0 || (typeCount == 1 && OFISNULL(availableExportTypes.firstObject))) {
+                // No known types, or the only "type" is the "native" null marker.
                 [self emailFileItem:fileItem];
+            } else {
+                [self _displayExportOptionsControllerForFileItem:fileItem exportType:OUIExportOptionsEmail presentingBarButtonItem:invocation.presentingBarButtonItem];
             }
         }]];
     }
     
     if (canExport) {
-        [topLevelMenuOptions addObject:[OUIMenuOption optionWithTitle:NSLocalizedStringFromTableInBundle(@"Export to WebDAV", @"OmniUIDocument", OMNI_BUNDLE, @"Menu option in the document picker view") image:[UIImage imageNamed:@"OUIMenuItemExportToWebDAV" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil] action:^{
+#if 0 // We no longer support direct export to WebDAV
+        [topLevelMenuOptions addObject:[OUIMenuOption optionWithTitle:NSLocalizedStringFromTableInBundle(@"Export to WebDAV", @"OmniUIDocument", OMNI_BUNDLE, @"Menu option in the document picker view") image:[UIImage imageNamed:@"OUIMenuItemExportToWebDAV" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil] action:^(OUIMenuOption *option, UIViewController *presentingViewController){
             [self exportDocument:fileItem];
         }]];
-        
-        if ([[OUIDocumentProviderPreferencesViewController shouldEnableDocumentProvidersPreference] boolValue]) {
-            [topLevelMenuOptions addObject:[OUIMenuOption optionWithTitle:NSLocalizedStringFromTableInBundle(@"Export to…", @"OmniUIDocument", OMNI_BUNDLE, @"Menu option in the document picker view") image:[UIImage imageNamed:@"OUIMenuItemExportToWebDAV" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil] action:^{
-                [self _displayExportOptionsControllerForFileItem:fileItem exportType:OUIExportOptionsSendToService];
-            }]];
-        }
+#endif
+
+        [topLevelMenuOptions addObject:[OUIMenuOption optionWithTitle:NSLocalizedStringFromTableInBundle(@"Send to Files", @"OmniUIDocument", OMNI_BUNDLE, @"Menu option in the document picker view") image:[UIImage imageNamed:@"OUIMenuItemSendToFiles" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil] action:^(OUIMenuInvocation *invocation){
+            [self _displayExportOptionsControllerForFileItem:fileItem exportType:OUIExportOptionsSendToService presentingBarButtonItem:invocation.presentingBarButtonItem];
+        }]];
     }
     
     if (canUseOpenIn) {
-        [topLevelMenuOptions addObject:[OUIMenuOption optionWithTitle:NSLocalizedStringFromTableInBundle(@"Send to App", @"OmniUIDocument", OMNI_BUNDLE, @"Menu option in the document picker view") image:[UIImage imageNamed:@"OUIMenuItemSendToApp" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil] action:^{
-            [self _displayExportOptionsControllerForFileItem:fileItem exportType:OUIExportOptionsSendToApp];
+        [topLevelMenuOptions addObject:[OUIMenuOption optionWithTitle:NSLocalizedStringFromTableInBundle(@"Send to App", @"OmniUIDocument", OMNI_BUNDLE, @"Menu option in the document picker view") image:[UIImage imageNamed:@"OUIMenuItemSendToApp" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil] action:^(OUIMenuInvocation *invocation){
+            [self _displayExportOptionsControllerForFileItem:fileItem exportType:OUIExportOptionsSendToApp presentingBarButtonItem:invocation.presentingBarButtonItem];
         }]];
     }
     
     if (availableImageExportTypes.count > 0) {
-        [topLevelMenuOptions addObject:[OUIMenuOption optionWithTitle:NSLocalizedStringFromTableInBundle(@"Copy as Image", @"OmniUIDocument", OMNI_BUNDLE, @"Menu option in the document picker view") image:[UIImage imageNamed:@"OUIMenuItemCopyAsImage" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil] action:^{
+        [topLevelMenuOptions addObject:[OUIMenuOption optionWithTitle:NSLocalizedStringFromTableInBundle(@"Copy as Image", @"OmniUIDocument", OMNI_BUNDLE, @"Menu option in the document picker view") image:[UIImage imageNamed:@"OUIMenuItemCopyAsImage" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil] action:^(OUIMenuInvocation *invocation){
             [self copyAsImageForFileItem:fileItem];
             [self clearSelection];
         }]];
     }
     
     if (canSendToCameraRoll) {
-        [topLevelMenuOptions addObject:[OUIMenuOption optionWithTitle:NSLocalizedStringFromTableInBundle(@"Send to Photos", @"OmniUIDocument", OMNI_BUNDLE, @"Menu option in the document picker view") image:[UIImage imageNamed:@"OUIMenuItemSendToPhotos" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil] action:^{
+        [topLevelMenuOptions addObject:[OUIMenuOption optionWithTitle:NSLocalizedStringFromTableInBundle(@"Send to Photos", @"OmniUIDocument", OMNI_BUNDLE, @"Menu option in the document picker view") image:[UIImage imageNamed:@"OUIMenuItemSendToPhotos" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil] action:^(OUIMenuInvocation *invocation){
             [self sendToCameraRollForFileItem:fileItem];
             [self clearSelection];
         }]];
@@ -157,7 +157,7 @@ RCS_ID("$Id$")
     
     if (canPrint) {
         NSString *printTitle = [self _printTitleForFileItem:fileItem];
-        [topLevelMenuOptions addObject:[OUIMenuOption optionWithTitle:printTitle image:[UIImage imageNamed:@"OUIMenuItemPrint" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil] action:^{
+        [topLevelMenuOptions addObject:[OUIMenuOption optionWithTitle:printTitle image:[UIImage imageNamed:@"OUIMenuItemPrint" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil] action:^(OUIMenuInvocation *invocation){
             [self printDocument:fileItem];
         }]];
     }
@@ -168,15 +168,25 @@ RCS_ID("$Id$")
     }
     
     OUIMenuController *menu = [[OUIMenuController alloc] init];
+    menu.sizesToOptionWidth = YES;
     menu.topOptions = topLevelMenuOptions;
     if (topLevelMenuTitle)
         menu.title = topLevelMenuTitle;
     
-    menu.tintColor = [self.hostViewController tintColorForExportMenu];
+    menu.tintColor = [hostViewController tintColorForExportMenu];
     
-    menu.popoverPresentationController.barButtonItem = self.barButtonItem;
+    menu.popoverPresentationController.barButtonItem = [sender isKindOfClass:[UIBarButtonItem class]] ? sender : self.barButtonItem;
     
-    [self.hostViewController presentViewController:menu animated:YES completion:^{
+    if (![hostViewController isKindOfClass:[OUIDocumentPickerViewController class]] &&  [OUIInspectorAppearance inspectorAppearanceEnabled]) {
+        OUIInspectorAppearance *appearance = OUIInspectorAppearance.appearance;
+        menu.popoverPresentationController.backgroundColor = appearance.PopoverBackgroundColor;
+        menu.menuBackgroundColor = appearance.PopoverBackgroundColor;
+
+        menu.navigationBarBackgroundColor = OUIInspectorAppearance.appearance.InspectorBackgroundColor;
+        menu.navigationBarStyle = OUIInspectorAppearance.appearance.InspectorBarStyle;
+    }
+
+    [hostViewController presentViewController:menu animated:YES completion:^{
         menu.popoverPresentationController.passthroughViews = nil;
     }];
 }
@@ -184,13 +194,33 @@ RCS_ID("$Id$")
 
 - (void)export:(id)sender
 {
-    ODSFileItem *fileItem = [self.hostViewController fileItemToExport];
-    [self exportItem:fileItem];
+    ODSFileItem *fileItem;
+    UIViewController<OUIDocumentExporterHost, OUIDisabledDemoFeatureAlerter> *hostViewController = self.hostViewController;
+    if ([hostViewController respondsToSelector:@selector(fileItemsToExport)]) {
+        NSArray *items = [hostViewController fileItemsToExport];
+        if (items.count > 1) {
+            NSMutableArray *urls = [NSMutableArray array];
+
+            for (ODSFileItem *item in items)
+                [urls addObject:[item fileURL]];
+            UIActivityViewController *activityViewController = [[UIActivityViewController alloc] initWithActivityItems:urls applicationActivities:nil];
+            activityViewController.modalPresentationStyle = UIModalPresentationPopover;
+            activityViewController.popoverPresentationController.barButtonItem = sender;
+            [hostViewController presentViewController:activityViewController animated:YES completion:nil];
+            return;
+        }
+        fileItem = items.anyObject;
+    } else {
+        fileItem = [hostViewController fileItemToExport];
+    }
+    [self exportItem:fileItem sender:sender];
 }
 
 - (NSArray *)availableExportTypesForFileItem:(ODSFileItem *)fileItem serverAccount:(OFXServerAccount *)serverAccount exportOptionsType:(OUIExportOptionsType)exportOptionsType
 {
-    NSMutableArray *exportTypes = [self appSpecificAvailableExportTypesForFileItem:fileItem serverAccount:serverAccount exportOptionsType:exportOptionsType];
+    BOOL isFileExportToLocalDocuments = (exportOptionsType == OUIExportOptionsExport) && OFISEQUAL(serverAccount.type.identifier, OFXiTunesLocalDocumentsServerAccountTypeIdentifier);
+
+    NSMutableArray *exportTypes = [[fileItem availableExportTypesForFileExportToLocalDocuments:isFileExportToLocalDocuments] mutableCopy];
     if (!exportTypes) {
         exportTypes = [NSMutableArray array];
         
@@ -260,14 +290,10 @@ RCS_ID("$Id$")
     return ([types count] > 0) ? YES : NO;
 }
 
-- (void)_displayExportOptionsControllerForFileItem:(ODSFileItem *)fileItem exportType:(OUIExportOptionsType)exportType
+- (void)_displayExportOptionsControllerForFileItem:(ODSFileItem *)fileItem exportType:(OUIExportOptionsType)exportType presentingBarButtonItem:(UIBarButtonItem *)presentingBarButtonItem;
 {
     OUIExportOptionsController *exportOptionsController = [[OUIExportOptionsController alloc] initWithServerAccount:nil fileItem:fileItem exportType:exportType exporter:self];
-    UINavigationController *navController = [[UINavigationController alloc] initWithRootViewController:exportOptionsController];
-    navController.modalPresentationStyle = UIModalPresentationFormSheet;
-    navController.modalTransitionStyle = UIModalTransitionStyleCoverVertical;
-    
-    [self.hostViewController presentViewController:navController animated:YES completion:nil];
+    [exportOptionsController presentInViewController:self.hostViewController barButtonItem:presentingBarButtonItem];
 }
 
 - (void)emailFileItem:(ODSFileItem *)fileItem
@@ -278,11 +304,8 @@ RCS_ID("$Id$")
     
     NSData *documentData = [fileItem emailData];
     NSString *documentFilename = [fileItem emailFilename];
-    OBFinishPortingLater("<bug:///75843> (Add a UTI property to ODSFileItem)");
-    NSString *documentType = OFUTIForFileExtensionPreferringNative([documentFilename pathExtension], nil); // NSString *documentType = [ODAVFileInfo UTIForFilename:documentFilename];
-    OBASSERT(documentType != nil); // UTI should be registered in the Info.plist under CFBundleDocumentTypes
-    
-    [self _sendEmailWithSubject:[fileItem name] messageBody:nil isHTML:NO attachmentName:documentFilename data:documentData fileType:documentType];
+
+    [self _sendEmailWithSubject:[fileItem name] messageBody:nil isHTML:NO attachmentName:documentFilename data:documentData fileType:fileItem.fileType];
 }
 
 - (void)exportDocument:(ODSFileItem *)fileItem
@@ -298,10 +321,7 @@ RCS_ID("$Id$")
                 return;
             
             OUIExportOptionsController *exportController = [[OUIExportOptionsController alloc] initWithServerAccount:accountOrNil fileItem:fileItem exportType:OUIExportOptionsExport exporter:self];
-            
-            UINavigationController *navController = [[UINavigationController alloc] initWithRootViewController:exportController];
-            navController.modalPresentationStyle = UIModalPresentationFormSheet;
-            [self.hostViewController presentViewController:navController animated:YES completion:nil];
+            [exportController presentInViewController:self.hostViewController barButtonItem:nil];
         }];
     };
     
@@ -324,18 +344,19 @@ RCS_ID("$Id$")
     BOOL canMakePNG = [self supportsExportAsPNG];
     
     //- (NSData *)documentPicker:(OUIDocumentPicker *)picker copyAsImageDataForFileItem:(ODSFileItem *)fileItem error:(NSError **)outError;
+    UIViewController<OUIDocumentExporterHost, OUIDisabledDemoFeatureAlerter> *hostViewController = self.hostViewController;
     if (canMakeCopyAsImageSpecificPDF) {
         __autoreleasing NSError *error = nil;
         NSData *pdfData = [self copyAsImageDataForFileItem:fileItem error:&error];
         if (!pdfData)
-            OUI_PRESENT_ERROR_FROM(error, self.hostViewController);
+            OUI_PRESENT_ERROR_FROM(error, hostViewController);
         else
             [items addObject:[NSDictionary dictionaryWithObject:pdfData forKey:(id)kUTTypePDF]];
     } else if (canMakePDF) {
         __autoreleasing NSError *error = nil;
         NSData *pdfData = [self PDFDataForFileItem:fileItem error:&error];
         if (!pdfData)
-            OUI_PRESENT_ERROR_FROM(error, self.hostViewController);
+            OUI_PRESENT_ERROR_FROM(error, hostViewController);
         else
             [items addObject:[NSDictionary dictionaryWithObject:pdfData forKey:(id)kUTTypePDF]];
     }
@@ -345,7 +366,7 @@ RCS_ID("$Id$")
         __autoreleasing NSError *error = nil;
         NSData *pngData = [self PNGDataForFileItem:fileItem error:&error];
         if (!pngData) {
-            OUI_PRESENT_ERROR_FROM(error, self.hostViewController);
+            OUI_PRESENT_ERROR_FROM(error, hostViewController);
         }
         else {
             // -setImage: will register our image as being for the JPEG type. But, our image isn't a photo.
@@ -368,8 +389,9 @@ RCS_ID("$Id$")
 
 - (void)clearSelection
 {
-    if ([self.hostViewController respondsToSelector:@selector(clearSelectionAndEndEditing)]) {
-        [self.hostViewController performSelectorOnMainThread:@selector(clearSelectionAndEndEditing) withObject:nil waitUntilDone:NO];
+    UIViewController<OUIDocumentExporterHost, OUIDisabledDemoFeatureAlerter> *hostViewController = self.hostViewController;
+    if ([hostViewController respondsToSelector:@selector(clearSelectionAndEndEditing)]) {
+        [hostViewController performSelectorOnMainThread:@selector(clearSelectionAndEndEditing) withObject:nil waitUntilDone:NO];
     }
 }
 
@@ -411,7 +433,6 @@ RCS_ID("$Id$")
 }
 
 - (NSString *)_printTitleForFileItem:(ODSFileItem *)fileItem;
-// overridden by Graffle to return "Print (landscape) or Print (portrait)"
 {
     return [self printButtonTitleForFileItem:fileItem];
 }
@@ -430,7 +451,7 @@ RCS_ID("$Id$")
 - (BOOL)_canUseOpenInWithExportType:(NSString *)exportType;
 {
     NSNumber *value = [[OUIDocumentExporter openInMapCache] objectForKey:exportType];
-    if (value) {
+    if (value != nil) {
         // We have a cached value, so immediately return it.
         return [value boolValue];
     }
@@ -507,7 +528,8 @@ RCS_ID("$Id$")
         [controller setMessageBody:messageBody isHTML:isHTML];
     if (attachmentData != nil) {
         NSString *mimeType = (NSString *)CFBridgingRelease(UTTypeCopyPreferredTagWithClass((__bridge CFStringRef)fileType, kUTTagClassMIMEType));
-        OBASSERT(mimeType != nil); // The UTI's mime type should be registered in the Info.plist under UTExportedTypeDeclarations:UTTypeTagSpecification
+        // Restore this assertion and add unique mime types for file formats like gstencil and gtemplate if mail recipients report issues with files opening in the wrong app?
+//        OBASSERT(mimeType != nil); // The UTI's mime type should be registered in the Info.plist under UTExportedTypeDeclarations:UTTypeTagSpecification
         if (mimeType == nil)
             mimeType = @"application/octet-stream";
         
@@ -565,20 +587,21 @@ RCS_ID("$Id$")
             }
         }
     } else {
+        UIViewController<OUIDocumentExporterHost, OUIDisabledDemoFeatureAlerter> *hostViewController = self.hostViewController;
         emailName = [fileWrapper.preferredFilename stringByAppendingPathExtension:@"zip"];
         emailType = OFUTIForFileExtensionPreferringNative(@"zip", nil);
         NSString *zipPath = [NSTemporaryDirectory() stringByAppendingPathComponent:emailName];
         @autoreleasepool {
             __autoreleasing NSError *error = nil;
             if (![OUZipArchive createZipFile:zipPath fromFileWrappers:[NSArray arrayWithObject:fileWrapper] error:&error]) {
-                OUI_PRESENT_ERROR_FROM(error, self.hostViewController);
+                OUI_PRESENT_ERROR_FROM(error, hostViewController);
                 return;
             }
         };
         __autoreleasing NSError *error = nil;
         emailData = [NSData dataWithContentsOfFile:zipPath options:NSDataReadingMappedAlways error:&error];
         if (emailData == nil) {
-            OUI_PRESENT_ERROR_FROM(error, self.hostViewController);
+            OUI_PRESENT_ERROR_FROM(error, hostViewController);
             return;
         }
     }
@@ -589,25 +612,32 @@ RCS_ID("$Id$")
 
 - (void)exportFileWrapperOfType:(NSString *)exportType forFileItem:(ODSFileItem *)fileItem withCompletionHandler:(void (^)(NSFileWrapper *fileWrapper, NSError *error))completionHandler;
 {
-    completionHandler = [completionHandler copy]; // preserve scope
+    OBASSERT_NOTNULL(completionHandler);
     
-    if (OFISNULL(exportType)) {
+    completionHandler = [completionHandler copy]; // preserve scope
+
+    // For 'native' files, don't bother with loading in all the data, just grab the file wrapper
+    if (OFISNULL(exportType) || [exportType isEqual:fileItem.fileType]) {
         // The 'nil' type is always first in our list of types, so we can eport the original file as is w/o going through any app specific exporter.
         // NOTE: This is important for OO3 where the exporter has the ability to rewrite the document w/o hidden columns, in sorted order, with summary values (and eventually maybe with filtering). If we want to support untransformed exporting through the OO XML exporter, it will need to be configurable via settings on the OOXSLPlugin it uses. For now it assumes all 'exports' want all the transformations.
-        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),
-                       ^{
-                           __autoreleasing NSError *error = nil;
-                           NSFileWrapper *fileWrapper = [[NSFileWrapper alloc] initWithURL:fileItem.fileURL options:0 error:&error];
-                           
-                           if (completionHandler) {
-                               completionHandler(fileWrapper, error);
-                           }
-                           
-                       });
+
+        [fileItem.scope performAsynchronousFileAccessUsingBlock:^{
+            NSFileCoordinator *coordinator = [[NSFileCoordinator alloc] initWithFilePresenter:nil];
+
+            __block NSFileWrapper *fileWrapper;
+            NSError *readingError = nil;
+
+            [coordinator readItemAtURL:fileItem.fileURL withChanges:YES error:&readingError byAccessor:^BOOL(NSURL *newURL, NSError **outError){
+                fileWrapper = [[NSFileWrapper alloc] initWithURL:newURL options:NSFileWrapperReadingImmediate error:outError];
+                return (fileWrapper != nil);
+            }];
+            completionHandler(fileWrapper, readingError);
+        }];
         return;
     }
-    
+
     // try the older NSData API if the app-specific subclass is calling up to us
+    // Unsure if any of our apps actually get this far... —LM
     NSData *fileData = nil;
     NSString *pathExtension = nil;
     __autoreleasing NSError *error = nil;
@@ -620,15 +650,15 @@ RCS_ID("$Id$")
         pathExtension = @"png";
     }
     
-    if (fileData == nil)
+    if (fileData == nil) {
         completionHandler(nil, error);
+        return;
+    }
     
     NSFileWrapper *fileWrapper = [[NSFileWrapper alloc] initRegularFileWithContents:fileData];
     fileWrapper.preferredFilename = [fileItem.name stringByAppendingPathExtension:pathExtension];
     
-    if (completionHandler) {
-        completionHandler(fileWrapper, error);
-    }
+    completionHandler(fileWrapper, error);
 }
 
 #pragma mark - Subclass Overrides
@@ -655,11 +685,6 @@ RCS_ID("$Id$")
 }
 
 - (NSArray<OUIMenuOption *> *)additionalExportOptionsForFileItem:(ODSFileItem *)fileItem
-{
-    return nil;
-}
-
-- (NSMutableArray *)appSpecificAvailableExportTypesForFileItem:(ODSFileItem *)fileItem serverAccount:(OFXServerAccount *)serverAccount exportOptionsType:(OUIExportOptionsType)exportOptionsType
 {
     return nil;
 }

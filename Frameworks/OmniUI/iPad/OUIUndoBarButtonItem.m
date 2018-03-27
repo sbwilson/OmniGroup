@@ -1,4 +1,4 @@
-// Copyright 2010-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -190,25 +190,31 @@ static id _commonInit(OUIUndoBarButtonItem *self)
     if (isCompact) {
         [_undoButton setImage:[UIImage imageNamed:@"OUIToolbarUndo-Compact" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil] forState:UIControlStateNormal];
         [_undoButton setTitle:nil forState:UIControlStateNormal];
-        [_undoButton sizeToFit];
     } else {
-        [_undoButton setImage:nil forState:UIControlStateNormal];
-        [_undoButton setTitle:NSLocalizedStringFromTableInBundle(@"Undo", @"OmniUI", OMNI_BUNDLE, @"Undo button title") forState:UIControlStateNormal];
-        [_undoButton sizeToFit];
+        if (self.useImageForNonCompact) {
+            [_undoButton setImage:[UIImage imageNamed:@"OUIToolbarUndo" inBundle:OMNI_BUNDLE compatibleWithTraitCollection:nil] forState:UIControlStateNormal];
+            [_undoButton setTitle:nil forState:UIControlStateNormal];
+        } else {
+            [_undoButton setImage:nil forState:UIControlStateNormal];
+            [_undoButton setTitle:NSLocalizedStringFromTableInBundle(@"Undo", @"OmniUI", OMNI_BUNDLE, @"Undo button title") forState:UIControlStateNormal];
+        }
     }
+    
+    [_undoButton sizeToFit];
 }
 
 #pragma mark - Appearance
 
 - (void)appearanceDidChange;
 {
-    if (self.appearanceDelegate != nil) {
+    id <OUIUndoBarButtonMenuAppearanceDelegate> appearanceDelegate = self.appearanceDelegate;
+    if (appearanceDelegate != nil) {
         
         if (_menuController != nil) {
-            _menuController.popoverPresentationController.backgroundColor = [self.appearanceDelegate undoBarButtonMenuPopoverBackgroundColor];
-            _menuController.menuBackgroundColor = [self.appearanceDelegate undoBarButtonMenuBackgroundColor];
-            _menuController.menuOptionBackgroundColor = [self.appearanceDelegate undoBarButtonMenuOptionBackgroundColor];
-            _menuController.menuOptionSelectionColor = [self.appearanceDelegate undoBarButtonMenuOptionSelectionColor];
+            _menuController.popoverPresentationController.backgroundColor = [appearanceDelegate undoBarButtonMenuPopoverBackgroundColor];
+            _menuController.menuBackgroundColor = [appearanceDelegate undoBarButtonMenuBackgroundColor];
+            _menuController.menuOptionBackgroundColor = [appearanceDelegate undoBarButtonMenuOptionBackgroundColor];
+            _menuController.menuOptionSelectionColor = [appearanceDelegate undoBarButtonMenuOptionSelectionColor];
         }
     }
 }
@@ -266,11 +272,12 @@ static id _commonInit(OUIUndoBarButtonItem *self)
 - (void)_showUndoMenu;
 {
     id menuPresenter;
+    id undoBarButtonItemTarget = _weak_undoBarButtonItemTarget;
     
-    if ([_weak_undoBarButtonItemTarget respondsToSelector:@selector(targetForAction:withSender:)]) {
-        menuPresenter = [(id)_weak_undoBarButtonItemTarget targetForAction:@selector(presentMenuForUndoBarButtonItem:) withSender:self];
+    if ([undoBarButtonItemTarget respondsToSelector:@selector(targetForAction:withSender:)]) {
+        menuPresenter = [undoBarButtonItemTarget targetForAction:@selector(presentMenuForUndoBarButtonItem:) withSender:self];
     } else {
-        menuPresenter = [_weak_undoBarButtonItemTarget respondsToSelector:@selector(presentMenuForUndoBarButtonItem:)] ? _weak_undoBarButtonItemTarget : nil;
+        menuPresenter = [undoBarButtonItemTarget respondsToSelector:@selector(presentMenuForUndoBarButtonItem:)] ? undoBarButtonItemTarget : nil;
     }
     
     [menuPresenter presentMenuForUndoBarButtonItem:self];
@@ -295,21 +302,21 @@ static id _commonInit(OUIUndoBarButtonItem *self)
     
     // Build Options
     OUIMenuOption *undoOption = [OUIMenuOption optionWithTitle:NSLocalizedStringFromTableInBundle(@"Undo", @"OmniUI", OMNI_BUNDLE, @"Undo button title")
-                                                        action:^{
+                                                        action:^(OUIMenuInvocation *invocation){
                                                             if (target) {
                                                                 [target undo:nil];
                                                             }
-                                                        } validator:^BOOL{
+                                                        } validator:^BOOL(OUIMenuOption *option){
                                                             return [target canPerformAction:@selector(undo:) withSender:nil];
                                                         }];
     
     
     OUIMenuOption *redoOption = [OUIMenuOption optionWithTitle:NSLocalizedStringFromTableInBundle(@"Redo", @"OmniUI", OMNI_BUNDLE, @"Redo button title")
-                                                        action:^{
+                                                        action:^(OUIMenuInvocation *invocation){
                                                             if (target) {
                                                                 [target redo:nil];
                                                             }
-                                                        } validator:^BOOL{
+                                                        } validator:^BOOL(OUIMenuOption *option){
                                                             return [target canPerformAction:@selector(redo:) withSender:nil];
                                                         }];
     
@@ -317,8 +324,19 @@ static id _commonInit(OUIUndoBarButtonItem *self)
     
     
     // Setup Popover Presentation Controller - This must be done each time becase when the popover is dismissed the current popoverPresentationController is released and a new one is created next time.
-    _menuController.popoverPresentationController.barButtonItem = self;
-
+    
+    // workaround for <bug:///155450> (iOS-OmniPlan Unassigned: Undo popover shifts to the left side of the screen if you bring it up twice)
+    // When the bar button item has a custom view and is in a _UIButtonBarStackView, the second time we present a popover from it, the popover is instead presented from the left side of the stack view. In fact if we use the custom view as sourceView and an appropriate sourceRect, we wind up with an equivalent bug. So instead we'll just use the stack view.
+    UIStackView *enclosingStackView = OB_CHECKED_CAST_OR_NIL(UIStackView, [_undoButton enclosingViewOfClass:[UIStackView class]]);
+    if (enclosingStackView) {
+        CGRect sourceRect = [enclosingStackView convertRect:_undoButton.bounds fromView:_undoButton];
+        _menuController.popoverPresentationController.sourceView = enclosingStackView;
+        _menuController.popoverPresentationController.sourceRect = sourceRect;
+    } else {
+        _menuController.popoverPresentationController.sourceView = nil;
+        _menuController.popoverPresentationController.barButtonItem = self;
+    }
+    
     // give the appearanceDelegate, if present, an opportunity to alter the appearance each time
     [self appearanceDidChange];
     

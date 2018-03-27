@@ -1,4 +1,4 @@
-// Copyright 2010-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -13,6 +13,7 @@
 #import <OmniUI/OUIEmptyPaddingInspectorSlice.h>
 #import <OmniUI/OUIInspectorSliceView.h>
 #import <OmniUI/OUIStackedSlicesInspectorPane.h>
+#import <OmniUI/OUIThemedAppearance.h>
 #import <OmniUI/UIView-OUIExtensions.h>
 
 #import "OUIInspectorSlice-Internal.h"
@@ -57,7 +58,7 @@ OBDEPRECATED_METHOD(-minimumHeightForWidth:);
 {
     // Try to match the default UITableView insets for our default insets.
     static dispatch_once_t predicate;
-    static UIEdgeInsets alignmentInsets = (UIEdgeInsets) { .left = 15.0f, .right = 15.0f, .top = 0.0f, .bottom = 0.0f };
+    static UIEdgeInsets alignmentInsets = (UIEdgeInsets) { .left = 16, .right = 16, .top = 0.0f, .bottom = 0.0f };
     dispatch_once(&predicate, ^{
         UITableView *tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStyleGrouped];
         UIEdgeInsets separatorInsets = tableView.separatorInset;
@@ -69,6 +70,18 @@ OBDEPRECATED_METHOD(-minimumHeightForWidth:);
         }
     });
     return alignmentInsets;
+}
+
++ (NSDirectionalEdgeInsets)sliceDirectionalLayoutMargins;
+{
+    // Try to match the default UITableView insets for our default insets.
+    static dispatch_once_t predicate;
+    static NSDirectionalEdgeInsets directionalEdgeInsets = (NSDirectionalEdgeInsets){0,0,0,0};
+    dispatch_once(&predicate, ^{
+        UIEdgeInsets sliceAlignmentInsets = [self sliceAlignmentInsets];
+        directionalEdgeInsets = NSDirectionalEdgeInsetsMake(sliceAlignmentInsets.top, sliceAlignmentInsets.left, sliceAlignmentInsets.bottom, sliceAlignmentInsets.right);
+    });
+    return directionalEdgeInsets;
 }
 
 - (UIColor *)sliceBackgroundColor;
@@ -102,7 +115,12 @@ OBDEPRECATED_METHOD(-minimumHeightForWidth:);
 + (NSString *)nibName;
 {
     // OUIAllocateViewController means we might get 'MyCustomFooInspectorSlice' for 'OUIFooInspectorSlice'. View controller's should be created so often that this would be too slow. One question is whether UINib is uniqued, though, since otherwise we perform extra I/O.
-    return OUICustomClassOriginalClassName(self);
+    // Swift classes prepend their module name to the value returned from NSStringFromClass(), which is in turn passed back from OUICustomClassOriginalClassName(). The compiled nib is extremely unlikely to have a module-scoped filename. Strip the leading module and dot before handing back the nib name.
+    NSString *className = OUICustomClassOriginalClassName(self);
+    NSRange dotRange  = [className rangeOfString:@"."];
+    if (dotRange.location != NSNotFound)
+        className = [className substringFromIndex:(dotRange.location + dotRange.length)];
+    return className;
 }
 
 + (NSBundle *)nibBundle;
@@ -150,6 +168,24 @@ OBDEPRECATED_METHOD(-minimumHeightForWidth:);
     return inspector;
 }
 
+- (UIView *)contentView {
+    if (_contentView == nil) {
+        _contentView = [[UIView alloc] init];
+        _contentView.translatesAutoresizingMaskIntoConstraints = NO;
+        [self.view addSubview:_contentView];
+        
+        // These constraints were created but never activated. Many inspector slices (if not all) are adding their parts to self.view instead of self.contentView, and they wind up occluded by contentView and unable to receive touches. Let's see if we can get by without this view, but we may need to do some cleanup later (remove this view, or fix all the slices to use it properly).
+//        NSArray *constraints = @[
+//             [_contentView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+//             [_contentView.rightAnchor constraintEqualToAnchor:self.view.rightAnchor],
+//             [_contentView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+//             [_contentView.leftAnchor constraintEqualToAnchor:self.view.leftAnchor]];
+//        [NSLayoutConstraint activateConstraints:constraints];
+    }
+    
+    return _contentView;
+}
+
 - (void)setAlignmentInsets:(UIEdgeInsets)newValue;
 {
     if (UIEdgeInsetsEqualToEdgeInsets(_alignmentInsets, newValue)) {
@@ -176,7 +212,7 @@ OBDEPRECATED_METHOD(-minimumHeightForWidth:);
             [(id)view setInspectorSliceGroupPosition:_groupPosition];
         }
         
-        if ([self wantsAutoConfiguredBottomSeparator]) {
+        if (self.wantsAutoConfiguredBottomSeparator) {
             if (!_bottomSeparator) {
                 _bottomSeparator = [[OUISliceSeparatorView alloc] initWithFrame:view.bounds];
                 _bottomSeparator.translatesAutoresizingMaskIntoConstraints = NO;
@@ -315,11 +351,12 @@ OBDEPRECATED_METHOD(-minimumHeightForWidth:);
 
 - (NSArray *)appropriateObjectsForInspection;
 {
-    OBPRECONDITION(self.containingPane);
+    OUIStackedSlicesInspectorPane *containingPane = self.containingPane;
+    OBPRECONDITION(containingPane, "<bug:///150992> (iOS-OmniPlan Unassigned: OPBaselinesInspectorSlice looks for appropriateObjectsForInspection too early and fails assertion)");
     
     NSMutableArray *objects = nil;
     
-    for (id object in self.containingPane.inspectedObjects) {
+    for (id object in containingPane.inspectedObjects) {
         if ([self isAppropriateForInspectedObject:object]) {
             if (!objects)
                 objects = [NSMutableArray array];
@@ -333,9 +370,10 @@ OBDEPRECATED_METHOD(-minimumHeightForWidth:);
 #ifdef NS_BLOCKS_AVAILABLE
 - (void)eachAppropriateObjectForInspection:(void (^)(id obj))action;
 {
-    OBPRECONDITION(self.containingPane);
+    OUIStackedSlicesInspectorPane *containingPane = self.containingPane;
+    OBPRECONDITION(containingPane);
         
-    for (id object in self.containingPane.inspectedObjects) {
+    for (id object in containingPane.inspectedObjects) {
         if ([self isAppropriateForInspectedObject:object])
             action(object);
     }
@@ -484,6 +522,17 @@ OBDEPRECATED_METHOD(-minimumHeightForWidth:);
 {
     OBPRECONDITION(parent == nil || [parent isKindOfClass:[OUIStackedSlicesInspectorPane class]]);
     [super didMoveToParentViewController:parent];
+}
+
+#pragma mark - OUIThemedAppearance
+
+- (NSArray <id<OUIThemedAppearanceClient>> *)themedAppearanceChildClients;
+{
+    NSArray *clients = [super themedAppearanceChildClients];
+    if (_bottomSeparator)
+        clients = [clients arrayByAddingObject:_bottomSeparator];
+    
+    return clients;
 }
 
 @end

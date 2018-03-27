@@ -1,4 +1,4 @@
-// Copyright 2010-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -56,8 +56,9 @@ OBDEPRECATED_METHOD(-updateInterfaceFromInspectedObjects); // -> -updateInterfac
 @synthesize inspector = _weak_inspector;
 - (OUIInspector *)inspector;
 {
-    OBPRECONDITION(_weak_inspector);
-    return _weak_inspector;
+    OUIInspector *inspector = _weak_inspector;
+    OBPRECONDITION(inspector != nil);
+    return inspector;
 }
 
 @synthesize parentSlice = _weak_parentSlice;
@@ -74,6 +75,19 @@ OBDEPRECATED_METHOD(-updateInterfaceFromInspectedObjects); // -> -updateInterfac
     // For subclasses
 }
 
+- (void)setInspectedObjects:(NSArray *)inspectedObjects {
+    if ([_inspectedObjects isEqualToArray:inspectedObjects]) {
+        return;
+    }
+    
+    _inspectedObjects = inspectedObjects;
+    
+    if (self.viewLoaded) {
+        OUIInspectorUpdateReason reason = (_inspectedObjects == nil) ? OUIInspectorUpdateReasonDefault : OUIInspectorUpdateReasonNeedsReload;
+        [self updateInterfaceFromInspectedObjects:reason];
+    }
+}
+
 #pragma mark -
 #pragma mark UIViewController
 
@@ -85,24 +99,10 @@ OBDEPRECATED_METHOD(-updateInterfaceFromInspectedObjects); // -> -updateInterfac
     [self updateInterfaceFromInspectedObjects:OUIInspectorUpdateReasonDefault];
 }
 
-- (void)viewDidAppear:(BOOL)animated;
-{
-    [super viewDidAppear:animated];
-    self.inspector.animatingPushOrPop = NO;
-}
-
 - (void)viewWillDisappear:(BOOL)animated
 {
     [super viewWillDisappear:animated];
-    self.inspector.animatingPushOrPop = YES;
-    
     [[self view] endEditing:YES];
-}
-
-- (void)viewDidDisappear:(BOOL)animated
-{
-    [super viewDidDisappear:animated];
-    self.inspector.animatingPushOrPop = NO;
 }
 
 - (BOOL)shouldAutorotate;

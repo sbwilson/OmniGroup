@@ -7,9 +7,6 @@
 /* error description */
 "%@ cannot open this type of file." = "%@ non può aprire questo tipo di documento.";
 
-/* Location label format for external documents */
-"%@ Documents" = "%@ documenti";
-
 /* gigabytes */
 "%@ GB" = "%@ GB";
 
@@ -44,7 +41,7 @@
 "1 Item Selected" = "1 elemento selezionato";
 
 /* replace document description */
-"A document with the name \"%@\" already exists. Do you want to replace it? This cannot be undone." = "Esiste già un documento denominato \"%@\". Sostituirlo? L'operazione non potrà essere annullata.";
+"A document with the name \"%@\" already exists. Do you want to replace it? This cannot be undone." = "Esiste già un documento denominato “%@”. Sostituirlo? L'operazione non potrà essere annullata.";
 
 /* Omni Sync Server account info button title */
 "Account Info" = "Info account";
@@ -83,7 +80,7 @@
 "Cannot Export Item" = "Impossibile esportare l'elemento";
 
 /* email action description */
-"Choose a format for emailing \"%@\":" = "Scegli un formato per inviare via e-mail \"%@\":";
+"Choose a format for emailing \"%@\":" = "Scegli un formato per inviare via e-mail “%@”:";
 
 /* toolbar prompt when choosing a template */
 "Choose a Template" = "Scegli un modello";
@@ -94,14 +91,26 @@
 /* export options title */
 "Choose Format" = "Scegli formato";
 
+/* Clear from Recent Documents container toolbar item accessibility label. */
+"Clear" = "Trasparente";
+
+/* clear button title */
+"Clear %ld Documents" = "Cancella %ld documenti";
+
+/* remove button title */
+"Clear Document" = "Cancella documento";
+
 /* doc picker custom accessibility action name */
 "Clear name field" = "Cancella campo nome";
 
 /* title view clear button accessibility label. */
 "Clear Title" = "Cancella titolo";
 
-/* Cloud Storage Providers preference nvigation bar title */
-"Cloud Storage Providers" = "Provider di archiviazione cloud";
+/* Close Document toolbar item accessibility label. */
+"Close Document" = "Chiudi documento";
+
+/* demo mode disabled message */
+"Cloud storage is disabled in this demo version." = "L'archiviazione cloud è disattivata in questa versione demo.";
 
 /* Success label when connecting to an OmniPresence or WebDAV server account */
 "Connected" = "Connesso";
@@ -154,7 +163,9 @@
 /* Toolbar button title for returning to list of documents. */
 "Documents <back button>" = "Documenti";
 
-/* Duplicate toolbar item accessibility label. */
+/* Duplicate document preview action title.
+   Duplicate toolbar item accessibility label. */
+
 "Duplicate" = "Duplica";
 
 /* title for alert option confirming duplication of multiple files */
@@ -192,13 +203,13 @@
 "Export \"%@\" as:" = "Esporta \"%@\" come:";
 
 /* export action description */
-"Export \"%@\" to %@ as:" = "Esporta \"%1$@\" in %2$@ come:";
+"Export \"%@\" to %@ as:" = "Esporta “%1$@” in %2$@ come:";
 
 /* Menu option in the document picker view */
 "Export to WebDAV" = "Esporta in WebDAV";
 
-/* Menu option in the document picker view */
-"Export to…" = "Esporta in…";
+/* Export document preview action title. */
+"Export…" = "Esporta…";
 
 /* finished */
 "Finished" = "Fine";
@@ -212,9 +223,6 @@
 /* Info item accessibility label */
 "Info" = "Info";
 
-/* error title */
-"Invalid Zip Archive" = "Archivio compresso non valido";
-
 /* doc picker title label editing accessibility value */
 "Is editing" = "Sta modificando";
 
@@ -227,9 +235,6 @@
 /* Notice for the user about the last edit to a document (this device) */
 "Last edit: %@ on this device" = "Ultima modifica: %@ su questo dispositivo";
 
-/* Link External Document toolbar item accessibility label. */
-"Link External Document" = "Collega documento esterno";
-
 /* Server Account Setup label: location */
 "Location" = "Posizione";
 
@@ -238,9 +243,6 @@
 
 /* modified date accessibility value */
 "Modified %@" = "Modificato il %@";
-
-/* Cloud Storage Providers more information button title */
-"More Info…" = "Altre informazioni...";
 
 /* Menu option in the document picker view
    Move toolbar item accessibility label. */
@@ -258,13 +260,18 @@
 /* Share menu title */
 "Move to..." = "Sposta in…";
 
+/* Move document preview action title. */
+"Move…" = "Sposta…";
+
 /* Base name for newly created documents. This will have an number appended to it to make it unique. */
 "My Document" = "Documento personale";
 
 /* Base name for newly created templates. This will have an number appended to it to make it unique. */
 "My Template" = "Il mio modello";
 
-/* New Document toolbar item accessibility label. */
+/* New Document toolbar item accessibility label.
+   New Template button title */
+
 "New Document" = "Nuovo documento";
 
 /* Action sheet title for making a new folder from the selected documents */
@@ -293,14 +300,44 @@
 
 "OK" = "OK";
 
+/* demo disabled message */
+"OmniPresence allows you to use our free sync service or any compatible WebDAV server to automatically share documents between your devices, or to keep copies of your documents in the cloud in case you need to restore your device." = "OmniPresence ti consente di utilizzare il nostro servizio gratuito di sincronizzazione o altri server WebDAV compatibili per condividere automaticamente documenti tra i tuoi dispositivi, oppure per conservare copie dei tuoi documenti nel cloud nel caso avessi bisogno di ripristinare il dispositivo.";
+
 /* Omni Presence config email subject format */
 "OmniPresence Configuration: %@" = "Configurazione di OmniPresence: %@";
+
+/* demo disabled title */
+"OmniPresence is disabled in this demo version." = "OmniPresence è disattivata in questa versione demo.";
+
+/* Local Documents device-specific display name (should match the name of the On My iPad location in the Files app on an iPad) */
+"On My iPad" = "Su iPad";
+
+/* Local Documents device-specific display name (should match the name of the On My iPhone location in the Files app on an iPhone) */
+"On My iPhone" = "Su iPhone";
+
+/* empty picker text for Recent Documents */
+"Open a document to add it to this view." = "Apri un documento per aggiungerlo a questa visualizzazione.";
+
+/* Open External Document toolbar item accessibility label. */
+"Open External Document" = "Apri il documento esterno";
 
 /* Omni Presence config email body */
 "Open this file on another device to configure OmniPresence there." = "Apri questo documento su un altro dispositivo per configurarvi OmniPresence.";
 
-/* Generic name for location of external documents */
-"Other" = "Altri";
+/* home screen button label */
+"Open…" = "Apri…";
+
+/* Menu title for selecting an external document provider when moving a file */
+"Other…" = "Altro…";
+
+/* Language section title */
+"ouiLanguagePicker.language" = "Lingua";
+
+/* Custom templates header title */
+"ouiTemplatePicker.customTemplatesHeader" = "Personalizzato";
+
+/* Navigation bar title: Choose a Template */
+"ouiTemplatePicker.navigationTitle" = "Scegli un modello";
 
 /* Server Account Setup label: password */
 "Password" = "Password";
@@ -314,14 +351,8 @@
 /* purchase now button title */
 "Purchase Now." = "Acquista ora.";
 
-/* Remove from external container toolbar item accessibility label. */
-"Remove" = "Rimuovi";
-
-/* remove button title */
-"Remove %ld Documents" = "Rimuovi %ld documenti";
-
-/* remove button title */
-"Remove Document" = "Rimuovi documento";
+/* Generic name for location of external documents */
+"Recent Documents" = "Documenti recenti";
 
 /* rename button title */
 "Rename" = "Rinomina";
@@ -369,13 +400,16 @@
 "Select a Document" = "Seleziona un documento";
 
 /* send to app description */
-"Send \"%@\" to app as:" = "Invia \"%@\" all'app come:";
+"Send \"%@\" to app as:" = "Invia “%@” all'app come:";
 
 /* Omni Sync Server send settings button title */
 "Send Settings via Email" = "Registra impostazioni tramite e-mail";
 
 /* Menu option in the document picker view */
 "Send to App" = "Invia all'app";
+
+/* Menu option in the document picker view */
+"Send to Files" = "Invia a File";
 
 /* Menu option in the document picker view */
 "Send to Photos" = "Invia a Foto";
@@ -389,7 +423,7 @@
 "Server address: %@" = "Indirizzo server: %@";
 
 /* Label format when setting up an OmniPresence or WebDAV server account */
-"Setting up \"%@\"" = "Imposto \"%@\"";
+"Setting up \"%@\"" = "Imposto “%@”";
 
 /* Omni Sync Server sign up button title */
 "Sign Up For a New Account" = "Registra nuovo account";
@@ -404,28 +438,28 @@
 "Tap here to add a document without a template." = "Tocca qui per aggiungere un documento senza un modello.";
 
 /* empty picker button text */
-"Tap here, or on the + in the toolbar, to add a document." = "Tocca qui o su + nella barra degli strumenti per aggiungere un documento.";
+"Tap here, or on the + in the toolbar, to add a custom template." = "Tocca qui o su + nella barra degli strumenti per aggiungere un documento personalizzato.";
 
-/* empty picker text for Other Documents */
-"Tap on the + in the toolbar to add a document stored on iCloud Drive or provided by another app." = "Tocca la + nella barra degli strumenti per aggiungere un documento archiviato su iCloud Drive o fornito da un'altra app.";
+/* empty picker button text */
+"Tap here, or on the + in the toolbar, to add a document." = "Tocca qui o su + nella barra degli strumenti per aggiungere un documento.";
 
 /* file name label for template filte types */
 "Template:" = "Modello:";
 
 /* Discard unsynced edits dialog: message format */
-"The \"%@\" account has %ld edited documents which have not yet been synced up to the cloud. Do you wish to discard those edits?" = "Nell'account \"%1$@\" sono presenti %2$ld documenti modificati che non sono stati ancora sincronizzati nel cloud. Ignorare tali modifiche?";
+"The \"%@\" account has %ld edited documents which have not yet been synced up to the cloud. Do you wish to discard those edits?" = "Nell'account “%1$@” sono presenti %2$ld documenti modificati che non sono stati ancora sincronizzati nel cloud. Ignorare tali modifiche?";
 
 /* Discard unsynced edits dialog: message format */
-"The \"%@\" account has an edited document which has not yet been synced up to the cloud. Do you wish to discard those edits?" = "Nell'account \"%@\" è presente un documento modificato che non è stato ancora sincronizzato nel cloud. Ignorare tali modifiche?";
+"The \"%@\" account has an edited document which has not yet been synced up to the cloud. Do you wish to discard those edits?" = "Nell'account “%@” è presente un documento modificato che non è stato ancora sincronizzato nel cloud. Ignorare tali modifiche?";
 
 /* Discard unsynced edits dialog: message format */
-"The \"%@\" account may have edited documents which have not yet been synced up to the cloud. Do you wish to discard any local edits?" = "L'account \"%@\" può aver modificato documenti non ancora sincronizzati con il cloud. Ignorare le modifiche locali?";
+"The \"%@\" account may have edited documents which have not yet been synced up to the cloud. Do you wish to discard any local edits?" = "L'account “%@” potrebbe aver modificato documenti non ancora sincronizzati nel cloud. Ignorare eventuali modifiche in locale?";
+
+/* dialog box title when prompting for the password/passphrase for an encrypted document - parameter is the display-name of the file being opened */
+"The document \"%@\" requires a password to open." = "È necessaria una password per aprire il documento \"%@\".";
 
 /* Error description for a document operation failing due to a missing file. */
 "The operation couldn't be completed." = "Impossibile completare l'operazione.";
-
-/* error description */
-"The zip archive must contain a single document." = "L'archivio compresso deve contenere solo un documento.";
 
 /* Photo Library permisssions error suggestion. */
 "This app does not have access to your Photo Library." = "L'app non ha accesso alla libreria fotografica.";
@@ -445,14 +479,11 @@
 /* sort by title */
 "Title" = "Titolo";
 
-/* Cloud Storage Providers preference informational description */
-"Turning on Cloud Storage Providers gives access to documents stored on cloud services, such as iCloud Drive or Dropbox. We are introducing access to Cloud Storage Providers as a BETA implementation; use caution when enabling this service. To learn more, see “Working in the Cloud” in the documentation." = "Attivando Provider di archiviazione cloud ottieni l'accesso ai documenti archiviati sui servizi cloud, come iCloud Drive o Dropbox. Stiamo presentando l'accesso a Provider di archiviazione cloud come implementazione BETA; presta la massima attenzione se attivi questo servizio. Per ulteriori informazioni, vedi \"Uso del cloud\" nella documentazione.";
-
 /* error title */
 "Unable to open file." = "Impossibile aprire il documento.";
 
-/* Cloud Storage Providers preference settings screen title */
-"Use Cloud Storage Providers" = "Usa provider di archiviazione cloud";
-
 /* Account validation status string. */
 "Validating account..." = "Convalido account…";
+
+/* empty picker button text */
+"When plug-ins are installed, they will appear here." = "Una volta installati i plug-in, questi verranno visualizzati qui.";

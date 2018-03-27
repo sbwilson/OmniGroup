@@ -1,4 +1,4 @@
-// Copyright 1998-2016 Omni Development, Inc. All rights reserved.
+// Copyright 1998-2017 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -8,22 +8,20 @@
 #import <OmniFoundation/NSData-OFExtensions.h>
 
 #import <CoreFoundation/CoreFoundation.h>
-#import <Foundation/NSStream.h>
 #import <CommonCrypto/CommonCrypto.h>
 #import <CommonCrypto/CommonRandom.h>
 
 #import <OmniFoundation/CFPropertyList-OFExtensions.h>
 #import <OmniFoundation/OFErrors.h>
+#if !defined(TARGET_OS_IPHONE) || !TARGET_OS_IPHONE
 #import <OmniFoundation/NSFileManager-OFExtensions.h>
 #import <OmniFoundation/NSMutableData-OFExtensions.h>
+#endif
 #import <OmniFoundation/NSObject-OFExtensions.h>
 #import <OmniFoundation/NSString-OFExtensions.h>
-#import <OmniFoundation/OFDataBuffer.h>
 #import <OmniFoundation/OFRandom.h>
 
-#import <OmniFoundation/NSBundle-OFExtensions.h>
 #import <OmniBase/NSError-OBExtensions.h>
-#import <poll.h>
 
 RCS_ID("$Id$")
 
@@ -155,6 +153,7 @@ RCS_ID("$Id$")
     return nil;
 }
 
+#if !defined(TARGET_OS_IPHONE) || !TARGET_OS_IPHONE
 - (BOOL)writeToFile:(NSString *)path atomically:(BOOL)atomically createDirectories:(BOOL)shouldCreateDirectories error:(NSError **)outError;
 {
     if (shouldCreateDirectories && ![[NSFileManager defaultManager] createPathToFile:path attributes:nil error:outError])
@@ -162,6 +161,7 @@ RCS_ID("$Id$")
 
     return [self writeToFile:path options:atomically ? NSDataWritingAtomic : 0 error:outError];
 }
+#endif
 
 - (NSData *)dataByAppendingData:(NSData *)anotherData;
 {

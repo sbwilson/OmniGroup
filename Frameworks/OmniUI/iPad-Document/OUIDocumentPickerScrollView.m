@@ -1,4 +1,4 @@
-// Copyright 2010-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2017 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -164,7 +164,7 @@ static id _commonInit(OUIDocumentPickerScrollView *self)
     for (ODSItem *item in _items) {
         [self _endObservingSortKeysForItem:item];
     }
-    for (ODSItem *item in _itemsBeingObserved) {
+    for (ODSItem *item in [_itemsBeingObserved copy]) {
         [self _endObservingSortKeysForItem:item];
     }
 }
@@ -865,7 +865,7 @@ static LayoutInfo _updateLayoutAndSetContentSize(OUIDocumentPickerScrollView *se
 
 - (void)layoutSubviews;
 {
-    if (_renameSession) {
+    if (_renameSession || !self.window) {
         return;
     }
     LayoutInfo layoutInfo = _updateLayout(self);
@@ -904,7 +904,9 @@ static LayoutInfo _updateLayoutAndSetContentSize(OUIDocumentPickerScrollView *se
             frame.origin.x = (CGRectGetWidth(contentRect) / 2) - (frame.size.width / 2);
             frame.origin.y = fmax((CGRectGetHeight(_topControls.frame) / 2) - (frame.size.height / 2), [self _verticalPadding]);
             frame = CGRectIntegral(frame);
-            _topControls.frame = frame;
+            if (!CGRectEqualToRect(_topControls.frame, frame)) {
+                _topControls.frame = frame;
+            }
         }
         
         if (_titleViewForCompactWidth) {
@@ -922,7 +924,10 @@ static LayoutInfo _updateLayoutAndSetContentSize(OUIDocumentPickerScrollView *se
             _titleViewForCompactWidth.frame = frame;
             
             if (CGRectGetMaxY(_topControls.frame) < CGRectGetMaxY(_titleViewForCompactWidth.frame)) {
-                _topControls.frame = CGRectUnion(_topControls.frame, _titleViewForCompactWidth.frame);
+                frame = CGRectUnion(_topControls.frame, _titleViewForCompactWidth.frame);
+                if (!CGRectEqualToRect(_topControls.frame, frame)) {
+                    _topControls.frame = frame;
+                }
             }
         }
         
@@ -1028,7 +1033,9 @@ static LayoutInfo _updateLayoutAndSetContentSize(OUIDocumentPickerScrollView *se
                     OBASSERT([unusedFileItemViews containsObjectIdenticalTo:itemView] ^ [unusedGroupItemViews containsObjectIdenticalTo:itemView]);
                     [unusedFileItemViews removeObjectIdenticalTo:itemView];
                     [unusedGroupItemViews removeObjectIdenticalTo:itemView];
-                    itemView.frame = frame;
+                    if (!CGRectEqualToRect(itemView.frame, frame)) {
+                        itemView.frame = frame;
+                    }
                     DEBUG_LAYOUT(@"  kept view %@", [itemView shortDescription]);
                 } else {
                     // This item needs a view!
@@ -1051,6 +1058,7 @@ static LayoutInfo _updateLayoutAndSetContentSize(OUIDocumentPickerScrollView *se
         }];
         
         // Now, assign views to visibile or nearly visible items that don't have them. First, union the two lists.
+        BOOL delegateRespondsToSelectorWillDisplayItemView = [self.delegate respondsToSelector:@selector(documentPickerScrollView:willDisplayItemView:)];
         for (ODSItem *item in visibleItemsWithoutView) {            
             
             NSMutableArray *itemViews = nil;
@@ -1067,13 +1075,16 @@ static LayoutInfo _updateLayoutAndSetContentSize(OUIDocumentPickerScrollView *se
                 // Make the view start out at the "original" position instead of flying from where ever it was last left.
                 [UIView performWithoutAnimation:^{
                     itemView.hidden = NO;
-                    itemView.frame = [self _frameForItem:item layoutInfo:layoutInfo];
+                    CGRect frame = [self _frameForItem:item layoutInfo:layoutInfo];
+                    if (!CGRectEqualToRect(itemView.frame, frame)) {
+                        itemView.frame = frame;
+                    }
                     itemView.shrunken = ([_itemsBeingAdded member:item] != nil);
                     [itemView setEditing:_flags.isEditing animated:NO];
                     itemView.item = item;
                 }];
                 
-                if ([self.delegate respondsToSelector:@selector(documentPickerScrollView:willDisplayItemView:)])
+                if (delegateRespondsToSelectorWillDisplayItemView)
                     [self.delegate documentPickerScrollView:self willDisplayItemView:itemView];
 
                 [itemViews removeLastObject];
@@ -1103,19 +1114,20 @@ static LayoutInfo _updateLayoutAndSetContentSize(OUIDocumentPickerScrollView *se
             else
                 fileItemView.draggingState = OUIDocumentPickerItemViewNoneDraggingState;        
         }
-        
+
         // Any remaining unused item views should have no item and be hidden.
+        BOOL delegateRespondsToSelectorWillEndDisplayingItemView = [self.delegate respondsToSelector:@selector(documentPickerScrollView:willEndDisplayingItemView:)];
         for (OUIDocumentPickerFileItemView *view in unusedFileItemViews) {
             view.hidden = YES;
             [view prepareForReuse];
-            if ([self.delegate respondsToSelector:@selector(documentPickerScrollView:willEndDisplayingItemView:)])
+            if (delegateRespondsToSelectorWillEndDisplayingItemView)
                 [self.delegate documentPickerScrollView:self willEndDisplayingItemView:view];
             
         }
         for (OUIDocumentPickerGroupItemView *view in unusedGroupItemViews) {
             view.hidden = YES;
             [view prepareForReuse];
-            if ([self.delegate respondsToSelector:@selector(documentPickerScrollView:willEndDisplayingItemView:)])
+            if (delegateRespondsToSelectorWillEndDisplayingItemView)
                 [self.delegate documentPickerScrollView:self willEndDisplayingItemView:view];
         }
     });
@@ -1127,18 +1139,21 @@ static LayoutInfo _updateLayoutAndSetContentSize(OUIDocumentPickerScrollView *se
 - (void)documentPickerItemNameStartedEditing:(id)sender;
 {
     UIView *view = sender; // This is currently the private name+date view. Could hook this up better if this all works out (maybe making our item view publish a 'started editing' control event.
-    OUIDocumentPickerItemView *itemView = [view containingViewOfClass:[OUIDocumentPickerItemView class]];
+    OUIDocumentPickerItemView *itemView = [view enclosingViewOfClass:[OUIDocumentPickerItemView class]];
     
     // should be one of ours, not some other temporary animating item view
     OBASSERT([_fileItemViews containsObjectIdenticalTo:itemView] ^ [_groupItemViews containsObjectIdenticalTo:itemView]);
 
-    [self.delegate documentPickerScrollView:self itemViewStartedEditingName:itemView];
+    UITextField *nameTextField = itemView.editingNameTextField;
+    OBASSERT(nameTextField);
+
+    [self.delegate documentPickerScrollView:self itemViewStartedEditingName:itemView nameTextField:nameTextField];
 }
 
 - (void)documentPickerItemNameEndedEditing:(id)sender withName:(NSString *)name;
 {
     UIView *view = sender; // This is currently the private name+date view. Could hook this up better if this all works out (maybe making our item view publish a 'started editing' control event.
-    OUIDocumentPickerItemView *itemView = [view containingViewOfClass:[OUIDocumentPickerItemView class]];
+    OUIDocumentPickerItemView *itemView = [view enclosingViewOfClass:[OUIDocumentPickerItemView class]];
     
     // should be one of ours, not some other temporary animating item view
     OBASSERT([_fileItemViews containsObjectIdenticalTo:itemView] ^ [_groupItemViews containsObjectIdenticalTo:itemView]);
@@ -1178,7 +1193,10 @@ static LayoutInfo _updateLayoutAndSetContentSize(OUIDocumentPickerScrollView *se
     
     if (positionIndex == NSNotFound) {
         OBASSERT([_items member:item] == nil); // If we didn't find the positionIndex it should mean that the item isn't in _items or _sortedItems. If the item is in _items but not _sortedItems, its probably becase we havn't yet called -sortItems.
-        OBASSERT_NOT_REACHED("Asking for the frame of an item that is unknown/ignored");
+        if (![[item scope] isExternal]) {
+            // We probably shouldn't have asked for the frame of an external item either, but it's less shocking that there's no index for an external item.
+            OBASSERT_NOT_REACHED("Asking for the frame of an item that is unknown/ignored");
+        }
         return CGRectZero;
     }
     

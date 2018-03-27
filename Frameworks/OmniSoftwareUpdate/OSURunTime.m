@@ -1,4 +1,4 @@
-// Copyright 2007-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2007-2017 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -108,9 +108,12 @@ static NSDictionary *_OSURunTimeUpdateStatisticsScope(NSDictionary *oldScope, NS
         [newScope setObject:version forKey:OSUVersionKey];
     
     // Run time
-    if (startClockTimeNumber) {
+    if (startClockTimeNumber != nil) {
         unsigned startClockTime = [startClockTimeNumber doubleValue];
-        OBASSERT(startClockTime <= currentClockTime);
+
+        // The clock can go "backwards" if the machine is restarted between runs of the app (possibly if the last run crashed) since OSUGetCurrentClockTime() returns the system clock.
+        // OBASSERT(startClockTime <= currentClockTime);
+
         if (startClockTime < currentClockTime) {
             NSNumber *totalRunTimeNumber = [oldScope objectForKey:OSUTotalRunTimeKey];
 
@@ -119,7 +122,7 @@ static NSDictionary *_OSURunTimeUpdateStatisticsScope(NSDictionary *oldScope, NS
                 totalRunTimeNumber = nil;
             }
 
-            NSTimeInterval totalRunTime = totalRunTimeNumber ? [totalRunTimeNumber doubleValue] : 0.0;
+            NSTimeInterval totalRunTime = (totalRunTimeNumber != nil) ? [totalRunTimeNumber doubleValue] : 0.0;
             
             totalRunTime += (currentClockTime - startClockTime);
             
@@ -169,7 +172,6 @@ void OSURunTimeApplicationDeactivated(NSString *appIdentifier, NSString *bundleV
     
     OSU_RUNTIME_DEBUG(1, @"Deactivating %@%@", appIdentifier, crashed ? @" for crash" : @" normally");
 
-    OBPRECONDITION(crashed || OSURunTimeHasRunningSession);
     if (!crashed && !OSURunTimeHasRunningSession) {
         OSU_RUNTIME_DEBUG(1, @"   ... no deactivation needed");
         return;
@@ -228,7 +230,7 @@ static void _OSURunTimeAddStatisticsToInfo(NSMutableDictionary *info, NSDictiona
     
     // We'll report integral minutes instead of seconds.  We can go more than 8000 years with this w/o overflowing 32 bits.
     NSNumber *runTimeNumber = [scope objectForKey:OSUTotalRunTimeKey];
-    NSTimeInterval runTime = runTimeNumber ? [runTimeNumber doubleValue] : 0.0;
+    NSTimeInterval runTime = (runTimeNumber != nil) ? [runTimeNumber doubleValue] : 0.0;
     
     unsigned long runMinutes = (unsigned long)floor(runTime / 60.0);
     [info setObject:[NSString stringWithFormat:@"%lu", runMinutes] forKey:[NSString stringWithFormat:@"%@runmin", prefix]];

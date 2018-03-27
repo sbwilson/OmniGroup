@@ -7,9 +7,6 @@
 /* error description */
 "%@ cannot open this type of file." = "%@ はこのタイプのファイルを開くことができません。";
 
-/* Location label format for external documents */
-"%@ Documents" = "%@の書類";
-
 /* gigabytes */
 "%@ GB" = "%@ GB";
 
@@ -44,7 +41,7 @@
 "1 Item Selected" = "1 個の項目を選択";
 
 /* replace document description */
-"A document with the name \"%@\" already exists. Do you want to replace it? This cannot be undone." = "%@” という名前の書類はすでに存在します。置き換えますか？この操作は元に戻せません。";
+"A document with the name \"%@\" already exists. Do you want to replace it? This cannot be undone." = "“%@” という名前の書類はすでに存在します。置き換えますか？この操作は元に戻せません。";
 
 /* Omni Sync Server account info button title */
 "Account Info" = "アカウント情報";
@@ -83,7 +80,7 @@
 "Cannot Export Item" = "項目を書き出せません";
 
 /* email action description */
-"Choose a format for emailing \"%@\":" = "“%@” をメールで送信するためのフォーマットを選択してください：";
+"Choose a format for emailing \"%@\":" = "“%@” をメールで送信するためのフォーマットを選択してください:";
 
 /* toolbar prompt when choosing a template */
 "Choose a Template" = "テンプレートを選択";
@@ -94,14 +91,26 @@
 /* export options title */
 "Choose Format" = "フォーマットを選択";
 
+/* Clear from Recent Documents container toolbar item accessibility label. */
+"Clear" = "消去";
+
+/* clear button title */
+"Clear %ld Documents" = "%ld 個の書類を消去";
+
+/* remove button title */
+"Clear Document" = "書類を消去";
+
 /* doc picker custom accessibility action name */
 "Clear name field" = "名前フィールドを消去";
 
 /* title view clear button accessibility label. */
 "Clear Title" = "タイトルを消去";
 
-/* Cloud Storage Providers preference nvigation bar title */
-"Cloud Storage Providers" = "クラウドストレージプロバイダ";
+/* Close Document toolbar item accessibility label. */
+"Close Document" = "書類を閉じる";
+
+/* demo mode disabled message */
+"Cloud storage is disabled in this demo version." = "このデモバージョンではクラウドストレージが無効になっています。";
 
 /* Success label when connecting to an OmniPresence or WebDAV server account */
 "Connected" = "接続しました";
@@ -154,7 +163,9 @@
 /* Toolbar button title for returning to list of documents. */
 "Documents <back button>" = "書類";
 
-/* Duplicate toolbar item accessibility label. */
+/* Duplicate document preview action title.
+   Duplicate toolbar item accessibility label. */
+
 "Duplicate" = "複製";
 
 /* title for alert option confirming duplication of multiple files */
@@ -192,13 +203,13 @@
 "Export \"%@\" as:" = "“%@” を次の名前で書き出す：";
 
 /* export action description */
-"Export \"%@\" to %@ as:" = "%1$@ を次の名前で %2$@ に書き出す：";
+"Export \"%@\" to %@ as:" = "%1$@ を次の名前で %2$@ に書き出す:";
 
 /* Menu option in the document picker view */
 "Export to WebDAV" = "WebDAV に書き出す";
 
-/* Menu option in the document picker view */
-"Export to…" = "書き出し先...";
+/* Export document preview action title. */
+"Export…" = "書き出し…";
 
 /* finished */
 "Finished" = "完了";
@@ -212,9 +223,6 @@
 /* Info item accessibility label */
 "Info" = "情報";
 
-/* error title */
-"Invalid Zip Archive" = "無効な Zip アーカイブ";
-
 /* doc picker title label editing accessibility value */
 "Is editing" = "編集中";
 
@@ -227,9 +235,6 @@
 /* Notice for the user about the last edit to a document (this device) */
 "Last edit: %@ on this device" = "最後の編集：%@（このデバイス）";
 
-/* Link External Document toolbar item accessibility label. */
-"Link External Document" = "外部の書類をリンク";
-
 /* Server Account Setup label: location */
 "Location" = "場所";
 
@@ -238,9 +243,6 @@
 
 /* modified date accessibility value */
 "Modified %@" = "変更日 %@";
-
-/* Cloud Storage Providers more information button title */
-"More Info…" = "詳しい情報...";
 
 /* Menu option in the document picker view
    Move toolbar item accessibility label. */
@@ -256,7 +258,10 @@
 "Move to Trash" = "ゴミ箱に移動";
 
 /* Share menu title */
-"Move to..." = "移動...";
+"Move to..." = "移動…";
+
+/* Move document preview action title. */
+"Move…" = "移動…";
 
 /* Base name for newly created documents. This will have an number appended to it to make it unique. */
 "My Document" = "書類";
@@ -264,7 +269,9 @@
 /* Base name for newly created templates. This will have an number appended to it to make it unique. */
 "My Template" = "マイテンプレート";
 
-/* New Document toolbar item accessibility label. */
+/* New Document toolbar item accessibility label.
+   New Template button title */
+
 "New Document" = "新規書類";
 
 /* Action sheet title for making a new folder from the selected documents */
@@ -293,14 +300,44 @@
 
 "OK" = "OK";
 
+/* demo disabled message */
+"OmniPresence allows you to use our free sync service or any compatible WebDAV server to automatically share documents between your devices, or to keep copies of your documents in the cloud in case you need to restore your device." = "OmniPresence を利用すると、弊社の無料同期サービスや互換性のある任意の WebDAV サーバを使うことができます。また、お持ちのデバイスを復元しなければならない場合に備え、書類のコピーをクラウドに保存しておくこともできます。";
+
 /* Omni Presence config email subject format */
 "OmniPresence Configuration: %@" = "OmniPresence の構成： %@";
+
+/* demo disabled title */
+"OmniPresence is disabled in this demo version." = "このデモバージョンでは OmniPresence が無効になっています。";
+
+/* Local Documents device-specific display name (should match the name of the On My iPad location in the Files app on an iPad) */
+"On My iPad" = "この iPad 内";
+
+/* Local Documents device-specific display name (should match the name of the On My iPhone location in the Files app on an iPhone) */
+"On My iPhone" = "この iPhone 内";
+
+/* empty picker text for Recent Documents */
+"Open a document to add it to this view." = "書類を開くと、その書類がこのビューに追加されます。";
+
+/* Open External Document toolbar item accessibility label. */
+"Open External Document" = "外部の書類を開く";
 
 /* Omni Presence config email body */
 "Open this file on another device to configure OmniPresence there." = "このファイルを別のデバイス上で開き、そこで OmniPresence を構成してください。";
 
-/* Generic name for location of external documents */
-"Other" = "その他";
+/* home screen button label */
+"Open…" = "開く...";
+
+/* Menu title for selecting an external document provider when moving a file */
+"Other…" = "その他...";
+
+/* Language section title */
+"ouiLanguagePicker.language" = "言語";
+
+/* Custom templates header title */
+"ouiTemplatePicker.customTemplatesHeader" = "カスタム";
+
+/* Navigation bar title: Choose a Template */
+"ouiTemplatePicker.navigationTitle" = "テンプレートを選択";
 
 /* Server Account Setup label: password */
 "Password" = "パスワード";
@@ -314,14 +351,8 @@
 /* purchase now button title */
 "Purchase Now." = "今すぐ購入。";
 
-/* Remove from external container toolbar item accessibility label. */
-"Remove" = "削除";
-
-/* remove button title */
-"Remove %ld Documents" = "%ld 個の書類を削除";
-
-/* remove button title */
-"Remove Document" = "書類を削除";
+/* Generic name for location of external documents */
+"Recent Documents" = "最近使った書類";
 
 /* rename button title */
 "Rename" = "名称変更";
@@ -348,7 +379,7 @@
 "Restore Sample Documents" = "サンプル書類を復元";
 
 /* Share menu title */
-"Restore to..." = "復元先...";
+"Restore to..." = "復元先…";
 
 /* When displaying a sync error, this is the option to retry syncing. */
 "Retry Sync" = "同期を再試行";
@@ -378,6 +409,9 @@
 "Send to App" = "アプリに送信";
 
 /* Menu option in the document picker view */
+"Send to Files" = "ファイルに送信";
+
+/* Menu option in the document picker view */
 "Send to Photos" = "写真に送信";
 
 /* export options title
@@ -404,28 +438,28 @@
 "Tap here to add a document without a template." = "テンプレートなしで書類を追加するにはここをタップ。";
 
 /* empty picker button text */
-"Tap here, or on the + in the toolbar, to add a document." = "書類を追加するには、ここをタップするか、ツールバーの「+」をタップしてください。";
+"Tap here, or on the + in the toolbar, to add a custom template." = "カスタムテンプレートを追加するには、ここをタップするか、ツールバーの「+」をタップしてください。";
 
-/* empty picker text for Other Documents */
-"Tap on the + in the toolbar to add a document stored on iCloud Drive or provided by another app." = "iCloud Drive に保存されている、または他のアプリから提供された書類を追加するには、ツールバーの + をタップしてください。";
+/* empty picker button text */
+"Tap here, or on the + in the toolbar, to add a document." = "書類を追加するには、ここをタップするか、ツールバーの「+」をタップしてください。";
 
 /* file name label for template filte types */
 "Template:" = "テンプレート：";
 
 /* Discard unsynced edits dialog: message format */
-"The \"%@\" account has %ld edited documents which have not yet been synced up to the cloud. Do you wish to discard those edits?" = "“%1$@” には、まだクラウドと同期されていない %2$ld 個の編集済み書類があります。これらの編集内容を破棄しますか？";
+"The \"%@\" account has %ld edited documents which have not yet been synced up to the cloud. Do you wish to discard those edits?" = "“%1$@” には、まだクラウドと同期されていない %2$ld 個の編集済み書類があります。 これらの編集内容を破棄しますか？";
 
 /* Discard unsynced edits dialog: message format */
-"The \"%@\" account has an edited document which has not yet been synced up to the cloud. Do you wish to discard those edits?" = "“%@” には、まだクラウドと同期されていない 1 個の編集済み書類があります。これらの編集内容を破棄しますか？";
+"The \"%@\" account has an edited document which has not yet been synced up to the cloud. Do you wish to discard those edits?" = "“%@” には、まだクラウドと同期されていない 1 個の編集済み書類があります。 これらの編集内容を破棄しますか？";
 
 /* Discard unsynced edits dialog: message format */
-"The \"%@\" account may have edited documents which have not yet been synced up to the cloud. Do you wish to discard any local edits?" = "“%@” には、まだクラウドと同期されていない編集済みの書類がある可能性があります。ローカルで行われた編集内容をすべて破棄しますか？";
+"The \"%@\" account may have edited documents which have not yet been synced up to the cloud. Do you wish to discard any local edits?" = "“%@” には、まだクラウドと同期されていない編集済みの書類がある可能性があります。 ローカルで行われた編集内容をすべて破棄しますか？";
+
+/* dialog box title when prompting for the password/passphrase for an encrypted document - parameter is the display-name of the file being opened */
+"The document \"%@\" requires a password to open." = "書類 “%@” を開くにはパスワードが必要です。";
 
 /* Error description for a document operation failing due to a missing file. */
 "The operation couldn't be completed." = "操作を完了できませんでした。";
-
-/* error description */
-"The zip archive must contain a single document." = "zip アーカイブには単一の書類が含まれている必要があります。";
 
 /* Photo Library permisssions error suggestion. */
 "This app does not have access to your Photo Library." = "このアプリにはフォトライブラリへのアクセス権がありません。";
@@ -445,14 +479,11 @@
 /* sort by title */
 "Title" = "タイトル";
 
-/* Cloud Storage Providers preference informational description */
-"Turning on Cloud Storage Providers gives access to documents stored on cloud services, such as iCloud Drive or Dropbox. We are introducing access to Cloud Storage Providers as a BETA implementation; use caution when enabling this service. To learn more, see “Working in the Cloud” in the documentation." = "クラウドストレージプロバイダを有効にすると、iCloud Drive や Dropbox などのクラウドサービスに保存されている書類にアクセスできるようになります。クラウドストレージプロバイダの機能はベータ版ですので、このサービスを有効にする際には十分に注意してください。詳しくは、マニュアルの「クラウド内での操作」を参照してください。";
-
 /* error title */
 "Unable to open file." = "ファイルを開けません。";
 
-/* Cloud Storage Providers preference settings screen title */
-"Use Cloud Storage Providers" = "クラウドストレージプロバイダを使用";
-
 /* Account validation status string. */
 "Validating account..." = "アカウントを検証中…";
+
+/* empty picker button text */
+"When plug-ins are installed, they will appear here." = "プラグインがインストールされている場合、それらのプラグインはここに表示されます。";

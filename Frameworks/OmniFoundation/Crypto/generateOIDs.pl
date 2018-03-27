@@ -1,4 +1,6 @@
 use strict;
+use integer;
+use Math::BigInt;
 
 my(%definitions, @emits, @lookups);
 
@@ -54,7 +56,9 @@ sub resolve {
     my(@resolved);
     foreach my $part (@{$definitions{$name}}) {
         if ($part =~ /^\d+$/) {
-            push(@resolved, 0 + $part);
+            my($partValue) = 0 + $part;
+            $partValue = Math::BigInt->new($part) if $partValue < 0;
+            push(@resolved, $partValue);
         } else {
             die "OID $name is defined in terms of $part, which isn't defined. Died" unless defined $definitions{$part};
             push(@resolved, &resolve($part));
@@ -192,7 +196,8 @@ foreach my $emit (sort keys %aliases) {
     my(@bytes) = ( ( $nums[0] * 40 ) + $nums[1] );
     shift @nums;
     shift @nums;
-    foreach my $num (@nums) {
+    foreach my $eachnum (@nums) {
+        my $num = $eachnum; # If we don't do this, our Math::BigInt binding of the loop variable takes precedence
         my(@digits);
         while ($num > 127) {
             unshift(@digits, $num & 0x7F);
@@ -278,12 +283,19 @@ __DATA__
 rsadsi = 1.2.840.113549
 pkcs = rsadsi 1
 csor = 2.16.840.1.101.3
+thawte = 1.3.101
 certicom = 1.3.132
 x9-57 = 1.2.840.10040
 x9-62 = 1.2.840.10045
+x9-63 = 1.3.133.16.840.63
 gnu = 1.3.6.1.4.1.11591
 pgut = 1.3.6.1.4.1.3029
 aes = csor 4 1
+cert-ext = 2.5.29
+
+iana-pen = 1.3.6.1.4.1 # iso.org.dod.internet.private.enterprise
+omni = iana-pen 51522 # Omni's private enterprise number
+omni-frameworks = omni 1 # Omni frameworks
 
 sha256 = csor 4 2 1
 sha512 = csor 4 2 3
@@ -350,9 +362,15 @@ attr-contentType = pkcs 9 3
 attr-messageDigest = pkcs 9 4
 attr-signingTime = pkcs 9 5
 attr-contentIdentifier = pkcs 9 16 2 7
+attr-binarySigningTime = pkcs 9 16 2 46
+
+# Our hint attribute
+attr-omniHint = omni-frameworks 1 # Password hint attribute
+
 emit attr-*
 lookup attr-* in OFCMSAttribute as *
 
+# From RFC3274
 alg-zlibCompress = pkcs 9 16 3 8
 emit alg-zlibCompress
 
@@ -370,6 +388,15 @@ alg-mgf-1 = pkcs 1 8
 oaep-pSpecified = pkcs 1 9
 emit alg-rsaEncryption_OAEP, alg-mgf-1, oaep-pSpecified
 
+# Combined ECDH key agreement + derivation algorithms from RFC5753
+alg-ECDH-standard-sha1kdf   = x9-63 0 2
+alg-ECDH-standard-sha256kdf = certicom 1 11 1
+alg-ECDH-standard-sha512kdf = certicom 1 11 3
+alg-ECDH-cofactor-sha1kdf   = x9-63 0 3
+alg-ECDH-cofactor-sha256kdf = certicom 1 14 1
+alg-ECDH-cofactor-sha512kdf = certicom 1 14 3
+emit alg-ECDH-*
+
 lookup alg-* in OFASN1Algorithm as *
 
 curve-secp192r1 = x9-62 3 1 1
@@ -382,3 +409,13 @@ curve-secp521r1 = certicom 0 35
 # arcs, but it's not clear they are the correct OIDs to use in a CMS context.
 # curve-ed25519 = gnu 15 1
 # curve-cv25519 = pgut 1 5 1
+# curve-x25519 = thawte 110
+
+ce-subjectKeyIdentifier = cert-ext 14   # RFC5280 [4.2.1.2]
+ce-subjectAltName = cert-ext 17         # RFC5280 [4.2.1.6]
+emit ce-* as cert-ext-*
+
+ds-attr-commonName = 2.5.4.3
+ds-attr-emailAddress = 1.2.840.113549.1.9.1
+emit ds-attr-*
+

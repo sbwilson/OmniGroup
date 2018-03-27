@@ -88,8 +88,14 @@
 /* error reason */
 "Model '%@' has multiple properties named '%@'." = "El modelo '%1$@' posee varias propiedades llamadas '%2$@'.";
 
+/* Multiple Delete Errors */
+"Multiple Errors" = "Errores múltiples";
+
 /* error reason */
 "Multiple validation errors occurred while saving." = "Se han producido varios errores de validación al guardar.";
+
+/* error reason */
+"Object with ID '%@' is inaccessible." = "No se puede acceder al objeto con ID “%@”.";
 
 /* error reason */
 "Property has no name." = "La propiedad no tiene nombre.";
@@ -113,7 +119,7 @@
 "Relationship %@.%@ specified no type." = "La relación %1$@.%2$@ no ha especificado ningún tipo.";
 
 /* error reason */
-"The cache database was removed while it was still open. Close and reopen the database to recover." = "La base de datos caché se ha eliminado mientras estaba abierta. Cierre y abra la base de datos de nuevo para recuperarla.";
+"The cache database was removed while it was still open. Close and reopen the database to recover." = "La base de datos caché se ha eliminado mientras estaba abierta. Cierra y abre la base de datos de nuevo para recuperarla.";
 
 /* error reason */
 "Tried 100 times to settle -willSave, but edits kept being made." = "Se ha intentado establecer -willSave 100 veces, pero siguen produciéndose modificaciones.";
@@ -135,6 +141,9 @@
 
 /* error reason */
 "Unable bind int32 to slot %d of statement with SQL '%@'." = "No se ha podido enlazar el valor int32 con la ranura %1$d de la sentencia con SQL '%2$@'.";
+
+/* error reason */
+"Unable bind int64 to slot %d of statement with SQL '%@'." = "No se ha podido enlazar el valor int64 con la ranura %1$d de la sentencia con SQL “%2$@”.";
 
 /* error reason */
 "Unable bind null to slot %d of statement with SQL '%@'." = "No se ha podido enlazar el valor null con la ranura %1$d de la sentencia con SQL '%2$@'.";

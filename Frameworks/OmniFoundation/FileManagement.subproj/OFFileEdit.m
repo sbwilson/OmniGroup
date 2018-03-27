@@ -1,4 +1,4 @@
-// Copyright 2014-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2014-2017 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -16,7 +16,7 @@ RCS_ID("$Id$");
 // Here we assume the caller is either looking at a file that shouldn't be edited by anyone else while we are looking (in a tmp directory), or that the caller is in the midst of file coordination on this fileURL.
 - (instancetype)initWithFileURL:(NSURL *)fileURL error:(NSError **)outError;
 {
-#ifdef DEBUG_bungi
+#ifdef DEBUG_bungi0
     OBPRECONDITION([NSThread isMainThread] == NO, "Are we inside file coordination?");
 #endif
     
@@ -69,6 +69,13 @@ RCS_ID("$Id$");
 - (id)copyWithZone:(NSZone *)zone;
 {
     return self;
+}
+
+#pragma mark - Debugging
+
+- (NSString *)debugDescription;
+{
+    return [NSString stringWithFormat:@"<%@:%p %@ date:%@, inode:%lu, directory:%d", NSStringFromClass([self class]), self, _originalFileURL, _fileModificationDate, _inode, _directory];
 }
 
 @end

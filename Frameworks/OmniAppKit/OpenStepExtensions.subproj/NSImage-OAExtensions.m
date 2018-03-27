@@ -1,4 +1,4 @@
-// Copyright 1997-2016 Omni Development, Inc. All rights reserved.
+// Copyright 1997-2017 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -40,15 +40,15 @@ static id (*original_initWithSize)(id __attribute((ns_consumed)) self, SEL _cmd,
 static id (*original_setSize)(id __attribute((ns_consumed)) self, SEL _cmd, NSSize size);
 #endif
 
-+ (void)performPosing;
-{
+OBPerformPosing(^{
+    Class self = objc_getClass("NSImage");
     original_initByReferencingFile = (typeof(original_initWithContentsOfFile))OBReplaceMethodImplementationWithSelector(self, @selector(initByReferencingFile:), @selector(_initByReferencingFile_replacement:));
     original_initWithContentsOfFile = (typeof(original_initWithContentsOfFile))OBReplaceMethodImplementationWithSelector(self, @selector(initWithContentsOfFile:), @selector(_initWithContentsOfFile_replacement:));
 #ifdef DEBUG_NONINTEGRAL_IMAGE_SIZE
     original_initWithSize = (typeof(original_initWithSize))OBReplaceMethodImplementationWithSelector(self, @selector(initWithSize:), @selector(replacement_initWithSize:));
     original_setSize = (typeof(original_setSize))OBReplaceMethodImplementationWithSelector(self, @selector(setSize:), @selector(replacement_setSize:));
 #endif
-}
+});
 
 // If you run into these assertions, consider running the OAMakeImageSizeIntegral command line tool in your image (probably only reasonable for TIFF right now).
 
@@ -68,8 +68,7 @@ static id (*original_setSize)(id __attribute((ns_consumed)) self, SEL _cmd, NSSi
     if (size.width != rint(size.width) || size.height != rint(size.height))
         NSLog(@"Image %@ has non-integral size %@", fileName, NSStringFromSize(size));
 
-    OBPOSTCONDITION(size.width == rint(size.width));
-    OBPOSTCONDITION(size.height == rint(size.height));
+    OBASSERT_IF(OFURLContainsURL([[NSBundle mainBundle] bundleURL], [NSURL fileURLWithPath:fileName]), size.width == rint(size.width) && size.height == rint(size.height), "Our resources should be integral-sized");
     return self;
 }
 
@@ -211,7 +210,7 @@ static id (*original_setSize)(id __attribute((ns_consumed)) self, SEL _cmd, NSSi
                 sourceImage = defaultImage;
                 break;
         }
-        [sourceImage drawInRect:dstRect fromRect:srcRect operation:NSCompositeSourceOver fraction:1.0 respectFlipped:NO hints:nil];
+        [sourceImage drawInRect:dstRect fromRect:srcRect operation:NSCompositingOperationSourceOver fraction:1.0 respectFlipped:NO hints:nil];
         return YES;
     }];
 
@@ -231,25 +230,32 @@ static id (*original_setSize)(id __attribute((ns_consumed)) self, SEL _cmd, NSSi
 + (NSImage *)imageForFileType:(NSString *)fileType;
     // It turns out that -[NSWorkspace iconForFileType:] doesn't cache previously returned values, so we cache them here.
 {
-    static NSMutableDictionary *imageDictionary = nil;
-    id image;
-
-    ASSERT_IN_MAIN_THREAD(@"+imageForFileType: is not thread-safe; must be called from the main thread");
-    // We could fix this by adding locks around imageDictionary
-
-    if (!fileType)
+    if (fileType == nil)
         return nil;
-        
-    if (imageDictionary == nil)
-        imageDictionary = [[NSMutableDictionary alloc] init];
 
-    image = [imageDictionary objectForKey:fileType];
-    if (image == nil) {
-        image = [[NSWorkspace sharedWorkspace] iconForFileType:fileType];
-        if (image == nil)
-            image = [NSNull null];
-        [imageDictionary setObject:image forKey:fileType];
+    static NSMutableDictionary *imageDictionary;
+    static NSLock *imageDictionaryLock;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        imageDictionary = [[NSMutableDictionary alloc] init];
+        imageDictionaryLock = [[NSLock alloc] init];
+    });
+
+    id image; // NSImage or NSNull
+
+    @try {
+        [imageDictionaryLock lock];
+        image = [imageDictionary objectForKey:fileType];
+        if (image == nil) {
+            image = [[NSWorkspace sharedWorkspace] iconForFileType:fileType];
+            if (image == nil)
+                image = [NSNull null];
+            [imageDictionary setObject:image forKey:fileType];
+        }
+    } @finally {
+        [imageDictionaryLock unlock];
     }
+
     return image != [NSNull null] ? image : nil;
 }
 
@@ -326,7 +332,7 @@ static NSDictionary *titleFontAttributes;
     NSRectFill(NSMakeRect(0, 0, totalSize.width, totalSize.height));
 
     // Draw icon
-    [image drawAtPoint:NSMakePoint(0.0f, totalSize.height - (CGFloat)rint(totalSize.height / 2.0f + imageSize.height / 2.0f)) fromRect:(CGRect){CGPointZero, imageSize} operation:NSCompositeSourceOver fraction:1.0];
+    [image drawAtPoint:NSMakePoint(0.0f, totalSize.height - (CGFloat)rint(totalSize.height / 2.0f + imageSize.height / 2.0f)) fromRect:(CGRect){CGPointZero, imageSize} operation:NSCompositingOperationSourceOver fraction:1.0];
     
     // Draw box around title
     titleBox.origin.x = imageSize.width + X_SPACE_BETWEEN_ICON_AND_TEXT_BOX;
@@ -352,9 +358,9 @@ static NSDictionary *titleFontAttributes;
     NSImage *image = [self copy];
     NSImage *tintedImage = [NSImage imageWithSize:self.size flipped:NO drawingHandler:^BOOL(NSRect dstRect) {
         NSRect srcRect = { .origin = NSZeroPoint, .size = image.size };
-        [image drawInRect:dstRect fromRect:srcRect operation:NSCompositeSourceOver fraction:1.0 respectFlipped:NO hints:nil];
+        [image drawInRect:dstRect fromRect:srcRect operation:NSCompositingOperationSourceOver fraction:1.0 respectFlipped:NO hints:nil];
         [tintColor set];
-        NSRectFillUsingOperation(dstRect, NSCompositeSourceIn);
+        NSRectFillUsingOperation(dstRect, NSCompositingOperationSourceIn);
         return YES;
     }];
     
@@ -398,7 +404,7 @@ static NSDictionary *titleFontAttributes;
         transformedSize = [flipTransform transformSize:rect.size];
         [flipTransform concat];
         transformedRect = NSMakeRect(transformedPoint.x, transformedPoint.y + transformedSize.height, transformedSize.width, -transformedSize.height);
-        [anImage drawInRect:transformedRect fromRect:NSZeroRect operation:NSCompositeSourceOver fraction:1.0];
+        [anImage drawInRect:transformedRect fromRect:NSZeroRect operation:NSCompositingOperationSourceOver fraction:1.0];
         [flipTransform concat];
         [flipTransform release];
      */
@@ -485,7 +491,7 @@ static NSDictionary *titleFontAttributes;
     NSGraphicsContext *currentContext = [NSGraphicsContext currentContext];
     NSImageInterpolation savedInterpolation = [currentContext imageInterpolation];
     [currentContext setImageInterpolation:NSImageInterpolationHigh];
-    [self drawInRect:NSMakeRect(0.0f, 0.0f, aSize.width, aSize.height) fromRect:(NSRect){ { 0, 0 }, [self size] } operation:NSCompositeSourceOver fraction:1.0f];
+    [self drawInRect:NSMakeRect(0.0f, 0.0f, aSize.width, aSize.height) fromRect:(NSRect){ { 0, 0 }, [self size] } operation:NSCompositingOperationSourceOver fraction:1.0f];
     [currentContext setImageInterpolation:savedInterpolation];
     [scaledImage unlockFocus];
     return scaledImage;
@@ -549,7 +555,7 @@ static NSDictionary *titleFontAttributes;
         [newImage lockFocus]; {
             [backgroundColor ? backgroundColor : [NSColor clearColor] set];
             NSRectFill(imageBounds);
-            [self drawInRect:imageBounds fromRect:NSZeroRect operation:NSCompositeSourceOver fraction:1.0f];
+            [self drawInRect:imageBounds fromRect:NSZeroRect operation:NSCompositingOperationSourceOver fraction:1.0f];
             bitmapImageRep = [[NSBitmapImageRep alloc] initWithFocusedViewRect:imageBounds];
         } [newImage unlockFocus];
     }
@@ -697,8 +703,8 @@ static NSDictionary *titleFontAttributes;
     [largeImage lockFocus];
     {
         [[contentImage imageRepOfSize:ICON_SIZE_LARGE] drawInRect:bounds];
-        [contentMask drawInRect:bounds fromRect:NSZeroRect operation:NSCompositeDestinationIn fraction:1.0f];
-        [templateImage drawInRect:bounds fromRect:NSZeroRect operation:NSCompositeDestinationAtop fraction:1.0f];
+        [contentMask drawInRect:bounds fromRect:NSZeroRect operation:NSCompositingOperationDestinationIn fraction:1.0f];
+        [templateImage drawInRect:bounds fromRect:NSZeroRect operation:NSCompositingOperationDestinationAtop fraction:1.0f];
     }
     [largeImage unlockFocus];
 
@@ -707,8 +713,8 @@ static NSDictionary *titleFontAttributes;
     [smallImage lockFocus];
     {
         [[contentImage imageRepOfSize:ICON_SIZE_SMALL] drawInRect:bounds];
-        [contentMask drawInRect:bounds fromRect:NSZeroRect operation:NSCompositeDestinationIn fraction:1.0f];
-        [templateImage drawInRect:bounds fromRect:NSZeroRect operation:NSCompositeDestinationAtop fraction:1.0f];
+        [contentMask drawInRect:bounds fromRect:NSZeroRect operation:NSCompositingOperationDestinationIn fraction:1.0f];
+        [templateImage drawInRect:bounds fromRect:NSZeroRect operation:NSCompositingOperationDestinationAtop fraction:1.0f];
     }
     [smallImage unlockFocus];
 
@@ -717,8 +723,8 @@ static NSDictionary *titleFontAttributes;
     [tinyImage lockFocus];
     {
         [[contentImage imageRepOfSize:ICON_SIZE_TINY] drawInRect:bounds];
-        [contentMask drawInRect:bounds fromRect:NSZeroRect operation:NSCompositeDestinationIn fraction:1.0f];
-        [templateImage drawInRect:bounds fromRect:NSZeroRect operation:NSCompositeDestinationAtop fraction:1.0f];
+        [contentMask drawInRect:bounds fromRect:NSZeroRect operation:NSCompositingOperationDestinationIn fraction:1.0f];
+        [templateImage drawInRect:bounds fromRect:NSZeroRect operation:NSCompositingOperationDestinationAtop fraction:1.0f];
     }
     [tinyImage unlockFocus];
 
@@ -808,37 +814,21 @@ static void setupTintTable(void)
 @end
 
 @implementation _OATintedImage
-{
-    id _tintObserver;
-}
 
-- (id)initWithSize:(NSSize)aSize;
+- (instancetype)initWithSize:(NSSize)aSize;
 {
     self = [super initWithSize:aSize];
-    if (self == nil)
+    if (self == nil) {
         return nil;
+    }
 
-    [self _subscribeToTintNotifications];
-
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_updateTintedImage) name:NSControlTintDidChangeNotification object:nil];
     return self;
 }
 
 - (void)dealloc;
 {
-    if (_tintObserver != nil)
-        [[NSNotificationCenter defaultCenter] removeObserver:_tintObserver];
-}
-
-- (void)_subscribeToTintNotifications;
-{
-    if (_tintObserver != nil)
-        return;
-
-    __weak _OATintedImage *weakSelf = self;
-    _tintObserver = [[NSNotificationCenter defaultCenter] addObserverForName:NSControlTintDidChangeNotification object:nil queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification *note) {
-        _OATintedImage *strongSelf = weakSelf;
-        [strongSelf _updateTintedImage];
-    }];
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 - (void)_updateTintedImage;

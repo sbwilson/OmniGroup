@@ -1,4 +1,4 @@
-// Copyright 2010-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2017 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -9,6 +9,8 @@
 #import "OUIExportOptionsCollectionViewLayout.h"
 
 RCS_ID("$Id$")
+
+NS_ASSUME_NONNULL_BEGIN
 
 @interface OUIExportOptionsCollectionViewLayout ()
 
@@ -23,14 +25,14 @@ RCS_ID("$Id$")
     return self.contentSize;
 }
 
-- (NSArray *)layoutAttributesForElementsInRect:(CGRect)rect;
+- (nullable NSArray *)layoutAttributesForElementsInRect:(CGRect)rect;
 {
     return [self.itemAttributes filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(UICollectionViewLayoutAttributes *evaluatedObject, NSDictionary *bindings) {
         return CGRectIntersectsRect(rect, [evaluatedObject frame]);
     }]];
 }
 
-- (UICollectionViewLayoutAttributes *)layoutAttributesForItemAtIndexPath:(NSIndexPath *)indexPath;
+- (nullable UICollectionViewLayoutAttributes *)layoutAttributesForItemAtIndexPath:(NSIndexPath *)indexPath;
 {
     return [self.itemAttributes objectAtIndex:[indexPath indexAtPosition:1]];
 }
@@ -49,7 +51,8 @@ RCS_ID("$Id$")
 
     CGFloat itemWidth = 128.0; // magic number. you should change
     CGFloat itemHeight = 136.0; // magic number you should change
-    CGFloat maxWidth = self.collectionView.frame.size.width;
+    CGRect layoutFrame = self.collectionView.layoutMarginsGuide.layoutFrame;
+    CGFloat maxWidth = layoutFrame.size.width;
     CGFloat currentWidth = self.minimumInterItemSpacing; // lets add leading space to start with
     CGFloat widthToAdd = itemWidth + self.minimumInterItemSpacing;
 
@@ -66,8 +69,8 @@ RCS_ID("$Id$")
     NSUInteger numberOfItems = [self.collectionView numberOfItemsInSection:0];
     NSUInteger currentColumn = 0;
 
-    CGFloat currentYPosition = actualInterItemSpacing; // upper left of first row
-    CGFloat currentXPosition = actualInterItemSpacing; // upper left of the first column
+    CGFloat currentYPosition = 8;
+    CGFloat currentXPosition = 8;
 
     for (NSUInteger index = 0; index < numberOfItems; index++) {
         UICollectionViewLayoutAttributes *newAttributes = [UICollectionViewLayoutAttributes layoutAttributesForCellWithIndexPath:[[NSIndexPath indexPathWithIndex:0] indexPathByAddingIndex:index]];
@@ -78,7 +81,7 @@ RCS_ID("$Id$")
             currentXPosition += actualInterItemSpacing + itemWidth;
         } else {
             currentColumn = 0;
-            currentXPosition = actualInterItemSpacing; // left edge of the first column
+            currentXPosition = CGRectGetMinX(layoutFrame); // left edge of the first column
             currentYPosition += actualInterItemSpacing + itemHeight;
         }
 
@@ -96,3 +99,5 @@ RCS_ID("$Id$")
 }
 
 @end
+
+NS_ASSUME_NONNULL_END

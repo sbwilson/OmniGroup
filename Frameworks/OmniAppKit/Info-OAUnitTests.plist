@@ -24,5 +24,9 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>1.0</string>
+	<key>NSPrincipalClass</key>
+	<string>OAApplication</string>
+	<key>OFControllerClass</key>
+	<string>OATestController</string>
 </dict>
 </plist>

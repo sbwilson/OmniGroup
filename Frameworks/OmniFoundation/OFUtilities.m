@@ -1,4 +1,4 @@
-// Copyright 1997-2016 Omni Development, Inc. All rights reserved.
+// Copyright 1997-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -6,6 +6,7 @@
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
 
 #import <OmniFoundation/OFUtilities.h>
+#import <OmniFoundation/NSBundle-OFExtensions.h>
 #import <OmniFoundation/NSDictionary-OFExtensions.h>
 
 #if !defined(TARGET_OS_IPHONE) || !TARGET_OS_IPHONE
@@ -149,10 +150,6 @@ NSString *OFOSStatusDescription(OSStatus err)
 // We'll guess that this is wildly larger than the maximum number of interfaces on the machine.  I don't see that there is a way to get the number of interfaces so that you don't have to have a hard-coded value here.  Sucks.
 #define MAX_INTERFACES 100
 
-#define IFR_NEXT(ifr)	\
-    ((struct ifreq *) ((char *) (ifr) + sizeof(*(ifr)) + \
-                   MAX(0, (int) (ifr)->ifr_addr.sa_len - (int) sizeof((ifr)->ifr_addr))))
-
 static NSDictionary *InterfaceAddresses = nil;
 
 static NSDictionary *OFLinkLayerInterfaceAddresses(void)
@@ -174,10 +171,19 @@ static NSDictionary *OFLinkLayerInterfaceAddresses(void)
     }
 
     NSMutableDictionary *interfaceAddresses = [NSMutableDictionary dictionary];
-    
-    struct ifreq *linkInterface = (struct ifreq *) ifc.ifc_buf;
-    while ((char *) linkInterface < &ifc.ifc_buf[ifc.ifc_len]) {
+
+    char * interfaceBuffer = ifc.ifc_buf;
+    while (interfaceBuffer < &ifc.ifc_buf[ifc.ifc_len]) {
         // The ioctl returns both the entries having the address (AF_INET) and the link layer entries (AF_LINK).  The AF_LINK entry has the link layer address which contains the interface type.  This is the only way I can see to get this information.  We cannot assume that we will get both an AF_LINK and AF_INET entry since the interface may not be configured.  For example, if you have a 10Mb port on the motherboard and a 100Mb card, you may not configure the motherboard port.
+
+        // The buffer is packed together such that accessing it by stepping a pointer along will produced undefined behavior by accessing things misalignedly. We'll copy out the header, which at least has a basic sockaddr with a sa_len (and is always at least of length sizeof(struct ifreq) according to _SIZEOF_ADDR_IFREQ.
+        struct ifreq linkInterfaceHeader;
+        memcpy(&linkInterfaceHeader, interfaceBuffer, sizeof(linkInterfaceHeader));
+
+        // Now copy out the full link interface
+        size_t linkInterfaceSize = _SIZEOF_ADDR_IFREQ(linkInterfaceHeader);
+        struct ifreq *linkInterface = (struct ifreq *)alloca(linkInterfaceSize);
+        memcpy(linkInterface, interfaceBuffer, linkInterfaceSize);
 
         // For each AF_LINK entry...
         if (linkInterface->ifr_addr.sa_family == AF_LINK) {
@@ -205,7 +211,7 @@ static NSDictionary *OFLinkLayerInterfaceAddresses(void)
                 [interfaceAddresses setObject:addressString forKey:ifname];
             }
         }
-        linkInterface = IFR_NEXT(linkInterface);
+        interfaceBuffer += linkInterfaceSize;
     }
 
     close(interfaceSocket);
@@ -238,6 +244,32 @@ static NSString *_OFCalculateUniqueMachineIdentifier(void)
     // TODO: We could try using the machine's serial number via <http://developer.apple.com/technotes/tn/tn1103.html>, but even this can fail.  Often all we want is a globally unique string that at least lasts until the machine is rebooted.  It would be nice if the machine had a 'boot-uuid'... perhaps we could write a file in /tmp with a UUID that we'd check for before generating our own.  Race conditions would be an issue there (particularly at login with multple apps auto-launching).
     OBASSERT_NOT_REACHED("No active interfaces?");
     return @"no unique machine identifier found";
+}
+
+#if !defined(TARGET_OS_IPHONE) || !TARGET_OS_IPHONE
+
+static void _InitIsRunningUnitTests(void) __attribute__((constructor));
+static void _InitIsRunningUnitTests(void)
+{
+    // Grab this up front so that OFCrashImmediately() can read it w/o fear of causing another exception.
+    // Currently only used for Mac OS targets.
+    (void)OFIsRunningUnitTests();
+}
+
+#endif
+
+BOOL OFIsRunningUnitTests(void)
+{
+    static BOOL _IsRunningUnitTests = NO;
+    
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        NSBundle *controllingBundle = OFControllingBundle();
+        NSString *pathExtension = controllingBundle.bundlePath.pathExtension;
+        _IsRunningUnitTests = [pathExtension isEqual:@"xctest"];
+    });
+    
+    return _IsRunningUnitTests;
 }
 
 NSString *OFUniqueMachineIdentifier(void)
@@ -404,7 +436,7 @@ id OFCreatePlistFor4CC(uint32_t v)
         UInt8 c[4];
     } buf;
     
-#define OK(ch) ( ok_chars[ch / 32] & (1 << (ch % 32)) )
+#define OK(ch) ( ok_chars[ch / 32] & (1U << (ch % 32)) )
     buf.i = CFSwapInt32HostToBig(v);
     
     if (!OK(buf.c[0]) || !OK(buf.c[1]) || !OK(buf.c[2]) || !OK(buf.c[3]))

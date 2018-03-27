@@ -1,4 +1,4 @@
-// Copyright 2013-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2013-2017 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -387,16 +387,22 @@ static NSString *ClientComputerName(void)
     // Build the Info.plist
     NSMutableDictionary *infoDictionary = [NSMutableDictionary dictionary];
     infoDictionary[kOFXInfo_ArchiveVersionKey] = @(kOFXInfo_ArchiveVersion);
-    
-    // Get the date from the file so that if we created the document a long time ago and are just now turning on syncing it will have an accurate date.
-    OBFinishPortingLater("Should get this from the versionContents dictionary we just read using file coordination instead of looking it up again, or at least look it up in the same call with file coordination");
-    NSDictionary *attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:[localDocumentURL path] error:outError];
-    if (!attributes)
-        return nil;
-    NSDate *creationDate = attributes.fileCreationDate;
+
+    NSDate *creationDate = nil;
+    NSNumber *creationTimeNumber = versionContents[kOFXContents_FileCreationTime];
+    if (creationTimeNumber != nil) {
+        NSTimeInterval creationTimestamp = creationTimeNumber.doubleValue;
+        creationDate = [NSDate dateWithTimeIntervalSinceReferenceDate:creationTimestamp];
+    }
     if (!creationDate) {
-        OBASSERT_NOT_REACHED("No creation date in attributes");
-        creationDate = [NSDate date];
+        NSDictionary *attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:[localDocumentURL path] error:outError];
+        if (!attributes)
+            return nil;
+        creationDate = attributes.fileCreationDate;
+        if (!creationDate) {
+            OBASSERT_NOT_REACHED("No creation date in attributes");
+            creationDate = [NSDate date];
+        }
     }
     
     if (intendedLocalRelativePath) {
@@ -427,7 +433,7 @@ static NSString *ClientComputerName(void)
     return self;
 }
 
-// OBFinishPorting use the 'actions' class.
+// OBFinishPorting - <bug:///147841> (iOS-OmniOutliner Engineering: Use the 'actions' class in OFXIterateContentFiles)
 static void OFXIterateContentFiles(NSDictionary *contents, void (^action)(NSDictionary *fileInfo))
 {
     NSString *fileType = contents[kOFXContents_FileTypeKey];
@@ -602,7 +608,7 @@ static void OFXIterateContentFiles(NSDictionary *contents, void (^action)(NSDict
     OBPRECONDITION([self _checkInvariants]);
     
     NSNumber *versionNumber = _versionDictionary[kOFXVersion_NumberKey];
-    OBASSERT(versionNumber);
+    OBASSERT_NOTNULL(versionNumber);
     return [versionNumber unsignedLongValue];
 }
 

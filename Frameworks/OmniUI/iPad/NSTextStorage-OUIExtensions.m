@@ -1,4 +1,4 @@
-// Copyright 2010-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2017 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -7,6 +7,7 @@
 
 #import <OmniUI/NSTextStorage-OUIExtensions.h>
 
+#import <OmniUI/NSURL-OUIExtensions.h>
 #import <OmniUI/OUITextSelectionSpan.h>
 #import <OmniUI/OUITextView.h>
 
@@ -75,8 +76,9 @@ static NSDataDetector *_linkDataDectector;
     [self endEditing];
 }
 
-- (void)detectAppSchemeLinks;
+- (BOOL)detectAppSchemeLinks;
 {
+    __block BOOL didMakeChanges = NO;
     [self beginEditing];
     {
         // We iterate over the raw string so we aren't mutating the thing over which we're iterating. We ensure that mutation never changes the length of the string so that detected ranges correspond to attributed ranges.
@@ -93,130 +95,56 @@ static NSDataDetector *_linkDataDectector;
                 NSURL *linkURL = nil;
                 switch (result.resultType) {
                     case NSTextCheckingTypeLink:
-                        linkURL = _probablyAppScheme(result.URL) ? result.URL : nil;
+                        linkURL = result.URL;
                         break;
                         
                     default:
                         OBASSERT_NOT_REACHED(@"Received unexpected data detection result: %@", @(result.resultType));
                 }
+                
                 if (linkURL != nil) {
-                    [self addAttribute:NSLinkAttributeName value:linkURL range:matchRange];
+                    BOOL hasExistingLink = [self attribute:NSLinkAttributeName atIndex:matchRange.location effectiveRange:NULL] != nil;
+                    BOOL isProbablyAppScheme = [linkURL isProbablyAppScheme];
+                    BOOL shouldAddLink = (isProbablyAppScheme && !hasExistingLink);
+                    if (shouldAddLink) {
+                        didMakeChanges = YES;
+                        [self addAttribute:NSLinkAttributeName value:linkURL range:matchRange];
+                    }
+                }
+
+            }];
+            location = NSMaxRange(remainingRange);
+        }
+
+        // One more pass to find the message: URLs that the link data detector missed
+        static NSRegularExpression *missedURLExpression;
+        static dispatch_once_t onceToken;
+        dispatch_once(&onceToken, ^{
+            missedURLExpression = [[NSRegularExpression alloc] initWithPattern:@"<message:[^ \n>]+>|\\(message:[^ \n)]+\\)" options:0 error:NULL];
+            OBASSERT(missedURLExpression != nil);
+        });
+
+        location = fullRange.location;
+        while (location < end) {
+            NSRange remainingRange = NSMakeRange(location, end - location);
+            [missedURLExpression enumerateMatchesInString:string options:0 range:remainingRange usingBlock:^(NSTextCheckingResult *result, NSMatchingFlags flags, BOOL *stop) {
+                NSRange matchRange = result.range;
+                OBASSERT(matchRange.length > 2); // The regular expression won't match anything shorter than this
+                NSRange linkRange = NSMakeRange(matchRange.location + 1, matchRange.length - 2);
+                NSURL *linkURL = [NSURL URLWithString:[string substringWithRange:linkRange]];
+                if (linkURL != nil) {
+                    NSURL *existingLink = [self attribute:NSLinkAttributeName atIndex:linkRange.location effectiveRange:NULL];
+                    if (OFNOTEQUAL(linkURL.scheme, existingLink.scheme)) {
+                        [self removeAttribute:NSLinkAttributeName range:matchRange];
+                        [self addAttribute:NSLinkAttributeName value:linkURL range:linkRange];
+                    }
                 }
             }];
             location = NSMaxRange(remainingRange);
         }
     }
     [self endEditing];
-}
-
-static BOOL _probablyAppScheme(NSURL *url) {
-    static NSSet *schemesThatUIDataDetectorsShouldHandle = nil;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        // All permanent schemes from http://www.iana.org/assignments/uri-schemes/uri-schemes.xhtml as of 9/30/2016.
-        NSArray *schemes = @[
-                             @"aaa",
-                             @"aaas",
-                             @"about",
-                             @"acap",
-                             @"acct",
-                             @"cap",
-                             @"cid",
-                             @"coap",
-                             @"coaps",
-                             @"crid",
-                             @"data",
-                             @"dav",
-                             @"dict",
-                             @"dns",
-                             @"example",
-                             @"file",
-                             @"ftp",
-                             @"geo",
-                             @"go",
-                             @"gopher",
-                             @"h323",
-                             @"http",
-                             @"https",
-                             @"iax",
-                             @"icap",
-                             @"im",
-                             @"imap",
-                             @"info",
-                             @"ipp",
-                             @"ipps",
-                             @"iris",
-                             @"iris.beep",
-                             @"iris.lwz",
-                             @"iris.xpc",
-                             @"iris.xpcs",
-                             @"jabber",
-                             @"ldap",
-                             @"mailto",
-                             @"mid",
-                             @"msrp",
-                             @"msrps",
-                             @"mtqp",
-                             @"mupdate",
-                             @"news",
-                             @"nfs",
-                             @"ni",
-                             @"nih",
-                             @"nntp",
-                             @"opaquelocktoken",
-                             @"pkcs11",
-                             @"pop",
-                             @"pres",
-                             @"reload",
-                             @"rtsp",
-                             @"rtsps",
-                             @"rtspu",
-                             @"service",
-                             @"session",
-                             @"shttp",
-                             @"sieve",
-                             @"sip",
-                             @"sips",
-                             @"sms",
-                             @"snmp",
-                             @"soap.beep",
-                             @"soap.beeps",
-                             @"stun",
-                             @"stuns",
-                             @"tag",
-                             @"tel",
-                             @"telnet",
-                             @"tftp",
-                             @"thismessage",
-                             @"tip",
-                             @"tn3270",
-                             @"turn",
-                             @"turns",
-                             @"tv",
-                             @"urn",
-                             @"vemmi",
-                             @"vnc",
-                             @"ws",
-                             @"wss",
-                             @"xcon",
-                             @"xcon-userid",
-                             @"xmlrpc.beep",
-                             @"xmlrpc.beeps",
-                             @"xmpp",
-                             @"z39.50r",
-                             @"z39.50s",
-                             ];
-        schemesThatUIDataDetectorsShouldHandle = [NSSet setWithArray:schemes];
-    });
-    NSString *scheme = url.scheme;
-    if ([NSString isEmptyString:scheme]) {
-        return NO;
-    }
-    
-    BOOL handledScheme = [schemesThatUIDataDetectorsShouldHandle containsObject:scheme];
-    
-    // Assume everything else is an app-scheme that we'll link ourselves.
-    return !handledScheme;
+    return didMakeChanges;
 }
 
 @end

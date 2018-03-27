@@ -1,4 +1,4 @@
-// Copyright 2002-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2002-2017 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -20,6 +20,9 @@
 OB_REQUIRE_ARC
 
 RCS_ID("$Id$")
+
+NSString * const OAToolbarDidChangeNotification = @"OAToolbarDidChangeNotification";
+NSString * const OAToolbarDidChangeKindKey = @"OAToolbarDidChangeKindKey";
 
 @implementation OAToolbarWindowController
 {
@@ -73,8 +76,8 @@ static NSMutableDictionary *helpersByExtension = nil;
 - (void)dealloc;
 {
     [_toolbar setDelegate:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
-
 
 #pragma mark - NSWindowController subclass
 
@@ -82,6 +85,9 @@ static NSMutableDictionary *helpersByExtension = nil;
 {
     [super windowDidLoad]; // DOX: These are called immediately before and after the controller loads its nib file.  You can subclass these but should not call them directly.  Always call super from your override.
     [self createToolbar];
+    
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_OAToolbarWindowController_windowWillClose:) name:NSWindowWillCloseNotification object:self.window];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_OAToolbarWindowController_windowWillBeginSheet:) name:NSWindowWillBeginSheetNotification object:self.window];
 }
 
 - (OAToolbar *)toolbar;
@@ -134,7 +140,7 @@ static NSMutableDictionary *helpersByExtension = nil;
     return _isCreatingToolbar;
 }
 
-- (NSDictionary *)toolbarInfoForItem:(NSString *)identifier;
+- (NSDictionary *)toolbarInfoForItem:(NSToolbarItemIdentifier)identifier;
 {
     NSDictionary *toolbarItemInfo = [ToolbarItemInfo objectForKey:[self toolbarConfigurationName]];
     OBASSERT(toolbarItemInfo);
@@ -143,7 +149,7 @@ static NSMutableDictionary *helpersByExtension = nil;
     return itemInfo;
 }
 
-- (NSDictionary *)localizedToolbarInfoForItem:(NSString *)identifier;
+- (NSDictionary *)localizedToolbarInfoForItem:(NSToolbarItemIdentifier)identifier;
 {
     NSDictionary *toolbarItemInfo = [self toolbarInfoForItem:identifier];
     if (toolbarItemInfo == nil) {
@@ -169,6 +175,35 @@ static NSMutableDictionary *helpersByExtension = nil;
     return [NSDictionary dictionaryWithDictionary:localizedToolbarItemInfo];
 }
 
+#pragma mark NSToolbarDelegate
+
+- (void)toolbarWillAddItem:(NSNotification *)notification;
+{
+    [self _postToolbarChangeNotificationForKind:OAToolbarDidChangeKindAddItem];
+}
+
+- (void)toolbarDidRemoveItem:(NSNotification *)notification;
+{
+    [self _postToolbarChangeNotificationForKind:OAToolbarDidChangeKindRemoveItem];
+}
+
+#pragma mark OAToolbarDelegate
+
+- (void)toolbar:(OAToolbar *)aToolbar didSetVisible:(BOOL)visible;
+{
+    [self _postToolbarChangeNotificationForKind:OAToolbarDidChangeKindSetVisible];
+}
+
+- (void)toolbar:(OAToolbar *)aToolbar didSetDisplayMode:(NSToolbarDisplayMode)displayMode;
+{
+    [self _postToolbarChangeNotificationForKind:OAToolbarDidChangeKindSetDisplayMode];
+}
+
+- (void)toolbar:(OAToolbar *)aToolbar didSetSizeMode:(NSToolbarSizeMode)sizeMode;
+{
+    [self _postToolbarChangeNotificationForKind:OAToolbarDidChangeKindSetSizeMode];
+}
+
 #pragma mark - Implement in subclasses
 
 - (NSString *)toolbarConfigurationName;
@@ -177,7 +212,7 @@ static NSMutableDictionary *helpersByExtension = nil;
     return @"Toolbar";
 }
 
-- (NSString *)toolbarIdentifier;
+- (NSToolbarIdentifier)toolbarIdentifier;
 {
     return [self toolbarConfigurationName];
 }
@@ -214,7 +249,7 @@ static NSMutableDictionary *helpersByExtension = nil;
  3: item dictionary with key "<identifier>"; this is only for backwards compatibility and will hit an assertion
  
  */
-static NSString *_displayName(NSBundle *bundle, NSString *stringsFileName, NSString *identifier, NSString *displayKey, NSDictionary *itemInfo, BOOL preferNilToFallback)
+static NSString *_displayName(NSBundle *bundle, NSString *stringsFileName, NSToolbarItemIdentifier identifier, NSString *displayKey, NSDictionary *itemInfo, BOOL preferNilToFallback)
 {
     NSString *key, *value;
     NSString *novalue = @" -NO VALUE- ";  // Hopefully no one will actually want to localize something to this value.
@@ -243,7 +278,7 @@ static void copyProperty(NSToolbarItem *anItem,
                          NSString *propertyName,
                          NSBundle *bundle,
                          NSString *stringsFileName,
-                         NSString *itemIdentifier,
+                         NSToolbarItemIdentifier itemIdentifier,
                          NSDictionary *itemInfo,
                          NSString *specificItemDisplayName,
                          BOOL preferNilToFallback)
@@ -259,7 +294,7 @@ static void copyProperty(NSToolbarItem *anItem,
     [anItem setValue:value forKey:propertyName];
 }
 
-- (NSToolbarItem *)toolbar:(NSToolbar *)toolbar itemForItemIdentifier:(NSString *)itemIdentifier willBeInsertedIntoToolbar:(BOOL)willInsert;
+- (NSToolbarItem *)toolbar:(NSToolbar *)toolbar itemForItemIdentifier:(NSToolbarItemIdentifier)itemIdentifier willBeInsertedIntoToolbar:(BOOL)willInsert;
 {
     OAToolbarItem *newItem;
     NSDictionary *itemInfo;
@@ -267,7 +302,7 @@ static void copyProperty(NSToolbarItem *anItem,
     NSObject <OAToolbarHelper> *helper = nil;
     NSString *extension, *value;
     NSImage *itemImage = nil;
-    NSString *effectiveItemIdentifier;
+    NSToolbarItemIdentifier effectiveItemIdentifier;
     NSString *nameWithoutExtension;
     
     // Always use OAToolbarItem since we can't know up front whether we'll need a delegate or not.
@@ -378,11 +413,11 @@ static void copyProperty(NSToolbarItem *anItem,
         return newItem;
 }
 
-- (NSArray<NSString *> *)toolbarAllowedItemIdentifiers:(NSToolbar *)toolbar;
+- (NSArray<NSToolbarItemIdentifier> *)toolbarAllowedItemIdentifiers:(NSToolbar *)toolbar;
 {
     NSEnumerator *enumerator;
     NSObject <OAToolbarHelper> *helper;
-    NSMutableArray <NSString *> *results;
+    NSMutableArray <NSToolbarItemIdentifier> *results;
     
     results = [NSMutableArray arrayWithArray:[allowedToolbarItems objectForKey:[self toolbarConfigurationName]]];
     enumerator = [helpersByExtension objectEnumerator];
@@ -430,6 +465,45 @@ static void copyProperty(NSToolbarItem *anItem,
     [defaultToolbarItems setObject:[toolbarPropertyList objectForKey:@"defaultItemIdentifiers"] forKey:toolbarName];
     if ([toolbarPropertyList objectForKey:@"stringTable"])
         [toolbarStringsTables setObject:[toolbarPropertyList objectForKey:@"stringTable"] forKey:toolbarName];
+}
+
+- (void)_postToolbarChangeNotificationForKind:(OAToolbarDidChangeKind)kind;
+{
+    [[NSNotificationCenter defaultCenter] postNotificationName:OAToolbarDidChangeNotification object:self.window.toolbar userInfo:@{OAToolbarDidChangeKindKey: @(kind)}];
+}
+
+- (void)_OAToolbarWindowController_windowWillClose:(NSNotification *)notification;
+{
+    // This is a workaround for rdar://problem/28832571
+    //
+    // After the sequence in that bug, the NSWindow is leaked, but still has dangling references to the window controller as potentially
+    //  - window delegate
+    //  - toolbar delegate
+    //  - toolbar item delegate
+    //  - toolbar item target
+    //
+    // We can't prevent the window leak, but we can mitigate the crash by
+    //  - clearing the window delegate if it is us
+    //  - removing the toolbar
+    
+    OBPRECONDITION([self isWindowLoaded]);
+    OBPRECONDITION(notification.object == self.window);
+    
+    [_toolbar setDelegate:nil];
+    _toolbar = nil;
+    
+    self.window.toolbar = nil;
+    if (self.window.delegate == (id <NSWindowDelegate>)self) {
+        self.window.delegate = nil;
+    }
+}
+
+- (void)_OAToolbarWindowController_windowWillBeginSheet:(NSNotification *)notification;
+{
+    // TODO: This is a first approximation. The notification doesn't tell us which sheet is being presented and the sheet is not yet added to the window. Really should observe windowDidEndSheet also to avoid sending this notification again if a sheet is presented over the customization sheet.
+    if (self.toolbar.customizationPaletteIsRunning) {
+        [self _postToolbarChangeNotificationForKind:OAToolbarDidChangeKindPresentCustomizationSheet];
+    }
 }
 
 @end

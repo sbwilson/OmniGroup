@@ -1,4 +1,4 @@
-// Copyright 2014-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2014-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -9,6 +9,7 @@
 
 #import <OmniFoundation/OFMultiValueDictionary.h>
 #import <OmniFoundation/OFPreference.h>
+@import OmniAppKit;
 
 #if 0 && defined(DEBUG)
 #define DEBUG_PREFERENCES(format, ...) NSLog(@"PREF: " format, ## __VA_ARGS__)
@@ -17,6 +18,12 @@
 #endif
 
 RCS_ID("$Id$");
+
+@interface OUIChangePreferenceURLCommand ()
+// Radar 37952455: Regression: Spurious "implementing unavailable method" warning when subclassing
+- (NSString *)confirmationMessage NS_EXTENSION_UNAVAILABLE_IOS("Special URL handling is not available in extensions");
+- (void)invoke NS_EXTENSION_UNAVAILABLE_IOS("Special URL handling is not available in extensions");
+@end
 
 @implementation OUIChangePreferenceURLCommand
 
@@ -60,10 +67,9 @@ RCS_ID("$Id$");
 
          UIAlertController *alertController = [UIAlertController alertControllerWithTitle:NSLocalizedStringFromTableInBundle(@"Preference changed", @"OmniUI", OMNI_BUNDLE, @"alert title") message:[NSString stringWithFormat:NSLocalizedStringFromTableInBundle(@"Changed the '%@' preference from '%@' to '%@'", @"OmniUI", OMNI_BUNDLE, @"alert message"), key, oldValue, updatedValue] preferredStyle:UIAlertControllerStyleAlert];
 
-         [alertController addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:NULL]];
+         [alertController addAction:[UIAlertAction actionWithTitle:OAOK() style:UIAlertActionStyleDefault handler:NULL]];
 
-         [[[[UIApplication sharedApplication] delegate] window].rootViewController presentViewController:alertController animated:YES completion:NULL];
-
+         [self.viewControllerForPresentation presentViewController:alertController animated:YES completion:NULL];
     }
 }
 

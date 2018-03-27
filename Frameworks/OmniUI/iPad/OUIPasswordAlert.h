@@ -1,4 +1,4 @@
-// Copyright 2010-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -9,12 +9,12 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@class OUIPasswordAlertViewController;
 @protocol OUIPasswordAlertDelegate;
 
 typedef NS_ENUM(NSUInteger, OUIPasswordAlertAction) {
     OUIPasswordAlertActionCancel = 0,
     OUIPasswordAlertActionLogIn,
+    OUIPasswordAlertActionHelp,
 };
 
 typedef NS_OPTIONS(NSUInteger, OUIPasswordAlertOptions) {
@@ -29,11 +29,12 @@ extern NSString * const OUIPasswordAlertObfuscatedPasswordPlaceholder;
 @interface OUIPasswordAlert : NSObject
 
 - (id)init NS_UNAVAILABLE;
-- (id)initWithProtectionSpace:(NSURLProtectionSpace *)protectionSpace title:(nullable NSString *)title options:(OUIPasswordAlertOptions)options NS_DESIGNATED_INITIALIZER;
+- (id)initWithTitle:(nullable NSString *)title options:(OUIPasswordAlertOptions)options;
+- (id)initWithProtectionSpace:(nullable NSURLProtectionSpace *)protectionSpace title:(nullable NSString *)title options:(OUIPasswordAlertOptions)options NS_DESIGNATED_INITIALIZER;
 
 @property (nonatomic, readonly) NSString *title;
 @property (nonatomic, copy) NSString *message; // Detail text for the presented alert. Overridden by username if the ShowUsername option is set.
-@property (nonatomic, readonly) NSURLProtectionSpace *protectionSpace;
+@property (nonatomic, readonly, nullable) NSURLProtectionSpace *protectionSpace; // Completely unused by this class, but used by the OUIOnePasswordAlert subclass.
 
 @property (nonatomic, weak, nullable) id <OUIPasswordAlertDelegate> delegate;
 @property (nonatomic, copy, nullable) void (^finished)(OUIPasswordAlert *, OUIPasswordAlertAction);
@@ -45,6 +46,8 @@ extern NSString * const OUIPasswordAlertObfuscatedPasswordPlaceholder;
 @property (nonatomic, assign) NSUInteger minimumPasswordLength;
 
 @property (nonatomic, strong, null_resettable) UIColor *tintColor;
+
+@property (nonatomic, copy, nullable) NSURL *helpURL NS_EXTENSION_UNAVAILABLE_IOS("Cannot open help in a browser from app extensions");
 
 - (void)showFromController:(UIViewController *)controller;
 

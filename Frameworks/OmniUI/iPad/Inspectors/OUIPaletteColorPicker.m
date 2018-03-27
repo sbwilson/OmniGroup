@@ -1,4 +1,4 @@
-// Copyright 2010-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2017 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -11,6 +11,7 @@
 #import <OmniUI/OUIColorSwatchPicker.h>
 #import <OmniUI/OUIInspectorSelectionValue.h>
 #import <OmniUI/OUIInspector.h>
+#import <OmniUI/OUIInspectorAppearance.h>
 #import <OmniBase/OmniBase.h>
 
 RCS_ID("$Id$");
@@ -27,7 +28,7 @@ RCS_ID("$Id$");
     _themes = [themes copy];
     
     if (self.isViewLoaded)
-        [self _rebuildThemesViews];
+        [self.view setNeedsLayout];
 }
 
 #pragma mark - OUIColorPicker subclass
@@ -97,6 +98,12 @@ RCS_ID("$Id$");
     [self _rebuildThemesViews];
 }
 
+- (void)viewSafeAreaInsetsDidChange
+{
+    [super viewSafeAreaInsetsDidChange];
+    [self _rebuildThemesViews];
+}
+
 - (void)viewWillAppear:(BOOL)animated;
 {
     [super viewWillAppear:animated];
@@ -142,14 +149,15 @@ RCS_ID("$Id$");
     CGRect viewBounds = view.bounds;
     viewBounds.size.width = 320;
     
-    CGFloat xOffset = 8;
-    CGFloat yOffset = CGRectGetMinY(view.bounds) + kInterThemeSpacing;
+    CGFloat xOffset = view.safeAreaInsets.left + kInterThemeSpacing;
+    // This should be view.safeAreaInsets.top + kInterThemeSpacing, but when I get here bounds.origin.y is negative view.safeAreaInsets.top, and setting y to that value doubles the required top margin
+    CGFloat yOffset = kInterThemeSpacing;
     NSMutableArray *themeViews = [NSMutableArray array];
     for (OUIPaletteTheme *theme in _themes) {
         {
             UILabel *label = [[UILabel alloc] initWithFrame:CGRectZero];
             label.text = theme.displayName;
-            label.textColor = [OUIInspector labelTextColor];
+            label.textColor = self.textColor;
             label.font = labelFont;
             label.opaque = NO;
             label.backgroundColor = nil;
@@ -184,11 +192,37 @@ RCS_ID("$Id$");
     _themeViews = [themeViews copy];
 }
 
+- (UIColor *)textColor
+{
+    if ([OUIInspectorAppearance inspectorAppearanceEnabled])
+        return OUIInspectorAppearance.appearance.InspectorTextColor;
+    
+    return [OUIInspector labelTextColor];
+}
+
 #pragma mark <OUIColorValue>
 
 -(OAColor *)color
 {
     return  self.selectionValue.firstValue;
+}
+
+#pragma mark - OUIInspectorAppearance
+
+- (void)themedAppearanceDidChange:(OUIThemedAppearance *)changedAppearance;
+{
+    [super themedAppearanceDidChange:changedAppearance];
+    
+    self.view.backgroundColor = OUIInspectorAppearance.appearance.InspectorBackgroundColor;
+    
+    for (UIView *view in _themeViews) {
+        if ([view isKindOfClass:[UILabel class]]) {
+            UILabel *label = OB_CHECKED_CAST(UILabel, view);
+            if (label) {
+                label.textColor = self.textColor;
+            }
+        }
+    }
 }
 
 @end

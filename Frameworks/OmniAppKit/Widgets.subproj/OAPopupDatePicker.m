@@ -1,4 +1,4 @@
-// Copyright 2006-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2006-2017 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -144,7 +144,7 @@ static NSSize calendarImageSize;
     	[window setCollectionBehavior:collectionBehavior];  
     }
 
-    [OFPreference addObserver:self selector:@selector(_firstDayOfTheWeekDidChange:) forPreference:[OFPreference preferenceForKey:@"FirstDayOfTheWeek"]];
+    [OFPreference addObserver:self selector:@selector(_firstDayOfTheWeekDidChange:) forPreference:[NSCalendar firstDayOfTheWeekPreference]];
     [self _firstDayOfTheWeekDidChange:nil];
     
     return self;
@@ -152,7 +152,7 @@ static NSSize calendarImageSize;
 
 - (void)dealloc;
 {
-    [OFPreference removeObserver:self forPreference:[OFPreference preferenceForKey:@"FirstDayOfTheWeek"]];
+    [OFPreference removeObserver:self forPreference:[NSCalendar firstDayOfTheWeekPreference]];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     
     [_datePickerObjectValue release];
@@ -250,7 +250,7 @@ static NSSize calendarImageSize;
 - (void)setWindow:(NSWindow *)window;
 {
     NSView *contentView = [window contentView];
-    NSWindow *newWindow = [[[OAPopupDatePickerWindow alloc] initWithContentRect:[contentView frame] styleMask:NSBorderlessWindowMask|NSUnifiedTitleAndToolbarWindowMask backing:NSBackingStoreBuffered defer:NO] autorelease];
+    NSWindow *newWindow = [[[OAPopupDatePickerWindow alloc] initWithContentRect:[contentView frame] styleMask:NSWindowStyleMaskBorderless|NSWindowStyleMaskUnifiedTitleAndToolbar backing:NSBackingStoreBuffered defer:NO] autorelease];
     [newWindow setContentView:contentView];
     [newWindow setLevel:NSPopUpMenuWindowLevel];
     [newWindow setDelegate:self];
@@ -308,8 +308,8 @@ static NSSize calendarImageSize;
     NSEvent *currentEvent = [[NSApplication sharedApplication] currentEvent];
     
     BOOL isCancel = [currentEvent isUserCancel];
-    unichar character = (([currentEvent type] == NSKeyDown) && ([[currentEvent characters] length] == 1)) ? [[currentEvent characters] characterAtIndex:0] : 0;
-    BOOL isCommit = ([currentEvent type] == NSKeyDown && (character == 0x1b || character == 0x03 || character == 0x0d));
+    unichar character = (([currentEvent type] == NSEventTypeKeyDown) && ([[currentEvent characters] length] == 1)) ? [[currentEvent characters] characterAtIndex:0] : 0;
+    BOOL isCommit = ([currentEvent type] == NSEventTypeKeyDown && (character == 0x1b || character == 0x03 || character == 0x0d));
     
     if (isCancel) {
         closeReason = OAPopupDatePickerCloseReasonCancel;
@@ -484,12 +484,7 @@ static NSSize calendarImageSize;
 - (void)_firstDayOfTheWeekDidChange:(NSNotification *)notification;
 {
      // OmniPlan lets users set a different first day of week from the system default. See <bug:///30007> (Bug: Preference for first day of the week [start])
-    static OFPreference *firstWeekdayPreference;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        firstWeekdayPreference = [OFPreference preferenceForKey:@"FirstDayOfTheWeek"];
-    });
-    
+    OFPreference *firstWeekdayPreference = [NSCalendar firstDayOfTheWeekPreference];
     NSCalendar *calendar = [[NSCalendar currentCalendar] retain];
     
     if ([firstWeekdayPreference hasNonDefaultValue]) {
@@ -519,7 +514,7 @@ static NSSize calendarImageSize;
     
     switch (character) {
         case '.':
-            if ([theEvent modifierFlags] & NSCommandKeyMask) {
+            if ([theEvent modifierFlags] & NSEventModifierFlagCommand) {
                 [self resignKeyWindow];
                 return YES;
             } else {
@@ -547,10 +542,10 @@ static NSSize calendarImageSize;
     [parentWindow removeChildWindow:self];
     [self close];
     
-    // It looks like this code would never fire since it should have been using NSKeyDown instead of NSKeyDownMask
+    // It looks like this code would never fire since it should have been using NSEventTypeKeyDown instead of NSEventMaskKeyDown
     // <bug:///104045> (Unassigned: 10.10: OAPopupDatePickerWindow -resignKeyWindow has bad test of event type)
 #if 0
-    if ([[[NSApplication sharedApplication] currentEvent] type] == NSKeyDownMask) {
+    if ([[[NSApplication sharedApplication] currentEvent] type] == NSEventMaskKeyDown) {
         // <bug://bugs/57041> (Enter/Return should commit edits on the split task window)
         [parentWindow makeKeyAndOrderFront:nil];
     }

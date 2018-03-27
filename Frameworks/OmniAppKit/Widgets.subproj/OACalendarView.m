@@ -1,4 +1,4 @@
-// Copyright 2001-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2001-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -131,12 +131,12 @@ const int OACalendarViewMaxNumWeeksIntersectedByMonth = 6;
     
     for (index = 0; index < OACalendarViewNumDaysPerWeek; index++) {
 	dayOfWeekCell[index] = [[NSTextFieldCell alloc] init];
-        [dayOfWeekCell[index] setAlignment:NSCenterTextAlignment];
+        [dayOfWeekCell[index] setAlignment:NSTextAlignmentCenter];
         [dayOfWeekCell[index] setStringValue:[shortWeekDays objectAtIndex:index]];
     }
 
     dayOfMonthCell = [[NSTextFieldCell alloc] init];
-    [dayOfMonthCell setAlignment:NSCenterTextAlignment];
+    [dayOfMonthCell setAlignment:NSTextAlignmentCenter];
     [dayOfMonthCell setFont:[NSFont systemFontOfSize:12.0f]];
 
     buttons = [[NSMutableArray alloc] initWithCapacity:2];
@@ -294,10 +294,8 @@ const int OACalendarViewMaxNumWeeksIntersectedByMonth = 6;
     if ([self isEnabled]) {
         NSPoint location = [self convertPoint:[mouseEvent locationInWindow] fromView:nil];
         NSDate *hitDate = [self _hitDateWithLocation:location];
+        id target = [self target];
         if (hitDate) {
-            id target;
-
-            target = [self target];
             if (!flags.targetApprovesDateSelection || [_delegate calendarView:self shouldSelectDate:hitDate]) {
                 [self setSelectedDay:hitDate];
                 if (flags.showsDaysForOtherMonths)
@@ -310,7 +308,7 @@ const int OACalendarViewMaxNumWeeksIntersectedByMonth = 6;
             if (hitWeekday) {
                 if (!flags.targetApprovesDateSelection || [_delegate calendarView:self shouldSelectDate:hitWeekday]) {
                     [self setSelectedDay:hitWeekday];
-                    [self sendAction:[self action] to:[self target]];
+                    [self sendAction:[self action] to:target];
                 }
             }
         }
@@ -373,8 +371,8 @@ const int OACalendarViewMaxNumWeeksIntersectedByMonth = 6;
     
     NSEvent *event = [[NSApplication sharedApplication] currentEvent];
     NSUInteger kflags = [event modifierFlags];
-    BOOL shiftMask = (0 != (kflags & NSShiftKeyMask));
-    BOOL commandMask = (0 != (kflags & NSCommandKeyMask));
+    BOOL shiftMask = (0 != (kflags & NSEventModifierFlagShift));
+    BOOL commandMask = (0 != (kflags & NSEventModifierFlagCommand));
     
     NSDate *startDate = [selectedDays objectAtIndex:0];
     if (shiftMask) {
@@ -546,7 +544,7 @@ const int OACalendarViewMaxNumWeeksIntersectedByMonth = 6;
 
 - (IBAction)previousMonth:(id)sender;
 {
-    if (([[[NSApplication sharedApplication] currentEvent] modifierFlags] & NSAlternateKeyMask) != 0)
+    if (([[[NSApplication sharedApplication] currentEvent] modifierFlags] & NSEventModifierFlagOption) != 0)
         return [self previousYear:sender];
     
     NSDateComponents *components = [[NSDateComponents alloc] init];
@@ -557,7 +555,7 @@ const int OACalendarViewMaxNumWeeksIntersectedByMonth = 6;
 
 - (IBAction)nextMonth:(id)sender;
 {
-    if (([[[NSApplication sharedApplication] currentEvent] modifierFlags] & NSAlternateKeyMask) != 0)
+    if (([[[NSApplication sharedApplication] currentEvent] modifierFlags] & NSEventModifierFlagOption) != 0)
         return [self nextYear:sender];
 
     NSDateComponents *components = [[NSDateComponents alloc] init];

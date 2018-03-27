@@ -1,4 +1,4 @@
-// Copyright 2010-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -18,6 +18,7 @@
 #import <OmniUIDocument/OUIDocumentPickerItemView.h>
 #import <OmniUIDocument/OUIDocumentPickerFileItemView.h>
 #import <OmniUIDocument/OUIDocumentPickerFilter.h>
+#import <OmniUIDocument/OUIDocumentAppController.h>
 
 RCS_ID("$Id$");
 
@@ -52,6 +53,11 @@ RCS_ID("$Id$");
     [self.navigationController popViewControllerAnimated:YES];
 }
 
+- (NSArray <ODSFileItem *> *)sortedFilteredItems;
+{
+    return [[self.filteredItems allObjects] sortedArrayUsingDescriptors:[self.class sortDescriptors]];
+}
+
 #pragma mark -
 #pragma mark OUIDocumentPickerViewController subclass
 
@@ -70,7 +76,7 @@ RCS_ID("$Id$");
     NSString *buttonTitle = NSLocalizedStringFromTableInBundle(@"Tap here to add a document without a template.", @"OmniUIDocument", OMNI_BUNDLE, @"empty template picker button text");
     
     __weak OUIDocumentPickerViewController *weakSelf = self;
-    OUIEmptyOverlayView *_templatePickerEmptyOverlayView = [OUIEmptyOverlayView overlayViewWithMessage:nil buttonTitle:buttonTitle action:^{
+    OUIEmptyOverlayView *_templatePickerEmptyOverlayView = [OUIEmptyOverlayView overlayViewWithMessage:nil buttonTitle:buttonTitle customFontColor:[[OUIDocumentAppController controller] emptyOverlayViewTextColor] action:^{
         [weakSelf newDocumentWithTemplateFileItem:nil];
     }];
     
@@ -87,9 +93,10 @@ RCS_ID("$Id$");
         NSPredicate *predicate = [NSPredicate predicateWithBlock:^BOOL(id evaluatedObject, NSDictionary *bindings) {
             if (![templateFilter.predicate evaluateWithObject:evaluatedObject])
                 return NO;
-            // filter out fileItems in the trash.
+            // filter out fileItems in the trash or recent documents.
             ODSItem *item = evaluatedObject;
-            if (item.scope.isTrash)
+            ODSScope *itemScope = item.scope;
+            if (itemScope.isTrash || ([itemScope isKindOfClass:ODSExternalScope.class] && ((ODSExternalScope *)itemScope).isRecentDocuments))
                 return NO;
             else
                 return YES;
@@ -123,8 +130,8 @@ RCS_ID("$Id$");
     return NO;
 }
 
-- (void)_updateToolbarItemsAnimated:(BOOL)animated;
-{
+//- (void)_updateToolbarItems Animated:(BOOL)animated;
+- (void)_updateToolbarItemsForTraitCollection:(UITraitCollection *)traitCollection animated:(BOOL)animated {
     OBPRECONDITION(self.documentStore);
 
     UINavigationItem *navigationItem = self.navigationItem;

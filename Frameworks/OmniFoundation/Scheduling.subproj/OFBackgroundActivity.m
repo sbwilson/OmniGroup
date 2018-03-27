@@ -1,4 +1,4 @@
-// Copyright 2013-2014 Omni Development, Inc. All rights reserved.
+// Copyright 2013-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -9,12 +9,14 @@
 
 #import <OmniFoundation/OFPreference.h>
 #import <Foundation/Foundation.h>
-#import <libkern/OSAtomic.h>
 #if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
 #import <UIKit/UIApplication.h>
 #endif
+#import <stdatomic.h>
 
 RCS_ID("$Id$")
+
+NS_ASSUME_NONNULL_BEGIN
 
 static OFDeclareDebugLogLevel(OFBackgroundActivityDebug);
 #define DEBUG_ACTIVITY(level, format, ...) do { \
@@ -22,7 +24,7 @@ static OFDeclareDebugLogLevel(OFBackgroundActivityDebug);
         NSLog(@"BACKGROUND (%d) %@: " format, RunningActivityCount, [self shortDescription], ## __VA_ARGS__); \
     } while (0)
 
-static int32_t RunningActivityCount = 0;
+static atomic_int_fast32_t RunningActivityCount = ATOMIC_VAR_INIT(0);
 
 @implementation OFBackgroundActivity
 {
@@ -40,7 +42,7 @@ static int32_t RunningActivityCount = 0;
     return [[[self alloc] initWithIdentifier:identifier] autorelease];
 }
 
-- initWithIdentifier:(NSString *)identifier;
+- (instancetype)initWithIdentifier:(NSString *)identifier;
 {
     if (!(self = [super init]))
         return nil;
@@ -48,18 +50,29 @@ static int32_t RunningActivityCount = 0;
     _identifier = [identifier copy];
     
 #if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
-    _task = [OFSharedApplication() beginBackgroundTaskWithExpirationHandler:^{
+    __weak typeof(self) weakSelf = self;
+    _task = [OFSharedApplication() beginBackgroundTaskWithName:identifier expirationHandler:^{
+        __strong typeof(self) strongSelf = weakSelf;
+        OBASSERT(strongSelf != nil);
+        if (strongSelf == nil) {
+            return;
+        }
+        
         // The Mac side and the new API on NSProcessInfo doesn't have an expiration handler. Should we expose this on iOS?
-        NSLog(@"OFBackgroundActivity %@ expired", _identifier);
+        NSLog(@"OFBackgroundActivity %@ expired", strongSelf->_identifier);
+        [OFSharedApplication() endBackgroundTask:strongSelf->_task];
+        strongSelf->_task = UIBackgroundTaskInvalid;
     }];
-    if (_task == UIBackgroundTaskInvalid)
+    
+    if (_task == UIBackgroundTaskInvalid) {
         NSLog(@"OFBackgroundActivity %@ unable to start background task", _identifier);
-    else
-        OSAtomicIncrement32(&RunningActivityCount);
+    } else {
+        atomic_fetch_add_explicit(&RunningActivityCount, 1, memory_order_relaxed);
+    }
 #else
     [[NSProcessInfo processInfo] disableSuddenTermination];
     _suddenTerminationDisabled = YES;
-    OSAtomicIncrement32(&RunningActivityCount);
+    atomic_fetch_add_explicit(&RunningActivityCount, 1, memory_order_relaxed);
 #endif
     
     DEBUG_ACTIVITY(1, @"started");
@@ -97,10 +110,12 @@ static int32_t RunningActivityCount = 0;
     
     if (task != UIBackgroundTaskInvalid) {
         // Delay ending the task until the current call stack is done, letting other resources possible be deallocated in the autorelease pool (since we may be going to sleep and not dying outright). Also, we might be on a background queue (probably safe to call UIApplication here, but let's not assume so).
+        
+        // This macro references self, and using it within the block block keeps a hold on our pointer for an extra turn of the run loop. But, this method can be called from dealloc, and keeping around a pointer to self causes ARC to overrelease us when the block is deallocated, and that's a crash. So, we can't place this debug log within the enqueued block.
+        DEBUG_ACTIVITY(1, @"*almost* finished");
+        
         [[NSOperationQueue mainQueue] addOperationWithBlock:^{
-            OSAtomicDecrement32(&RunningActivityCount);
-            DEBUG_ACTIVITY(1, @"finished");
-
+            atomic_fetch_add_explicit(&RunningActivityCount, -1, memory_order_relaxed);
             // Do this last since it might be the last thing we do...
             [OFSharedApplication() endBackgroundTask:task];
         }];
@@ -114,10 +129,11 @@ static int32_t RunningActivityCount = 0;
     }
     
     if (disabled) {
+        // This macro references self, and using it within the block block keeps a hold on our pointer for an extra turn of the run loop. But, this method can be called from dealloc, and keeping around a pointer to self causes ARC to overrelease us when the block is deallocated, and that's a crash. So, we can't place this debug log within the enqueued block.
+        DEBUG_ACTIVITY(1, @"*almost* finished");
+        
         [[NSOperationQueue mainQueue] addOperationWithBlock:^{
-            OSAtomicDecrement32(&RunningActivityCount);
-            DEBUG_ACTIVITY(1, @"finished");
-            
+            atomic_fetch_add_explicit(&RunningActivityCount, -1, memory_order_relaxed);
             // Do this last since it might be the last thing we do...
             [[NSProcessInfo processInfo] enableSuddenTermination];
         }];
@@ -133,3 +149,6 @@ static int32_t RunningActivityCount = 0;
 }
 
 @end
+
+NS_ASSUME_NONNULL_END
+

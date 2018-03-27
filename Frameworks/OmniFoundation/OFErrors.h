@@ -1,4 +1,4 @@
-// Copyright 2007-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2007-2017 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -11,7 +11,9 @@
 
 @class NSString;
 
-enum {
+extern NSErrorDomain const OFErrorDomain;
+
+typedef NS_ERROR_ENUM(OFErrorDomain, OFError) {
     // Zero typically means no error
     OFCacheFileUnableToWriteError = 1,
     OFFilterDataCommandReturnedErrorCodeError,
@@ -23,6 +25,7 @@ enum {
     OFCannotUniqueFileNameError,
     
     OFXMLLibraryError, // An error from libxml; might be a warning, might be fatal.
+    OFXMLDocumentEmptyInputError,
     OFXMLDocumentNoRootElementError,
     OFXMLCannotCreateStringFromUnparsedData,
     
@@ -62,14 +65,24 @@ enum {
     
     // OFHandleChangeDebugLevelURL
     OFChangeDebugLevelURLError,
+    
+    // Code signing & entitlements
+    OFEmbeddedProvisioningProfileMissingError,
+    OFEmbeddedProvisioningProfileUnreadableError,
+    OFEmbeddedProvisioningProfileMalformedPKCS7Error,
+    OFEmbeddedProvisioningProfileMalformedPlistError,
+
+    // AppleScript
+    OFUnableToConvertScriptHandlerArgumentToAppleEventDescriptor,
+    
+    // OFRelativeDateParser
+    OFRelativeDateParserUnknownError,
 };
 
 
 // This key holds the exit status of a process which has exited
-#define OFProcessExitStatusErrorKey (@"OFExitStatus")
-#define OFProcessExitSignalErrorKey (@"OFExitSignal")
-
-extern NSString * const OFErrorDomain;
+extern NSErrorUserInfoKey const OFProcessExitStatusErrorKey;
+extern NSErrorUserInfoKey const OFProcessExitSignalErrorKey;
 
 #define OFErrorWithInfoAndDomain(error, domain, code, description, suggestion, ...) _OBError(error, domain, code, __FILE__, __LINE__, NSLocalizedDescriptionKey, description, NSLocalizedRecoverySuggestionErrorKey, (suggestion), ## __VA_ARGS__)
 #define OFErrorWithInfo(error, code, description, suggestion, ...) OFErrorWithInfoAndDomain(error, OFErrorDomain, code, description, (suggestion), ## __VA_ARGS__)

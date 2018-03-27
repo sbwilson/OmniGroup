@@ -1,4 +1,4 @@
-// Copyright 2010-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2017 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -12,6 +12,7 @@
 #import <OmniUI/OUIDocumentPreviewArea.h>
 
 @class ODSFileItem, OFFileEdit, ODSFileItemEdit;
+@protocol ODSFileItem;
 
 typedef NS_ENUM(NSUInteger, OUIDocumentPreviewType) {
     OUIDocumentPreviewTypeRegular, // Actual image that is based on document contents
@@ -26,6 +27,9 @@ typedef void (^OUIDocumentPreviewCacheImage)(OFFileEdit *fileEdit, CGImageRef im
 This class maintains an in memory and disk cache of decoded preview images for use by the document picker. Instances represent a single entry in the cache. Each entry is uniqued by a file item's unique edit identifier (which each scope subclass must fill out).
 */
 @interface OUIDocumentPreview : NSObject
+
+// Used while rendering previews when the UIImage for the preview is a template. Defaults to +blackColor;
+@property(class,copy) UIColor *previewTemplateImageTintColor;
 
 + (void)populateCacheForFileItems:(id <NSFastEnumeration>)fileItems completionHandler:(void (^)(void))completionHandler;
 
@@ -55,8 +59,9 @@ This class maintains an in memory and disk cache of decoded preview images for u
 + (void)deletePreviewsNotUsedByFileItems:(id <NSFastEnumeration>)fileItems;
 + (NSURL *)fileURLForPreviewOfFileEdit:(OFFileEdit *)fileEdit withArea:(OUIDocumentPreviewArea)area;
 + (void)writeEmptyPreviewsForFileEdit:(OFFileEdit *)fileEdit;
++ (void)writeEncryptedEmptyPreviewsForFileEdit:(OFFileEdit *)fileEdit fileURL:(NSURL *)fileURL;
 
-+ (OUIDocumentPreview *)makePreviewForDocumentClass:(Class)documentClass fileItem:(ODSFileItem *)fileItem withArea:(OUIDocumentPreviewArea)area;
++ (OUIDocumentPreview *)makePreviewForDocumentClass:(Class)documentClass fileItem:(id <ODSFileItem>)fileItem withArea:(OUIDocumentPreviewArea)area;
 
 + (CGFloat)previewSizeForArea:(OUIDocumentPreviewArea)area;
 + (CGFloat)previewImageScale;

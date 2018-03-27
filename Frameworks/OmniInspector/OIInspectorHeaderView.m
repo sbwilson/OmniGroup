@@ -1,4 +1,4 @@
-// Copyright 2002-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2002-2017 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -106,8 +106,8 @@ static NSGradient *unifiedGradientKey, *unifiedGradientNonKey;
 
     omitTextAndStateWhenCollapsed = [[NSUserDefaults standardUserDefaults] boolForKey:@"OmitTextAndStateWhenCollapsed"];
     
-    unifiedGradientKey = [[NSGradient alloc] initWithStartingColor:[NSColor colorWithCalibratedWhite:0.77f alpha:1.0f] endingColor:[NSColor colorWithCalibratedWhite:.59f alpha:1.0f]];
-    unifiedGradientNonKey = [[NSGradient alloc] initWithStartingColor:[NSColor colorWithCalibratedWhite:0.84f alpha:1.0f] endingColor:[NSColor colorWithCalibratedWhite:.72f alpha:1.0f]];
+    unifiedGradientKey = [[NSGradient alloc] initWithStartingColor:[NSColor colorWithWhite:0.77f alpha:1.0f] endingColor:[NSColor colorWithWhite:.59f alpha:1.0f]];
+    unifiedGradientNonKey = [[NSGradient alloc] initWithStartingColor:[NSColor colorWithWhite:0.84f alpha:1.0f] endingColor:[NSColor colorWithWhite:.72f alpha:1.0f]];
     
 }
 
@@ -215,9 +215,9 @@ static NSGradient *unifiedGradientKey, *unifiedGradientNonKey;
     NSGradient *blend = keyStatus? unifiedGradientKey : unifiedGradientNonKey;
     [blend drawInRect:gradient angle:90];
     
-    [[NSColor colorWithCalibratedWhite:(keyStatus) ? 0.86f : 0.91f alpha:1.0f] set];
+    [[NSColor colorWithWhite:(keyStatus) ? 0.86f : 0.91f alpha:1.0f] set];
     NSRectFill(NSMakeRect(0,0, backgroundBounds.size.width, 1));
-    [[NSColor colorWithCalibratedWhite:(keyStatus) ? .25f : .53f  alpha:1.0f] set];
+    [[NSColor colorWithWhite:(keyStatus) ? .25f : .53f  alpha:1.0f] set];
     NSRectFill(NSMakeRect(0,backgroundBounds.size.height-1, backgroundBounds.size.width, 1));
 }
 
@@ -234,7 +234,7 @@ static NSGradient *unifiedGradientKey, *unifiedGradientNonKey;
         NSImage *closeImage = _closeButtonImages[imageTint][clickingClose ? OIInspectorCloseButtonStatePressed : (overClose ? OIInspectorCloseButtonStateRollover : OIInspectorCloseButtonStateNormal)];
         NSRect closeImagePoint = NSMakeRect(nextElementX, NSMinY(bounds) + 1.0f, closeImage.size.width, closeImage.size.height);
         
-        [closeImage drawFlippedInRect:closeImagePoint operation:NSCompositeSourceOver];
+        [closeImage drawFlippedInRect:closeImagePoint operation:NSCompositingOperationSourceOver];
     }
     nextElementX += 20.0f;
     
@@ -242,10 +242,10 @@ static NSGradient *unifiedGradientKey, *unifiedGradientNonKey;
         NSImage *disclosureImage = _expanded ? _expandedImage : _collapsedImage;
         NSRect disclosureImageRect = NSMakeRect(nextElementX, rint(NSMidY(bounds) - [disclosureImage size].height / 2.0f) - 1, disclosureImage.size.width, disclosureImage.size.height);
 
-        [disclosureImage drawFlippedInRect:disclosureImageRect operation:NSCompositeSourceOver];
+        [disclosureImage drawFlippedInRect:disclosureImageRect operation:NSCompositingOperationSourceOver];
 
         if (isClicking && !overClose && !isDragging) // our triangle images are 100% black, but about 50% opaque, so we just draw it again over itself
-            [disclosureImage drawFlippedInRect:disclosureImageRect operation:NSCompositeSourceOver fraction:0.6666f];
+            [disclosureImage drawFlippedInRect:disclosureImageRect operation:NSCompositingOperationSourceOver fraction:0.6666f];
 
         nextElementX += 20.0f;
     }
@@ -257,7 +257,7 @@ static NSGradient *unifiedGradientKey, *unifiedGradientNonKey;
         CGContextSaveGState(cgContext);
         CGContextTranslateCTM(cgContext, nextElementX, NSMaxY(bounds)-2.0f);
         CGContextScaleCTM(cgContext, 1.0f, -1.0f);
-        [_image drawAtPoint:NSZeroPoint fromRect:NSZeroRect operation:NSCompositeSourceOver fraction:1.0f];
+        [_image drawAtPoint:NSZeroPoint fromRect:NSZeroRect operation:NSCompositingOperationSourceOver fraction:1.0f];
         CGContextRestoreGState(cgContext);
     }
     
@@ -271,10 +271,10 @@ static NSGradient *unifiedGradientKey, *unifiedGradientNonKey;
         NSRect windowRect = self.window.frame;
         NSRect rect = NSMakeRect(NSMinX(bounds), NSMinY(bounds), NSWidth(windowRect), NSHeight(bounds));
         if ([_title isKindOfClass:[NSAttributedString class]]) {
-            [(NSAttributedString *)_title drawInRectangle:rect alignment:NSCenterTextAlignment verticallyCentered:YES];
+            [(NSAttributedString *)_title drawInRectangle:rect alignment:NSTextAlignmentCenter verticallyCentered:YES];
         } else {
             NSAttributedString *attr = [[NSAttributedString alloc] initWithString:_title attributes:_textAttributes];
-            [attr drawInRectangle:rect alignment:NSCenterTextAlignment verticallyCentered:YES];
+            [attr drawInRectangle:rect alignment:NSTextAlignmentCenter verticallyCentered:YES];
         }
     }
 
@@ -319,7 +319,7 @@ static NSGradient *unifiedGradientKey, *unifiedGradientNonKey;
     [self display];
     
     do {
-        theEvent = [window nextEventMatchingMask:(NSLeftMouseDraggedMask | NSLeftMouseUpMask)];
+        theEvent = [window nextEventMatchingMask:(NSEventMaskLeftMouseDragged | NSEventMaskLeftMouseUp)];
         click = [NSEvent mouseLocation];
         
         if (overClose) {
@@ -365,7 +365,7 @@ static NSGradient *unifiedGradientKey, *unifiedGradientNonKey;
             [window setFrame:resultRect display:YES];
             newTopLeft = NSMakePoint(NSMinX(resultRect), NSMaxY(resultRect));
         }
-    } while ([theEvent type] != NSLeftMouseUp);
+    } while ([theEvent type] != NSEventTypeLeftMouseUp);
 
     if (isDragging)
         [delegate headerViewDidEndDragging:self toFrame:NSMakeRect(newTopLeft.x, newTopLeft.y - dragWindowHeight, windowFrame.size.width, dragWindowHeight)];

@@ -1,4 +1,4 @@
-// Copyright 2005-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2005-2017 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -19,17 +19,17 @@ extern "C" {
 
 @class NSString, NSError;
 
-extern NSString * const OBErrorDomain;
-extern NSString * const OBFileNameAndNumberErrorKey;
+extern NSErrorDomain const OBErrorDomain;
+extern NSErrorUserInfoKey const OBFileNameAndNumberErrorKey;
 
-enum {
+typedef NS_ERROR_ENUM(OBErrorDomain, OBError) {
     OBErrorChained = 1,  /* skip code zero since that is often defined to be 'no error' */
 };
 
 extern NSError *_OBWrapUnderlyingError(NSError *underlyingError, NSString *domain, NSInteger code, const char *fileName, unsigned int line, NSString *firstKey, ...) NS_REQUIRES_NIL_TERMINATION;
     
 #define _OBError(outError, domain, code, fileName, line, firstKey, ...) do { \
-    OB_AUTORELEASING NSError **_outError = (outError); \
+    __typeof__(outError) _outError = (outError); \
     if (_outError) \
         *_outError = _OBWrapUnderlyingError(*_outError, domain, code, fileName, line, firstKey, ## __VA_ARGS__); \
 } while(0)

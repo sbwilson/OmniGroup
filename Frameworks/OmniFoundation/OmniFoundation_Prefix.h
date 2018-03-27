@@ -1,4 +1,4 @@
-// Copyright 2003-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2003-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -62,12 +62,10 @@
     #import <OmniFoundation/NSString-OFSimpleMatching.h>
     #if !defined(TARGET_OS_IPHONE) || !TARGET_OS_IPHONE
         #import <OmniFoundation/OFMessageQueue.h>
-        #import <OmniFoundation/OFSimpleLock.h>
         #import <OmniFoundation/OFScheduler.h>
         #import <OmniFoundation/OFScheduledEvent.h>
         #import <OmniFoundation/NSBundle-OFExtensions.h>
         #import <OmniFoundation/NSString-OFExtensions.h>
-        #import <OmniFoundation/NSThread-OFExtensions.h>
     #endif
 
     #if !defined(TARGET_OS_IPHONE) || !TARGET_OS_IPHONE

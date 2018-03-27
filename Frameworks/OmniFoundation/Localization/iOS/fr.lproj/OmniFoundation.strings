@@ -31,6 +31,15 @@
 /* abbreviated string for hertz format */
 "%u Hz" = "%u Hz";
 
+/* summary text - document is encrypted using a password */
+"<Encryption: A password is set>" = "Mot de passe";
+
+/* summary text - document is not encrypted */
+"<Encryption: None>" = "Aucune";
+
+/* summary text - document is encrypted using one or more public keys */
+"<Encryption: using %u key(s)>" = "%u clés";
+
 /* approximate time interval: more than one hour */
 "about %.1f hours" = "environ %.1f heures";
 
@@ -64,7 +73,7 @@
 /* compression error reason */
 "bzip2 library returned error code %d when writing data. %s." = "La bibliothèque bzip2 a renvoyé le code d’erreur %1$d lors de l’écriture des données. %2$s.";
 
-/* OFMLockfile recovery option */
+/* OFLockFile recovery option */
 "Cancel" = "Annuler";
 
 /* error recovery option */
@@ -83,6 +92,9 @@
 
 "Could not create directory" = "Impossible de créer le répertoire";
 
+/* Provisioning profile parsing error general description */
+"Could not parse entitlements from embedded provisioning profile" = "Impossible d’analyser les droits du profil d’approvisionnement incorporé";
+
 /* time span formatter span */
 "d" = "j";
 
@@ -95,8 +107,41 @@
 /* invalid bundle reason */
 "Duplicate bundle name" = "Nom de lot en double";
 
+/* Error message when trying to use an elliptic-curve key on a MacOS or iOS version that does not support them */
+"EC public keys are not usable on this OS version" = "Les clés publiques EC ne sont pas utilisables dans cette version d’iOS";
+
+/* time span formatter span - DO NOT add leading or trailing whitespace */
+"ed" = "jé";
+
+/* time span formatter span - DO NOT add leading or trailing whitespace */
+"eh" = "hé";
+
 /* exception reason */
 "Element '%@' not allowed at path: %@" = "L’élément “%1$@” n’est pas autorisé dans le chemin : %2$@";
+
+/* time span formatter span - DO NOT add leading or trailing whitespace */
+"em" = "mé";
+
+/* Provisioning profile parsing error reason – invalid PKCS#7 file */
+"Embedded provisioning profile is not a valid PKCS#7 archive" = "Le profil d’approvisionnement incorporé n’est pas une archive PKCS#7 valide";
+
+/* Provisioning profile parsing error reason – no embedded.mobileprovision file */
+"Embedded provisioning profile not found" = "Profil d’approvisionnement incorporé introuvable";
+
+/* Provisioning profile parsing error reason – embedded.mobileprovision unreadable */
+"Embedded provisioning profile not readable" = "Profil d’approvisionnement incorporé illisible";
+
+/* time span formatter span - DO NOT add leading or trailing whitespace */
+"emo" = "moé";
+
+/* time span formatter span - DO NOT add leading or trailing whitespace */
+"es" = "scé";
+
+/* time span formatter span - DO NOT add leading or trailing whitespace */
+"ew" = "sé";
+
+/* time span formatter span - DO NOT add leading or trailing whitespace */
+"ey" = "aé";
 
 /* error reason */
 "Failed to create directory for lock file at \"%@\"." = "La création du répertoire du fichier de verrouillage dans “%@” a échoué.";
@@ -122,8 +167,8 @@
 /* local bundle path readable string */
 "local configuration file" = "fichier de configuration locale";
 
-/* time span formatter span */
-"m" = "min";
+/* time span formatter span (minute) */
+"m" = "m";
 
 /* time span formatter span */
 "minute" = "minute";
@@ -131,7 +176,7 @@
 /* time span formatter span */
 "minutes" = "minutes";
 
-/* time span formatter span */
+/* time span formatter span (month) */
 "mo" = "mo";
 
 /* time span formatter span */
@@ -146,8 +191,11 @@
 /* invalid bundle reason */
 "Not a valid bundle" = "N’est pas un lot valide";
 
-/* OFMLockfile recovery option */
+/* OFLockFile recovery option */
 "Override Lock" = "Ignorer le verrou";
+
+/* Provisioning profile parsing error reason – invalid plist */
+"PKCS#7 contents of embedded provisioning profile were not a valid plist" = "Le contenu PKCS#7 du profil d’approvisionnement incorporé n’était pas un fichier plist valide";
 
 /* alert message format when clicking on a configuration value URL */
 "Restore \"%@\" to its default value" = "Rétablir la valeur par défaut de “%@”";
@@ -167,11 +215,14 @@
 /* alert message format when clicking on a configuration value URL */
 "Set \"%@\" to \"%@\"" = "Régler “%1$@” sur “%2$@”";
 
+/* Document decryption error message - a file within the encrypted file wrapper can't be read */
+"The encrypted item \"%@\" is missing or unreadable." = "L’élément crypté “%@” est absent ou illisible.";
+
 /* server certificate rejected */
 "The server certificate for \"%@\" does not seem to be valid. This site may not be trustworthy. Would you like to connect anyway?" = "Le certificat de serveur de “%@” ne semble pas valide. Ce site n’est peut-être pas fiable. Voulez-vous quand même vous y connecter ?";
 
 /* server certificate out of date */
-"The server certificate for \"%@\" has an invalid date. It may be expired, or not yet active. Would you like to connect anyway?" = "La date du certificat de serveur de “%@” n’est pas valide. Il peut être expiré ou pas encore actif. Voulez-vous quand même vous y connecter ?";
+"The server certificate for \"%@\" has an invalid date. It may be expired, or not yet active. Would you like to connect anyway?" = "La date du certificat de serveur de “%@” n’est pas valide. Il se peut que ce certificat soit périmé ou pas encore actif. Voulez-vous quand même vous y connecter ?";
 
 /* server certificate has unknown root */
 "The server certificate for \"%@\" is not signed by any root server. This site may not be trustworthy. Would you like to connect anyway?" = "Le certificat de serveur de “%@” n’est signé par aucun serveur racine. Ce site n’est peut-être pas fiable. Voulez-vous quand même vous y connecter ?";
@@ -209,11 +260,25 @@
 /* error description */
 "Unable to lock document." = "Impossible de verrouiller le document.";
 
+/* Document decryption error - unexpected content-type found while unwrapping a Cryptographic Message Syntax object
+   Document decryption error - unknown content-type found while unwrapping a Cryptographic Message Syntax object */
+
+"Unexpected CMS content-type" = "Type de contenu CMS inattendu";
+
+/* error message - CMS object has an unknown algorithm identifier for compression of its content */
+"Unknown compression algorithm" = "Algorithme de compression inconnu";
+
+/* Error message when a CMS KeyTransport algorithm is not recognized */
+"Unknown public key algorithm" = "Algorithme de clé publique inconnu";
+
 /* Name used for unknown algorithm (instead of RSA, DSA, ECDH, etc.) */
 "Unknown(cryptographic algorithm)" = "Inconnu";
 
 /* decompression error reason */
 "unrecognized compression format." = "format de compression non reconnu.";
+
+/* error message - CMS object has an unknown algorithm identifier for encryption of its content */
+"Unsupported encryption algorithm" = "Algorithme de cryptage non pris en charge";
 
 /* time span formatter span */
 "w" = "s";

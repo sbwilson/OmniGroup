@@ -1,4 +1,4 @@
-// Copyright 2010-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2017 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -12,6 +12,8 @@
 #import <OmniFoundation/OFUtilities.h>
 
 @class UIView, UIImage;
+
+NS_ASSUME_NONNULL_BEGIN;
 
 typedef enum {
     OUIViewVisitorResultStop,
@@ -38,8 +40,11 @@ typedef OUIViewVisitorResult(^OUIViewVisitorBlock)(UIView *view);
 - (UIMotionEffect *)tiltMotionEffectWithMaxTilt:(CGFloat)maxTilt;
 - (void)addMotionMaxTilt:(CGFloat)maxTilt;
 
-- (id)containingViewOfClass:(Class)cls; // can return self
-- (id)containingViewMatching:(OFPredicateBlock)predicate;
+- (nullable __kindof UIView *)containingViewOfClass:(Class)cls DEPRECATED_MSG_ATTRIBUTE("Renamed to -enclosingViewOfClass:.");
+- (nullable __kindof UIView *)containingViewMatching:(OFPredicateBlock)predicate DEPRECATED_MSG_ATTRIBUTE("Renamed to -enclosingViewMatching:.");
+
+- (nullable __kindof UIView *)enclosingViewOfClass:(Class)cls NS_REFINED_FOR_SWIFT; // can return self
+- (nullable __kindof UIView *)enclosingViewMatching:(OFPredicateBlock)predicate;
 - (OUIViewVisitorResult)applyToViewTree:(OUIViewVisitorBlock)block; // in-order traversal
 
 // Defaults to zeros, but subclasses can return spacing offsets for where their border appears to be relative to where their actual view edge is.
@@ -53,9 +58,10 @@ typedef OUIViewVisitorResult(^OUIViewVisitorBlock)(UIView *view);
 
 @property(readonly,nonatomic) UIEdgeInsets borderEdgeInsets;
 
-#ifdef DEBUG
 - (void)expectDeallocationOfViewTreeSoon;
-#endif
+
+// UISearchBar doesn't give us a proper way to set the field editor's text color, or access the field editor. So this is a workaround, but it's generic to UIView. Recurses into subviews until it finds UITextFields and sets their textColor. UITextFields are regarded as leaf nodes.
+- (void)recursivelySetUITextFieldColor:(UIColor *)color;
 
 @end
 
@@ -81,3 +87,5 @@ extern void OUIDisplayNeededViews(void);
 #ifdef OMNI_ASSERTIONS_ON
 extern BOOL OUICheckValidFrame(CGRect rect);
 #endif
+
+NS_ASSUME_NONNULL_END;

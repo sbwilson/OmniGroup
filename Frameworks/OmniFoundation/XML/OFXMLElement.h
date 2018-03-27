@@ -1,4 +1,4 @@
-// Copyright 2003-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2003-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -22,15 +22,17 @@ typedef void (^OFXMLElementApplierBlock)(OFXMLElement *element);
 
 @interface OFXMLElement : OFObject
 
-- (id)initWithName:(NSString *)name attributeOrder:(nullable NSMutableArray *)attributeOrder attributes:(nullable NSMutableDictionary *)attributes; // RECIEVER TAKES OWNERSHIP OF attributeOrder and attributes!
-- (id)initWithName:(NSString *)name attributeName:(NSString *)attributeName attributeValue:(NSString *)attributeValue;
-- (id)initWithName:(NSString *)name;
+- (instancetype)initWithName:(NSString *)name attributeOrder:(nullable NSMutableArray *)attributeOrder attributes:(nullable NSMutableDictionary *)attributes; // RECEIVER TAKES OWNERSHIP OF attributeOrder and attributes!
+- (instancetype)initWithName:(NSString *)name attributeName:(NSString *)attributeName attributeValue:(NSString *)attributeValue;
+- (instancetype)initWithName:(NSString *)name;
 
 
 - (id)deepCopy NS_RETURNS_RETAINED;
 - (OFXMLElement *)deepCopyWithName:(NSString *)name NS_RETURNS_RETAINED;
 
 @property(nonatomic,readonly) NSString *name;
+
+// 1 NSString, or any number of OFXMLElements or OFXMLUnparsedElements
 @property(nullable,nonatomic,readonly) NSArray *children;
 @property(nonatomic,readonly) NSUInteger childrenCount;
 - (id)childAtIndex:(NSUInteger)childIndex;
@@ -55,7 +57,8 @@ typedef void (^OFXMLElementApplierBlock)(OFXMLElement *element);
 - (void)markAsReferenced;
 @property(nonatomic,readonly) BOOL shouldIgnore;
 
-@property(nullable,nonatomic,readonly) NSArray *attributeNames;
+@property(nonatomic,readonly) NSUInteger attributeCount;
+@property(nullable,nonatomic,readonly) NSArray<NSString *> *attributeNames;
 - (nullable NSString *) attributeNamed: (NSString *) name;
 - (void) setAttribute: (NSString *) name string: (nullable NSString *) value;
 - (void) setAttribute: (NSString *) name value: (nullable id) value;
@@ -80,7 +83,8 @@ typedef void (^OFXMLElementApplierBlock)(OFXMLElement *element);
 - (void) removeAttributeNamed: (NSString *) name;
 
 - (void)applyFunction:(OFXMLElementApplier)applier context:(void *)context;
-- (void)applyBlock:(OFXMLElementApplierBlock NS_NOESCAPE)applierBlock;
+- (void)applyBlock:(OFXMLElementApplierBlock NS_NOESCAPE)applierBlock; // Only OFXMLElements are passed to the block.
+- (void)applyBlockToAllChildren:(void (^ NS_NOESCAPE)(id child))applierBlock; // All children are passed to the block (strings, frozen/unparsed elements).
 
 - (nullable NSData *)xmlDataAsFragment:(NSError **)outError; // Mostly useful for debugging since this assumes no whitespace is important
 

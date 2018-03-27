@@ -1,26 +1,27 @@
 /* font size label format string in points */
 "%@ points" = "%@ points";
 
-/* title format for color component slider */
+/* title format for color component slider
+   title format for color component slider - alpha component, 0-100 */
 
 "<alpha title+value>" = "Opacité : %d %%";
 
-/* title format for color component slider */
+/* title format for color component slider - blue component in RGB model, 0-255 */
 "<blue title+value>" = "Bleu : %d";
 
-/* title format for color component slider */
+/* title format for color component slider - value/brightness component in HSV model, 0-100 */
 "<brightness title+value>" = "Luminosité : %d %%";
 
-/* title format for color component slider */
+/* title format for color component slider - green component in RGB model, 0-255 */
 "<green title+value>" = "Vert : %d";
 
-/* title format for color component slider */
+/* title format for color component slider - hue angle in HSV model, degrees */
 "<hue title+value>" = "Teinte : %d °";
 
-/* title format for color component slider */
+/* title format for color component slider - red component in RGB model, 0-255 */
 "<red title+value>" = "Rouge : %d";
 
-/* title format for color component slider */
+/* title format for color component slider - saturation component in HSV model, 0-100 */
 "<saturation title+value>" = "Saturation : %d %%";
 
 /* title format for color component slider */
@@ -35,7 +36,14 @@
 /* color inspector title */
 "Color" = "Couleur";
 
-/* Title for the font family list in the inspector */
+/* done action title */
+"Done" = "Terminé";
+
+/* edit action title */
+"Edit" = "Modifier";
+
+/* Inspector slice title for font family
+   Title for the font family list in the inspector */
 
 "Font" = "Police";
 
@@ -47,6 +55,9 @@
 
 /* Decrement font size button accessibility label */
 "Font smaller" = "Police plus petite";
+
+/* hide more rows button title */
+"Hide More Rows" = "Masquer plus de lignes";
 
 /* popover inspector label title for mulitple selection */
 "Multiple Selection" = "Sélection multiple";
@@ -62,6 +73,9 @@
 
 /* Name for the variant of a font with out any special attributes */
 "Regular" = "Regular";
+
+/* show more rows button title */
+"Show More Rows" = "Afficher plus de lignes";
 
 /* Label for font size controls */
 "Size" = "Taille";

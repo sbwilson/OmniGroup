@@ -1,4 +1,4 @@
-// Copyright 2010-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -10,32 +10,43 @@
 #import <UIKit/UIDocument.h>
 
 #import <OmniFoundation/OFSaveType.h>
+#import <OmniFoundation/OFCMS.h>
 #import <OmniUIDocument/OUIDocumentPreview.h> // OUIDocumentPreviewArea
 
 @class UIResponder, UIView, UIViewController;
 @class ODSFileItem, OUIDocumentViewController;
-@class OUIDocumentPreview, OUIImageLocation;
+@class OUIDocumentPreview, OUIImageLocation, OUIInteractionLock;
 
 @protocol OUIDocumentViewController;
 
-@interface OUIDocument : UIDocument
+@interface OUIDocument : UIDocument <OFCMSKeySource>
+
+// Can be overridden to provide a file inside the app wrapper to read into a new document. Returns nil by default.
++ (NSURL *)builtInBlankTemplateURL;
+
+// This method should return YES when the file will be opened with one file type but saved using another file type (i.e., when .savingFileType will return a different value than .fileType).
++ (BOOL)shouldImportFileAtURL:(NSURL *)fileURL;
 
 + (BOOL)shouldShowAutosaveIndicator;
 
 // Called when opening an existing document
-- initWithExistingFileItem:(ODSFileItem *)fileItem error:(NSError **)outError;
+- (instancetype)initWithExistingFileItem:(ODSFileItem *)fileItem error:(NSError **)outError;
 
 // Subclass this method if you need to set anything on the document after it's first been created from a template. (UUID's and the like). Callers of this method must perform file coordination on the template URL. The saveURL will be in a temporary location and doesn't need file coordination.
-- initWithContentsOfTemplateAtURL:(NSURL *)templateURLOrNil toBeSavedToURL:(NSURL *)saveURL error:(NSError **)outError;
+- (instancetype)initWithContentsOfTemplateAtURL:(NSURL *)templateURLOrNil toBeSavedToURL:(NSURL *)saveURL error:(NSError **)outError;
+
+// Subclass this method to handle reading of any files where +shouldImportFileAtURL: returns YES. Callers of this method must perform file coordination on the template URL. The saveURL will be in a temporary location and doesn't need file coordination.
+- (instancetype)initWithContentsOfImportableFileAtURL:(NSURL *)importableURL toBeSavedToURL:(NSURL *)saveURL error:(NSError **)outError;
 
 // This can be called when creating a document to be read into and then saved by non-framework code.
-- initEmptyDocumentToBeSavedToURL:(NSURL *)url error:(NSError **)outError;
+- (instancetype)initEmptyDocumentToBeSavedToURL:(NSURL *)url error:(NSError **)outError;
 
 // Funnel point for initializing documents
-- initWithFileItem:(ODSFileItem *)fileItem url:(NSURL *)url error:(NSError **)outError;
+- (instancetype)initWithFileItem:(ODSFileItem *)fileItem url:(NSURL *)url error:(NSError **)outError;
 
 // Can set this before opening a document to tell it that it is being opened for preview generation. Later we might want more control of how errors are captured for off-screen document work, but for now this just makes errors get logged instead of presented to the user. The document view controller may also opt to load less data or otherwise speed up its work by only doing what is necessary for preview generation.
 @property(nonatomic) BOOL forPreviewGeneration;
+- (void)transientFileItemForPreviewGeneration:(ODSFileItem *)fileItem;
 
 @property(nonatomic,readonly) ODSFileItem *fileItem;
 
@@ -44,6 +55,10 @@
 @property(nonatomic,readonly) UIViewController *viewControllerToPresent;
 @property(nonatomic,readonly) UIViewController <OUIDocumentViewController> *documentViewController;
 @property(nonatomic,readonly) BOOL editingDisabled;
+@property(nonatomic) BOOL isDocumentEncrypted; // If it is encrypted, it will be unreadable.
+@property(nonatomic, strong) OUIInteractionLock *applicationLock;
+
+@property(nonatomic,readonly) BOOL isClosing;
 
 @property(nonatomic,readonly) UIResponder *defaultFirstResponder; // Defaults to the documentViewController, or if that view controller implements -defaultFirstResponder, returns the result of that.
 
@@ -103,10 +118,13 @@
 
 // Support for previews
 + (OUIImageLocation *)placeholderPreviewImageForFileURL:(NSURL *)fileURL area:(OUIDocumentPreviewArea)area;
++ (OUIImageLocation *)encryptedPlaceholderPreviewImageForFileURL:(NSURL *)fileURL area:(OUIDocumentPreviewArea)area;
 + (void)writePreviewsForDocument:(OUIDocument *)document withCompletionHandler:(void (^)(void))completionHandler;
 
 // UIDocument method that we subclass and require our subclasses to call super on (though UIDocument strongly suggests it).
 - (void)saveToURL:(NSURL *)url forSaveOperation:(UIDocumentSaveOperation)saveOperation completionHandler:(void (^)(BOOL success))completionHandler NS_REQUIRES_SUPER;
+
+- (void)accessSecurityScopedResourcesForBlock:(void (^ NS_NOESCAPE)(void))block;
 
 @end
 

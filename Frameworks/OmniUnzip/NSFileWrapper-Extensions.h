@@ -1,4 +1,4 @@
-// Copyright 2016 The Omni Group. All rights reserved.
+// Copyright 2016-2017 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -15,8 +15,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface NSFileWrapper (OmniUnzipExtensions)
 
-- (NSFileWrapper * __nullable )zippedFileWrapper:(NSError **)outError;
-- (NSFileWrapper * __nullable )unzippedFileWrapperFromURL:(NSURL * __nullable )url error:(NSError **)outError;
+- (nullable NSFileWrapper *)zippedFileWrapper:(NSError **)outError;
+- (nullable NSFileWrapper *)unzippedFileWrapperWithError:(NSError **)outError;
 
 @end
 

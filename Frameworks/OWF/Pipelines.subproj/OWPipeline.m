@@ -1,4 +1,4 @@
-// Copyright 1997-2016 Omni Development, Inc. All rights reserved.
+// Copyright 1997-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -93,8 +93,6 @@ static NSNumber *OWZeroNumber = nil;
 {
     // Unless otherwise noted, instance variables are protected by the global pipeline lock.
 
-    __weak id <OWTarget, NSObject> _weakTarget; // protected by displayablesSimpleLock
-
     struct {
         unsigned int pipelineDidBegin: 1;
         unsigned int pipelineDidEnd: 1;
@@ -151,6 +149,8 @@ static NSNumber *OWZeroNumber = nil;
     NSDate *errorDelayDate;
 }
 
+@synthesize target = _weakTarget;
+
 enum {
     PipelineProcessorConditionNoProcessors, PipelineProcessorConditionSomeProcessors,
 };
@@ -163,7 +163,7 @@ static BOOL OWPipelineDebug = YES;
 #else
 static BOOL OWPipelineDebug = NO;
 #endif
-static OFSimpleLockType targetPipelinesMapTableLock;
+static os_unfair_lock targetPipelinesMapTableLock = OS_UNFAIR_LOCK_INIT;
 static NSMapTable *targetPipelinesMapTable;
 static BOOL activeTreeHasUndisplayedChanges;
 static NSTimer *activeStatusUpdateTimer;
@@ -198,7 +198,6 @@ static void OWPipelineSetState(OWPipeline *self, OWPipelineState newState)
     OBINITIALIZE;
 
     fetchedContentNotificationCenter = [[NSNotificationCenter alloc] init];
-    OFSimpleLockInit(&targetPipelinesMapTableLock);
     targetPipelinesMapTable = NSCreateMapTable(NSNonRetainedObjectMapKeyCallBacks, NSObjectMapValueCallBacks, DEFAULT_SIMULTANEOUS_TARGET_CAPACITY);
 
     OWZeroNumber = [NSNumber numberWithInt:0];
@@ -284,10 +283,10 @@ static void OWPipelineSetState(OWPipeline *self, OWPipelineState newState)
 
     OBPRECONDITION(aTarget != nil);
 
-    OFSimpleLock(&targetPipelinesMapTableLock); {
+    os_unfair_lock_lock(&targetPipelinesMapTableLock); {
         NSArray *pipelines = [targetPipelinesMapTable objectForKey:aTarget];
         pipelinesSnapshot = pipelines != nil ? [NSArray arrayWithArray:pipelines] : nil;
-    } OFSimpleUnlock(&targetPipelinesMapTableLock);
+    } os_unfair_lock_unlock(&targetPipelinesMapTableLock);
 
     return pipelinesSnapshot;
 }
@@ -617,8 +616,8 @@ static void addBlocksToQueue(NSMutableArray *blockQueue, NSArray *pipelines, voi
 
     if (someCaches != nil)
         caches = someCaches;
-    else if ([_weakTarget respondsToSelector:@selector(defaultCacheGroup)])
-        caches = [(id <OWOptionalTarget>)_weakTarget defaultCacheGroup];
+    else if ([aTarget respondsToSelector:@selector(defaultCacheGroup)])
+        caches = [(id <OWOptionalTarget>)aTarget defaultCacheGroup];
     else
         caches = [OWContentCacheGroup defaultCacheGroup];
 
@@ -666,22 +665,22 @@ static void addBlocksToQueue(NSMutableArray *blockQueue, NSArray *pipelines, voi
 
     /* Convert our strong retain of the target into a weak retain, but make sure it doesn't go away before we're done with this method */
 
-    NS_DURING {
-        [[self class] _addPipeline:self forTarget:_weakTarget];
-        [self setParentContentInfo:[_weakTarget parentContentInfo]];
+    @try {
+        [[self class] _addPipeline:self forTarget:aTarget];
+        [self setParentContentInfo:[aTarget parentContentInfo]];
         OBASSERT(parentContentInfo != nil);
 
         [self _computeAcceptableContentTypes];
-        targetTypeFormatString = [_weakTarget targetTypeFormatString];
+        targetTypeFormatString = [aTarget targetTypeFormatString];
         [self _rebuildCompositeTypeString];
         if (targetRespondsTo.pipelineDidBegin)
-            [(id <OWOptionalTarget>)_weakTarget pipelineDidBegin:self];
+            [(id <OWOptionalTarget>)aTarget pipelineDidBegin:self];
 
-        [self _notifyTargetOfTreeActivation:_weakTarget];
-    } NS_HANDLER {
+        [self _notifyTargetOfTreeActivation:aTarget];
+    } @catch (NSException *localException) {
         NSLog(@"%@: exception during init: %@", [self shortDescription], localException);
         [self invalidate];
-    } NS_ENDHANDLER;
+    }
 
     return self;
 }
@@ -888,9 +887,9 @@ static void addBlocksToQueue(NSMutableArray *blockQueue, NSArray *pipelines, voi
 {
     NSString *string;
 
-    OFSimpleLock(&displayablesSimpleLock); {
+    os_unfair_lock_lock(&displayablesLock); {
         string = compositeTypeString;
-    } OFSimpleUnlock(&displayablesSimpleLock);
+    } os_unfair_lock_unlock(&displayablesLock);
 
     return string;
 }
@@ -979,18 +978,6 @@ static void addBlocksToQueue(NSMutableArray *blockQueue, NSArray *pipelines, voi
 
 // Target
 
-- (id <OWTarget, NSObject>)target;
-{
-    id <OWTarget, NSObject> retainedTarget;
-
-    OFSimpleLock(&displayablesSimpleLock);
-    retainedTarget = _weakTarget;
-    OFSimpleUnlock(&displayablesSimpleLock);
-    
-    return retainedTarget;
-}
-
-
 - (void)invalidate;
 {
     if (OWPipelineDebug || flags.debug)
@@ -998,10 +985,10 @@ static void addBlocksToQueue(NSMutableArray *blockQueue, NSArray *pipelines, voi
 
     flags.contentError = NO;
     [OWPipeline lock];
-    OFSimpleLock(&displayablesSimpleLock);
+    os_unfair_lock_lock(&displayablesLock);
     __strong id oldTarget = _weakTarget;
     _weakTarget = nil;
-    OFSimpleUnlock(&displayablesSimpleLock);
+    os_unfair_lock_unlock(&displayablesLock);
     NS_DURING {
         if (oldTarget != nil) {
             OBASSERT(state != OWPipelineInvalidating);
@@ -1505,7 +1492,7 @@ static void addBlocksToQueue(NSMutableArray *blockQueue, NSArray *pipelines, voi
     OBPRECONDITION(aTarget != nil);
     OBPRECONDITION(aPipeline != nil);
 
-    OFSimpleLock(&targetPipelinesMapTableLock); {
+    os_unfair_lock_lock(&targetPipelinesMapTableLock); {
     
         NSMutableArray *pipelines = [targetPipelinesMapTable objectForKey:aTarget];
         if (pipelines == nil) {
@@ -1516,7 +1503,7 @@ static void addBlocksToQueue(NSMutableArray *blockQueue, NSArray *pipelines, voi
         OBASSERT(![pipelines containsObjectIdenticalTo:aPipeline]);
         [pipelines addObject:aPipeline];
 
-    } OFSimpleUnlock(&targetPipelinesMapTableLock);
+    } os_unfair_lock_unlock(&targetPipelinesMapTableLock);
 }
 
 + (void)_reorderPipeline:(OWPipeline *)aPipeline forTarget:(id <OWTarget>)aTarget nextToPipeline:(OWPipeline *)parentPipeline placeBefore:(BOOL)shouldPlaceBefore;
@@ -1528,7 +1515,7 @@ static void addBlocksToQueue(NSMutableArray *blockQueue, NSArray *pipelines, voi
     if (aTarget == nil)
         return; // Our target is invalidating itself (-strongRetain apparently returned nil), but hasn't gotten around to notifying us yet
 
-    OFSimpleLock(&targetPipelinesMapTableLock); {
+    os_unfair_lock_lock(&targetPipelinesMapTableLock); {
     
         NSMutableArray *pipelines = [targetPipelinesMapTable objectForKey:aTarget];
         OBASSERT(pipelines != nil);
@@ -1548,7 +1535,7 @@ static void addBlocksToQueue(NSMutableArray *blockQueue, NSArray *pipelines, voi
 
         retainedPipeline = nil;
 
-    } OFSimpleUnlock(&targetPipelinesMapTableLock);
+    } os_unfair_lock_unlock(&targetPipelinesMapTableLock);
 }
 
 + (void)_removePipeline:(OWPipeline *)aPipeline forTarget:(id <OWTarget>)aTarget;
@@ -1556,7 +1543,7 @@ static void addBlocksToQueue(NSMutableArray *blockQueue, NSArray *pipelines, voi
     OBPRECONDITION(aTarget != nil);
     OBPRECONDITION(aPipeline != nil);
 
-    OFSimpleLock(&targetPipelinesMapTableLock); {
+    os_unfair_lock_lock(&targetPipelinesMapTableLock); {
 
         NSMutableArray *pipelines = [targetPipelinesMapTable objectForKey:aTarget];
         OBPRECONDITION(pipelines != nil && [pipelines indexOfObjectIdenticalTo:aPipeline] != NSNotFound);
@@ -1566,7 +1553,7 @@ static void addBlocksToQueue(NSMutableArray *blockQueue, NSArray *pipelines, voi
         if ([pipelines count] == 0)
             [targetPipelinesMapTable removeObjectForKey:aTarget];
 
-    } OFSimpleUnlock(&targetPipelinesMapTableLock);
+    } os_unfair_lock_unlock(&targetPipelinesMapTableLock);
 }
 
 + (void)_target:(id <OWTarget>)aTarget acceptedContentFromPipeline:(OWPipeline *)acceptedPipeline;
@@ -1658,11 +1645,13 @@ static void addBlocksToQueue(NSMutableArray *blockQueue, NSArray *pipelines, voi
 - (void)_cleanupPipelineIfDead;
 {
     BOOL treeHasActiveChildren = [self treeHasActiveChildren];
+    id <OWTarget, NSObject> target = self.target;
+
     if (OWPipelineDebug || flags.debug)
-        NSLog(@"%@: %@ - target=%@ treeHasActiveChildren=%d", [self shortDescription], NSStringFromSelector(_cmd), OBShortObjectDescription([self target]), treeHasActiveChildren);
+        NSLog(@"%@: %@ - target=%@ treeHasActiveChildren=%d", [self shortDescription], NSStringFromSelector(_cmd), OBShortObjectDescription(target), treeHasActiveChildren);
 
     // Note: This non-locked access to target should be fine because even if we're half-way through a write our equality test will still give a reasonable result
-    if ([self target] != nil || treeHasActiveChildren)
+    if (target != nil || treeHasActiveChildren)
         return;
 
     [OWPipeline lock];
@@ -2711,9 +2700,9 @@ static void addBlocksToQueue(NSMutableArray *blockQueue, NSArray *pipelines, voi
     else
         newCompositeTypeString = contentTypeString;
 
-    OFSimpleLock(&displayablesSimpleLock); {
+    os_unfair_lock_lock(&displayablesLock); {
         compositeTypeString = newCompositeTypeString;
-    } OFSimpleUnlock(&displayablesSimpleLock);
+    } os_unfair_lock_unlock(&displayablesLock);
 }
 
 - (OWHeaderDictionary *)_headerDictionaryWaitForCompleteHeaders:(BOOL)shouldWaitForCompleteHeaders;

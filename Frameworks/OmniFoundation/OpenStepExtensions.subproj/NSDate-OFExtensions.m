@@ -1,4 +1,4 @@
-// Copyright 1997-2005, 2007-2008, 2010-2014 Omni Development, Inc. All rights reserved.
+// Copyright 1997-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -13,6 +13,8 @@
 #import <Foundation/NSDateFormatter.h>
 
 RCS_ID("$Id$")
+
+NS_ASSUME_NONNULL_BEGIN
 
 @implementation NSDate (OFExtensions)
 
@@ -104,10 +106,9 @@ RCS_ID("$Id$")
     #define DEBUG_XML_STRING(format, ...)
 #endif
 
-// plain -release w/o -init will crash on 10.4.11/Intel
 #define BAD_INIT do { \
     self = [self init]; \
-    OB_RELEASE(self); \
+    [self release]; \
     return nil; \
 } while(0)
 
@@ -149,11 +150,12 @@ RCS_ID("$Id$")
  
  */
 
-static NSDate *_initDateFromXMLString(NSDate *self, const char *buf, size_t length)
+static NSDate * _Nullable _initDateFromXMLString(NSDate *self, const char *buf, size_t length)
 {
     // Since we read forward, we'll catch a early NUL with digit or specific character checks.
-    NSInteger year, month, day, hour, minute, second, nanosecond = 0;
-    
+    NSInteger year, month, day, hour, minute, second;
+    NSTimeInterval fraction;
+
     unsigned offset = 0;
     READ_4UINT(year);
     READ_CHAR('-');
@@ -192,15 +194,17 @@ static NSDate *_initDateFromXMLString(NSDate *self, const char *buf, size_t leng
         
         offset += digitIndex;
 
-        nanosecond = 1e9 * ((NSTimeInterval)fractionNumerator / (NSTimeInterval)fractionDenominator);
+        fraction = (NSTimeInterval)fractionNumerator / (NSTimeInterval)fractionDenominator;
+    } else {
+        fraction = 0.0;
     }
     
-    NSTimeZone *timeZone;
+    CFTimeZoneRef timeZone = NULL;
     if (buf[offset] == 'Z') { // RFC 3339 allows 'z' here too, but we don't right now.
         if (buf[offset + 1] != 0) {
             BAD_INIT; // Crud after the 'Z'.
         }
-        timeZone = nil; // Use the default timeZone in +gregorianUTCCalendar.
+        // Leave NULL to use the UTC in our gregorianUTCCalendar
     } else if (buf[offset] == '-' || buf[offset] == '+') {
         BOOL negate = (buf[offset] == '-');
         offset++;
@@ -215,48 +219,57 @@ static NSDate *_initDateFromXMLString(NSDate *self, const char *buf, size_t leng
         if (negate)
             tzOffset = -tzOffset;
         
-        timeZone = [NSTimeZone timeZoneForSecondsFromGMT:tzOffset];
+        timeZone = CFTimeZoneCreateWithTimeIntervalFromGMT(kCFAllocatorDefault, tzOffset);
     } else {
         // Unrecognized cruft where the timezone should have been.
         BAD_INIT;
     }
-    
-    // Now that we have read the components, we can allocate the object w/o having to autorelease it to avoid leaks on early exit.
-    NSDateComponents *components = [[NSDateComponents alloc] init];
-    components.year = year;
-    components.month = month;
-    components.day = day;
-    components.hour = hour;
-    components.minute = minute;
-    components.second = second;
-    components.nanosecond = nanosecond;
-    
-    NSCalendar *calendar = [[self class] gregorianUTCCalendar];
-    
-    if (timeZone) { // Otherwise use the info in the passed in calendar. If we se a time zone here too, it'll cause -isValidDateInCalendar: to make a copy of the passed in calendar to set the timezone on it.
-        components.calendar = calendar;
-        components.timeZone = timeZone;
+
+    static CFCalendarRef gregorianUTCCalendar;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        CFTimeZoneRef utc = CFTimeZoneCreateWithName(kCFAllocatorDefault, CFSTR("UTC"), true);
+        OBASSERT(utc);
+        gregorianUTCCalendar = CFCalendarCreateWithIdentifier(kCFAllocatorDefault, kCFGregorianCalendar);
+        CFCalendarSetTimeZone(gregorianUTCCalendar, utc);
+        CFRelease(utc);
+    });
+
+    CFCalendarRef calendar;
+    BOOL releaseCalendar = NO;
+    if (timeZone) {
+        releaseCalendar = YES;
+        calendar = CFCalendarCreateWithIdentifier(kCFAllocatorDefault, kCFGregorianCalendar);
+        CFCalendarSetTimeZone(calendar, timeZone);
+        CFRelease(timeZone);
+        timeZone = NULL;
+    } else {
+        calendar = gregorianUTCCalendar;
     }
-    
-    if (![components isValidDateInCalendar:calendar]) {
-        [components release];
+
+    // -dateFromComponents: doesn't return nil for an out-of-range component, it wraps it (even though both it and -isValidDateInCalendar: call down to CFCalendarComposeAbsoluteTime).
+    // CFCalendarComposeAbsoluteTime also doesn't return FALSE for out-of-range components, even though it is documented to (wrapping the components). Radar 36367324. This path is performance sensitive enough to want to avoid the overhead, but perhaps it would be good to have an option to check that the components are in range.
+
+    CFAbsoluteTime timeInterval;
+    Boolean success = CFCalendarComposeAbsoluteTime(calendar, &timeInterval, "yMdHms", year, month, day, hour, minute, second);
+
+    if (releaseCalendar) {
+        CFRelease(calendar);
+    }
+    if (!success) {
         BAD_INIT;
     }
-    
-    // NOTE: CFCalendarComposeAbsoluteTime used to not be thread-safe, but seem to be now. But, they also don't deal with floating-point seconds. Sadly, CFGregorianDate stuff was deprecated in OS X 10.10/iOS 8.0.
-    // TODO: Leap seconds can cause the maximum allowed second value to be 58 or 60 depending on whether the adjustment is +/-1.  RFC 3339 has a table of some leap seconds up to 1998 that we could test with.
-    // NOTE: We depend on -dateFromComponents: using the time zone specified in the components here. We test this in -[OFDateXMLTests testDateComponentsTimeZone].
-    NSDate *result = [calendar dateFromComponents:components];
-    [components release];
-    
+
+    // It looks like 'S' could be included for millisecond, but it is easy enough for us to preserve the full fractional component.
+    timeInterval += fraction;
+
+    NSDate *result = [self initWithTimeIntervalSinceReferenceDate:timeInterval];
     DEBUG_XML_STRING(@"result: %@ %f", result, [result timeIntervalSinceReferenceDate]);
-    
-    [self release];
-    
-    return [result retain];
+
+    return result;
 }
 
-- initWithXMLString:(NSString *)xmlString;
+- (nullable instancetype)initWithXMLString:(NSString *)xmlString;
 {
     static const NSUInteger OFXMLDateStringMaximumLength = 100; // The true maximum isn't fixed since the fractional seconds part is variable length.  Anything hugely long will be rejected.
     
@@ -280,7 +293,7 @@ static NSDate *_initDateFromXMLString(NSDate *self, const char *buf, size_t leng
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wobjc-designated-initializers"
 // Since XML dates are always ASCII, mentioning the encoding in the API is redundant.
-- initWithXMLCString:(const char *)cString;
+- (nullable instancetype)initWithXMLCString:(const char *)cString;
 {
     NSDate *result = _initDateFromXMLString(self, cString, strlen(cString));
     OBPOSTCONDITION_EXPENSIVE(strcmp([[result xmlString] UTF8String], cString) == 0);
@@ -304,7 +317,7 @@ static unsigned int _parse4Digits(const char *buf, unsigned int offset)
 }
 
 // Expects a calendar date string in the XML Schema / ISO 8601 format: YYYY-MM-DD.  This doesn't attempts to be very forgiving in parsing; the goal should be to feed in either nil/empty or a conforming string.
-- initWithXMLDateString:(NSString *)xmlString;
+- (nullable instancetype)initWithXMLDateString:(NSString *)xmlString;
 {
     // We expect exactly the length above, or an empty string.
     static const unsigned OFXMLDateStringLength = 10;
@@ -392,7 +405,7 @@ static NSString *_xmlStyleDateStringWithFormat(NSDate *self, SEL _cmd, NSString 
 }
 
 // Expects a string in the ICS format: YYYYMMdd.  This doesn't attempt to be very forgiving in parsing; the goal should be to feed in either nil/empty or a conforming string.
-- initWithICSDateOnlyString:(NSString *)aString;
+- (nullable instancetype)initWithICSDateOnlyString:(NSString *)aString;
 {
     // We expect exactly the length above, or an empty string.
     static const unsigned OFDateStringLength = 8;
@@ -439,7 +452,7 @@ static NSString *_xmlStyleDateStringWithFormat(NSDate *self, SEL _cmd, NSString 
 }
 
 // Expects a string in the ICS format: YYYYMMddTHHmmssZ.  This doesn't attempt to be very forgiving in parsing; the goal should be to feed in either nil/empty or a conforming string.
-- initWithICSDateString:(NSString *)aString;
+- (nullable instancetype)initWithICSDateString:(NSString *)aString;
 {
     // We expect exactly the length above, or an empty string.
     static const unsigned OFDateStringLength = 16;
@@ -495,3 +508,5 @@ static NSString *_xmlStyleDateStringWithFormat(NSDate *self, SEL _cmd, NSString 
 }
 
 @end
+
+NS_ASSUME_NONNULL_END

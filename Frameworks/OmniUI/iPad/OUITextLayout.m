@@ -1,4 +1,4 @@
-// Copyright 2010-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2017 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -138,7 +138,7 @@ RCS_ID("$Id$");
     return [_textStorage isEqualToAttributedString:attributedString];
 }
 
-- (void)eachAttachment:(void (^)(OATextAttachment *, BOOL *stop))applier;
+- (void)eachAttachment:(void (^ NS_NOESCAPE)(NSRange, OATextAttachment *, BOOL *stop))applier;
 {
     [_textStorage eachAttachment:applier];
 }
@@ -218,6 +218,11 @@ RCS_ID("$Id$");
     }
 }
 
+- (NSLayoutManager *)layoutManager
+{
+    return _layoutManager;
+}
+
 - (void)drawInContext:(CGContextRef)ctx;
 {
     CGRect bounds;
@@ -230,15 +235,6 @@ RCS_ID("$Id$");
 - (void)drawFlippedInContext:(CGContextRef)ctx bounds:(CGRect)bounds;
 {
     [self drawInContext:ctx bounds:bounds options:0/*flipped, background and glyphs*/];
-}
-
-- (CGFloat)firstLineAscent;
-{
-    // <bug:///94079> (Remove -[OUITextLayout firstLineAscent]?)
-    return 0;
-#if 0
-    return OUIFirstLineAscent(_frame);
-#endif
 }
 
 - (CGRect)firstRectForRange:(NSRange)range;

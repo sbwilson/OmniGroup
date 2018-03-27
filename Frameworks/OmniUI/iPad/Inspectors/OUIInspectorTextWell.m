@@ -1,4 +1,4 @@
-// Copyright 2010-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2017 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -10,9 +10,11 @@
 #import <OmniUI/OUIAppController.h>
 #import <OmniUI/OUIDrawing.h>
 #import <OmniUI/OUIInspector.h>
+#import <OmniUI/OUIInspectorAppearance.h>
 #import <OmniUI/OUIInspectorWell.h>
 #import <OmniUI/OUITextLayout.h>
 #import <OmniUI/OUITextView.h>
+#import <OmniUI/OUIThemedAppearance.h>
 
 #import <OmniQuartz/OQDrawing.h>
 #import <OmniBase/OmniBase.h>
@@ -188,12 +190,11 @@ static NSString *_getText(OUIInspectorTextWell *self, NSString *text, TextType *
     return text;
 }
 
-- (NSAttributedString *)_attributedStringForEditingString:(NSString *)aString;
+- (NSAttributedString *)_attributedStringForEditingString:(NSString *)aString textType:(TextType)textType;
 {
     // We don't want to edit the placeholder text, so don't use _getText().
     if (!aString)
         aString = @"";
-    TextType textType = TextTypeValue;
     
     NSMutableAttributedString *attributedText = [[NSMutableAttributedString alloc] initWithString:aString attributes:nil];
     {
@@ -202,7 +203,7 @@ static NSString *_getText(OUIInspectorTextWell *self, NSString *text, TextType *
             _setAttr(attributedText, NSFontAttributeName, font);
     }
     
-    UIColor *textColor = textType == TextTypePlaceholder ? [OUIInspector disabledLabelTextColor] : [self textColor];
+    UIColor *textColor = textType == TextTypePlaceholder ? self.disabledTextColor : [self textColor];
     _setAttr(attributedText, NSForegroundColorAttributeName, textColor);
     
     OBASSERT(_textField); // use the alignment already set up when the editor was created
@@ -223,7 +224,7 @@ static NSString *_getText(OUIInspectorTextWell *self, NSString *text, TextType *
 {
     OBPRECONDITION(self.editing);
 
-    _textField.attributedText = [self _attributedStringForEditingString:editingText];
+    _textField.attributedText = [self _attributedStringForEditingString:editingText textType:TextTypeValue];
 }
 
 - (NSTextAlignment)effectiveTextAlignment
@@ -242,7 +243,9 @@ static NSString *_getText(OUIInspectorTextWell *self, NSString *text, TextType *
 
         // Set up the default paragraph alignment for when the editor's text is empty. Also, when we make editing text, this will be used for the alignment.
         _textField.textAlignment = self.effectiveTextAlignment;
-        _textField.placeholder = _placeholderText;
+        
+        NSAttributedString *placeholder = [self _attributedStringForEditingString:_placeholderText textType:TextTypePlaceholder];
+        _textField.attributedPlaceholder = placeholder;
     }
     return _textField;
 }
@@ -270,7 +273,7 @@ static NSString *_getText(OUIInspectorTextWell *self, NSString *text, TextType *
     if (self.editing) {
         TextType textType;
         _getText(self, _text, &textType);
-        self.editor.attributedText = [self _attributedStringForEditingString:_text];
+        self.editor.attributedText = [self _attributedStringForEditingString:_text textType:TextTypeValue];
     } else if (self.isFirstResponder) {
         _textChangedWhileEditingOnCustomKeyboard = YES;
     }
@@ -379,6 +382,25 @@ static NSString *_getText(OUIInspectorTextWell *self, NSString *text, TextType *
     [self setNeedsLayout];
 }
 
+@synthesize disabledTextColor = _disabledTextColor;
+- (UIColor *)disabledTextColor;
+{
+    if (_disabledTextColor)
+        return _disabledTextColor;
+    
+    return [OUIInspector disabledLabelTextColor];
+}
+
+- (void)setDisabledTextColor:(UIColor *)disabledTextColor;
+{
+    if (_disabledTextColor == disabledTextColor)
+        return;
+    _disabledTextColor = disabledTextColor;
+    
+    [self _updateLabels];
+    [self setNeedsLayout];
+}
+
 - (void)setPlaceholderText:(NSString *)placeholderText;
 {
     if (OFISEQUAL(_placeholderText, placeholderText))
@@ -409,7 +431,7 @@ static NSString *_getText(OUIInspectorTextWell *self, NSString *text, TextType *
 
 - (void)selectAll:(id)sender showingMenu:(BOOL)show;
 {
-    OBFinishPortingLater("Ignoring the showingMenu argument");
+    OBFinishPortingLater("<bug:///147848> (iOS-OmniOutliner Bug: Obey ‘showingMenu’ argument in -[OUIInspectorTextWell selectAll:showingMenu:])");
     if ([_textField isFirstResponder])
         [_textField selectAll:sender];
 }
@@ -421,9 +443,33 @@ static NSString *_getText(OUIInspectorTextWell *self, NSString *text, TextType *
     if (self.backgroundType == OUIInspectorWellBackgroundTypeButton) {
         self.textColor = [super textColor];
         self.labelColor = [super textColor];
-        OBASSERT([self.rightView isKindOfClass:[UIImageView class]]);
-        [(UIImageView *)self.rightView setHighlighted:highlighted];
+        //The right view should highlight when we highlight
+        OBASSERT([self.rightView respondsToSelector:@selector(setHighlighted:)] || self.rightView == nil);
+        if ([self.rightView respondsToSelector:@selector(setHighlighted:)]) {
+            [(UIControl *)self.rightView setHighlighted:highlighted];
+        }
     }
+}
+
+- (void)willMoveToWindow:(nullable UIWindow *)newWindow;
+{
+    [super willMoveToWindow:newWindow];
+    
+    if ([OUIInspectorAppearance inspectorAppearanceEnabled]) {
+        [self themedAppearanceDidChange:OUIInspectorAppearance.appearance];
+    }
+}
+
+#pragma mark - OUIThemedAppearanceClient
+- (void)themedAppearanceDidChange:(OUIThemedAppearance *)changedAppearance
+{
+    [super themedAppearanceDidChange:changedAppearance];
+    
+    OUIInspectorAppearance *appearance = OB_CHECKED_CAST_OR_NIL(OUIInspectorAppearance, changedAppearance);
+    
+    self.textColor = appearance.TableCellTextColor;
+    self.labelColor = appearance.TableCellTextColor;
+    self.backgroundColor = appearance.TableCellBackgroundColor;
 }
 
 #pragma mark - UIView subclass
@@ -626,7 +672,7 @@ static NSString *_getText(OUIInspectorTextWell *self, NSString *text, TextType *
         attrText = attrFormat;
     }
     
-    UIColor *textColor = textType == TextTypePlaceholder ? [OUIInspector disabledLabelTextColor] : [self textColor];
+    UIColor *textColor = textType == TextTypePlaceholder ? self.disabledTextColor : [self textColor];
     _setAttr(attrText, NSForegroundColorAttributeName, textColor);
     
     // Align the text horizontally and truncate instead of wrapping.
@@ -651,7 +697,7 @@ static NSString *_getText(OUIInspectorTextWell *self, NSString *text, TextType *
             if (font)
                 _setAttr(attrLabel, NSFontAttributeName, font);
             
-            UIColor *labelColor = self.enabled ? [self labelColor] : [OUIInspector disabledLabelTextColor];
+            UIColor *labelColor = self.enabled ? [self labelColor] : self.disabledTextColor;
             _setAttr(attrLabel, NSForegroundColorAttributeName, labelColor);
             
             if (!_labelLabel) {
@@ -675,7 +721,7 @@ static NSString *_getText(OUIInspectorTextWell *self, NSString *text, TextType *
             if (font)
                 _setAttr(attrString, NSFontAttributeName, font);
             
-            UIColor *textColor = textType == TextTypePlaceholder ? [OUIInspector disabledLabelTextColor] : [self textColor];
+            UIColor *textColor = textType == TextTypePlaceholder ? self.disabledTextColor : [self textColor];
             _setAttr(attrString, NSForegroundColorAttributeName, textColor);
             
             // Right align and tail truncate the text
@@ -692,6 +738,7 @@ static NSString *_getText(OUIInspectorTextWell *self, NSString *text, TextType *
                 [self addSubview:_valueLabel];
             }
             _valueLabel.attributedText = attrString;
+            _valueLabel.textColor = textColor;
             
             _valueLabel.hidden = NO;
         }
@@ -739,7 +786,7 @@ static NSString *_getText(OUIInspectorTextWell *self, NSString *text, TextType *
         [_focusIndicatorView removeFromSuperview];
         _focusIndicatorView = nil;
         
-        _valueLabel.textColor = [UIColor blackColor];
+        _valueLabel.textColor = self.textColor;
 
         [self setNeedsLayout];
     }
@@ -795,7 +842,7 @@ static NSString *_getText(OUIInspectorTextWell *self, NSString *text, TextType *
         editor.inputView = self.inputView;
         editor.inputAccessoryView = self.inputAccessoryView;
         
-        editor.attributedText = [self _attributedStringForEditingString:_text];
+        editor.attributedText = [self _attributedStringForEditingString:_text textType:textType];
         [editor sizeToFit];
         
         [self addSubview:editor];

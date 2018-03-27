@@ -1,4 +1,4 @@
-// Copyright 2010-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -7,10 +7,12 @@
 
 #import <OmniUI/OUIFontAttributesInspectorSlice.h>
 
+@import OmniFoundation.OFPreference;
 #import <OmniUI/OUIFontUtilities.h>
 #import <OmniUI/OUISegmentedControl.h>
 #import <OmniUI/OUISegmentedControlButton.h>
 #import <OmniUI/OUIInspector.h>
+#import <OmniUI/OUIInspectorAppearance.h>
 #import <OmniAppKit/OAFontDescriptor.h>
 
 RCS_ID("$Id$");
@@ -22,6 +24,17 @@ RCS_ID("$Id$");
     OUISegmentedControlButton *_italicFontAttributeButton;
     OUISegmentedControlButton *_underlineFontAttributeButton;
     OUISegmentedControlButton *_strikethroughFontAttributeButton;
+}
+
+- (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil;
+{
+    self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
+    if (self == nil)
+        return nil;
+
+    _showStrikethrough = [[OFPreference preferenceForKey:@"OUIFontAttributesInspectorSliceShowsStrikethroughByDefault"] boolValue];
+
+    return self;
 }
 
 - (OUISegmentedControlButton *)fontAttributeButtonForType:(OUIFontAttributeButtonType)type; // Useful when overriding -updateFontAttributeButtons
@@ -99,7 +112,8 @@ RCS_ID("$Id$");
 
 - (void)loadView;
 {
-    _fontAttributeSegmentedControl = [[OUISegmentedControl alloc] initWithFrame:CGRectMake(0, 0, 100, [OUISegmentedControl buttonHeight])];
+    _fontAttributeSegmentedControl = [[OUISegmentedControl alloc] init];
+    _fontAttributeSegmentedControl.translatesAutoresizingMaskIntoConstraints = NO;
     
     _fontAttributeSegmentedControl.sizesSegmentsToFit = YES;
     _fontAttributeSegmentedControl.allowsMultipleSelection = YES;
@@ -123,23 +137,32 @@ RCS_ID("$Id$");
         _strikethroughFontAttributeButton.accessibilityLabel = NSLocalizedStringFromTableInBundle(@"Strike Through", @"OmniUI", OMNI_BUNDLE, @"Strike Through button accessibility label");
     }
 
-    UIView *containerView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 320, 46)];
+    self.contentView = [[UIView alloc] init];
+    self.contentView.translatesAutoresizingMaskIntoConstraints = NO;
+    
+    [self.contentView addSubview: _fontAttributeSegmentedControl];
 
-    [containerView addSubview: _fontAttributeSegmentedControl];
-
-    containerView.translatesAutoresizingMaskIntoConstraints = NO;
-    _fontAttributeSegmentedControl.translatesAutoresizingMaskIntoConstraints = NO;
-
+    NSLayoutConstraint *rightMarginLayoutConstraint = [_fontAttributeSegmentedControl.rightAnchor constraintEqualToAnchor:self.contentView.layoutMarginsGuide.rightAnchor];
+    self.rightMarginLayoutConstraint = rightMarginLayoutConstraint;
     [NSLayoutConstraint activateConstraints:
      @[
-       [_fontAttributeSegmentedControl.leftAnchor constraintEqualToAnchor:containerView.layoutMarginsGuide.leftAnchor],
-       [_fontAttributeSegmentedControl.rightAnchor constraintEqualToAnchor:containerView.layoutMarginsGuide.rightAnchor],
-       [_fontAttributeSegmentedControl.centerYAnchor constraintEqualToAnchor:containerView.centerYAnchor],
-       [containerView.heightAnchor constraintEqualToConstant:46.0],
+       [_fontAttributeSegmentedControl.leftAnchor constraintEqualToAnchor:self.contentView.layoutMarginsGuide.leftAnchor],
+       rightMarginLayoutConstraint,
+       [_fontAttributeSegmentedControl.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
+       [self.contentView.heightAnchor constraintEqualToConstant:[self sliceHeight]],
        ]
      ];
 
-    self.view = containerView;
+    UIView *view = [[UIView alloc] init];
+    
+    [view addSubview:self.contentView];
+    
+    [self.contentView.topAnchor constraintEqualToAnchor:view.topAnchor].active = YES;
+    [self.contentView.rightAnchor constraintEqualToAnchor:view.rightAnchor].active = YES;
+    [self.contentView.bottomAnchor constraintEqualToAnchor:view.bottomAnchor].active = YES;
+    [self.contentView.leftAnchor constraintEqualToAnchor:view.leftAnchor].active = YES;
+    
+    self.view = view;
 }
 
 - (void)viewWillAppear:(BOOL)animated;
@@ -147,6 +170,11 @@ RCS_ID("$Id$");
     [super viewWillAppear:animated];
     [self.view setNeedsLayout];
     [self.view layoutIfNeeded];
+}
+
+- (CGFloat)sliceHeight;
+{
+    return 46;
 }
 
 #pragma mark - OUIInspectorSlice subclass
@@ -245,6 +273,17 @@ static BOOL _toggledFlagToAssign(OUIFontAttributesInspectorSlice *self, SEL sel)
             [object setStrikethroughStyle:strikethrough fromInspectorSlice:self];
     }
     [self.inspector didEndChangingInspectedObjects];
+}
+
+#pragma mark OUIInspectorAppearanceClient
+
+- (void)themedAppearanceDidChange:(OUIThemedAppearance *)changedAppearance;
+{
+    [super themedAppearanceDidChange:changedAppearance];
+    
+    OUIInspectorAppearance *appearance = OB_CHECKED_CAST_OR_NIL(OUIInspectorAppearance, changedAppearance);
+    
+    self.view.backgroundColor = appearance.TableCellBackgroundColor;
 }
 
 @end

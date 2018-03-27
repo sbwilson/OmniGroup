@@ -1,4 +1,4 @@
-// Copyright 2007-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2007-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -111,10 +111,19 @@ static NSMutableDictionary *sharedViewerCache = nil;
 
 - (void)loadRequest:(NSURLRequest *)request onCompletion:(void (^)(BOOL success, NSURL *url, NSError *error))completionBlock;
 {
-    OBPRECONDITION(completionBlock != nil);
-    
     self.loadCompletion = completionBlock;
     [self loadRequest:request];
+}
+
+- (void)loadCachedHTML:(NSURL *)cachedFileURL forWebURL:(NSURL *)webURL;
+{
+    NSURL *baseURL = [[webURL URLByDeletingLastPathComponent] URLByDeletingLastPathComponent];
+    NSString *htmlString = [NSString stringWithContentsOfURL:cachedFileURL encoding:kCFStringEncodingUTF8 error:nil];
+    if (htmlString) {
+        [[_webView mainFrame] loadHTMLString:htmlString baseURL:baseURL];
+    } else {
+        [self loadRequest:[NSURLRequest requestWithURL:webURL]];
+    }
 }
 
 #pragma mark -
@@ -164,6 +173,11 @@ static NSMutableDictionary *sharedViewerCache = nil;
     }
 }
 
+- (BOOL)webViewShouldUseLayer;
+{
+    return YES;
+}
+
 #pragma mark -
 #pragma mark NSWindowController subclass
 
@@ -186,12 +200,18 @@ static NSMutableDictionary *sharedViewerCache = nil;
     _webView.preferences.usesPageCache = NO;
     _webView.preferences.cacheModel = WebCacheModelDocumentBrowser;
     _webView.preferences.suppressesIncrementalRendering = YES;
+    _webView.preferences.loadsImagesAutomatically = YES;
+    _webView.preferences.allowsAnimatedImages = YES;
     [_webView setMaintainsBackForwardList:NO];
 }
 
 - (void)windowWillClose:(NSNotification *)notification;
 {
     @autoreleasepool {
+        id<OAWebPageViewerDelegate> delegate = _delegate;
+        if ([delegate respondsToSelector:@selector(viewer:windowWillClose:)]) {
+            [delegate viewer:self windowWillClose:notification];
+        }
         [self invalidate];
     }
 }
@@ -214,6 +234,9 @@ static NSMutableDictionary *sharedViewerCache = nil;
 
     if ([url isFileURL]) {
         NSString *path = [[[url path] stringByStandardizingPath] stringByResolvingSymlinksInPath];
+        
+        if ([path hasPrefix:NSTemporaryDirectory()])
+            return YES;
         return [path hasPrefix:[[[[NSBundle mainBundle] bundlePath] stringByStandardizingPath] stringByResolvingSymlinksInPath]];
     }
 
@@ -228,6 +251,12 @@ static NSMutableDictionary *sharedViewerCache = nil;
         [listener ignore];
         return;
     }
+    
+    if ([url.scheme hasPrefix:@"omni"]) {
+        [[OAController sharedController] openURL:url];
+        [listener ignore];
+        return;
+    }
 
     // News urls are not in our bundle, but we want to allow the web view to load.
     NSString *newsURLString = [[[OFPreferenceWrapper sharedPreferenceWrapper] preferenceForKey:@"OSUCurrentNewsURL"] stringValue];
@@ -236,6 +265,13 @@ static NSMutableDictionary *sharedViewerCache = nil;
             [listener use];
             return;
         }
+    }
+    
+    // Cached news urls are in the user's Library folder
+    NSURL *userLibrary = [[NSFileManager defaultManager] URLForDirectory:NSLibraryDirectory inDomain:NSUserDomainMask appropriateForURL:nil create:NO error:nil];
+    if ([[url path] hasPrefix:[userLibrary path]]) {
+        [listener use];
+        return;
     }
     
     // Initial content
@@ -272,7 +308,10 @@ static NSMutableDictionary *sharedViewerCache = nil;
 - (void)setWebDocumentView:(NSView <WebDocumentView> *)webDocumentView;
 {
     _webDocumentView = webDocumentView;
-    _webDocumentView.wantsLayer = YES;
+
+    // See <bug:///108704> (Crasher: Yosemite: Crash using '?' to access help viewer a second time)
+    // Allow overriding this to avoid  <bug:///146472> (Mac-OmniOutliner Bug: API Reference / Scripting Interface window is black and does not display text).
+    _webDocumentView.wantsLayer = self.webViewShouldUseLayer;
 }
 
 - (void)webView:(WebView *)sender didFinishLoadForFrame:(WebFrame *)frame;
@@ -401,8 +440,16 @@ static NSMutableDictionary *sharedViewerCache = nil;
 {
     if (self.loadCompletion) {
         self.loadCompletion(success, url, error);
-        // nil out the completion handler so subsequent load attempts to incorrectly call.
-        self.loadCompletion = nil;
+        if (success) {
+            // nil out the completion handler so subsequent load attempts to incorrectly call.
+            // we don't do this if we have not gotten success because it is possible to get an unsuccessful message followed by a successful one.
+            self.loadCompletion = nil;
+        }
+    }
+
+    id<OAWebPageViewerDelegate> delegate = _delegate;
+    if (success && [delegate respondsToSelector:@selector(viewer:didLoadURL:)]) {
+        [delegate viewer:self didLoadURL:url];
     }
 }
 @end

@@ -1,4 +1,4 @@
-// Copyright 2010-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -7,8 +7,11 @@
 
 #import <OmniUI/OUINumericFieldTableCell.h>
 #import <OmniFoundation/OmniFoundation.h>
+#import <OmniUI/OUIInspectorAppearance.h>
 
 RCS_ID("$Id$");
+
+NS_ASSUME_NONNULL_BEGIN
 
 NSString *const OUINumericFieldTableCellValueKey = @"value";
 
@@ -47,7 +50,7 @@ static id _commonInit(OUINumericFieldTableCell *self)
     return self;
 }
 
-- (id)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier;
+- (id)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(nullable NSString *)reuseIdentifier;
 {
     if ((self = [super initWithStyle:style reuseIdentifier:reuseIdentifier]) == nil) {
         return nil;
@@ -153,7 +156,7 @@ static id _commonInit(OUINumericFieldTableCell *self)
     }
 }
 
-- (void)setLabelText:(NSString *)labelText;
+- (void)setLabelText:(nullable NSString *)labelText;
 {
     if ([labelText isEqualToString:_labelText])
         return;
@@ -163,7 +166,7 @@ static id _commonInit(OUINumericFieldTableCell *self)
     [self _updateDisplay];
 }
 
-- (void)setUnitsSuffixStringSingular:(NSString *)unitsSuffixStringSingular;
+- (void)setUnitsSuffixStringSingular:(nullable NSString *)unitsSuffixStringSingular;
 {
     if ([unitsSuffixStringSingular isEqualToString:_unitsSuffixStringSingular])
         return;
@@ -173,7 +176,7 @@ static id _commonInit(OUINumericFieldTableCell *self)
     [self _updateDisplay];
 }
 
-- (void)setUnitsSuffixStringPlural:(NSString *)unitsSuffixStringPlural;
+- (void)setUnitsSuffixStringPlural:(nullable NSString *)unitsSuffixStringPlural;
 {
     if ([unitsSuffixStringPlural isEqualToString:_unitsSuffixStringPlural])
         return;
@@ -211,6 +214,20 @@ static id _commonInit(OUINumericFieldTableCell *self)
 }
 
 #pragma mark - Private API
+
+- (void)didMoveToSuperview;
+{
+    // Workaround for rdar://35175843 (safeAreaInsets are not propagated to child view controllers under simple conditions) in iOS 11. When this view is added to its parent view (a stack view controller in our inspectors), its frame isn't updated immediately (that waits until the next layout pass) but its safe area insets are. That means that its safe area insets are calculated while it still has a provisional minimal width (based on our -loadView method's invocation of -sizeToFit), so its left inset gets set just fine but its right inset does not. We work around this by ensuring our horizontal edges match up with our parent view before it propagates its safe area insets to us.
+ 
+    if (self.superview != nil) {
+        CGRect superviewBounds = self.superview.bounds;
+        CGRect oldFrame = self.frame;
+        CGRect newFrame = (CGRect){.origin.x = superviewBounds.origin.x, .origin.y = oldFrame.origin.y, .size.width = superviewBounds.size.width, .size.height = oldFrame.size.height};
+        self.frame = newFrame;
+    }
+
+    [super didMoveToSuperview];
+}
 
 - (IBAction)decrement:(id)sender {
     OBASSERT(_stepValue != 0);
@@ -293,4 +310,19 @@ static id _commonInit(OUINumericFieldTableCell *self)
     return contentsRect.size;
 }
 
+#pragma mark OUIInspectorAppearanceClient
+
+- (void)themedAppearanceDidChange:(OUIThemedAppearance *)changedAppearance;
+{
+    [super themedAppearanceDidChange:changedAppearance];
+    
+    OUIInspectorAppearance *appearance = OB_CHECKED_CAST_OR_NIL(OUIInspectorAppearance, changedAppearance);
+
+    _label.textColor = appearance.TableCellTextColor;
+    _valueTextField.textColor = appearance.TableCellTextColor;
+}
+
 @end
+
+NS_ASSUME_NONNULL_END
+

@@ -1,4 +1,4 @@
-// Copyright 2014-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2014-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -7,15 +7,16 @@
 
 #import <OmniUI/OUIPurchaseURLCommand.h>
 
-#import <OmniUI/OUIAppController+InAppStore.h>
-
 RCS_ID("$Id$");
 
-@implementation OUIPurchaseURLCommand {
-@private
-    NSString *_inAppPurchaseIdentifier;
-    
-}
+@interface OUIPurchaseURLCommand ()
+// Radar 37952455: Regression: Spurious "implementing unavailable method" warning when subclassing
+- (id)initWithURL:(NSURL *)url NS_DESIGNATED_INITIALIZER NS_EXTENSION_UNAVAILABLE_IOS("Special URL handling is not available in extensions");
+- (BOOL)skipsConfirmation NS_EXTENSION_UNAVAILABLE_IOS("Special URL handling is not available in extensions");
+- (void)invoke NS_EXTENSION_UNAVAILABLE_IOS("Special URL handling is not available in extensions");
+@end
+
+@implementation OUIPurchaseURLCommand
 
 - (id)initWithURL:(NSURL *)url;
 {
@@ -24,7 +25,7 @@ RCS_ID("$Id$");
     }
     
     NSString *queryString = [url query];
-    _inAppPurchaseIdentifier = ([NSString isEmptyString:queryString]) ? [[OUIAppController controller] proUpgradeProductIdentifier] : queryString;
+    _inAppPurchaseIdentifier = queryString;
     
     return self;
 }
@@ -36,7 +37,7 @@ RCS_ID("$Id$");
 
 - (void)invoke;
 {
-    [[OUIAppController controller] showInAppPurchases:_inAppPurchaseIdentifier viewController:self.viewControllerForPresentation];
+    OBRequestConcreteImplementation(self, _cmd); // We override this in a category
 }
 
 @end

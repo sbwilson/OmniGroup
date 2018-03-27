@@ -1,4 +1,4 @@
-// Copyright 2010-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2017 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -34,6 +34,7 @@ extern NSString * const OUIUndoPopoverWillShowNotification;
 
 @property(nonatomic,readonly) OUIToolbarButton *button;
 @property(nonatomic) BOOL disabledTemporarily;
+@property(nonatomic) BOOL useImageForNonCompact; // Otherwise it's @"Undo"
 
 + (BOOL)dismissUndoMenu;
 

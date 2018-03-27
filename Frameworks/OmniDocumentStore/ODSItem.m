@@ -1,4 +1,4 @@
-// Copyright 2010-2014 The Omni Group. All rights reserved.
+// Copyright 2010-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -68,7 +68,8 @@ static NSDate *_dayOffset(NSDate *date, NSInteger offset)
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         dateFormatter = [[NSDateFormatter alloc] init];
-        [dateFormatter setDateStyle:NSDateFormatterFullStyle];
+        // Long style is too wide in some locales, eg Spanish.
+        [dateFormatter setDateStyle:NSDateFormatterMediumStyle];
         [dateFormatter setTimeStyle:NSDateFormatterNoStyle];
         
         timeFormatter = [[NSDateFormatter alloc] init];
@@ -127,17 +128,21 @@ static NSDate *_dayOffset(NSDate *date, NSInteger offset)
 
 - (ODSScope *)scope;
 {
-    OBPRECONDITION(_weak_scope, "Don't call this after -_invalidate");
-    return _weak_scope;
+    ODSScope *scope = _weak_scope;
+    OBPRECONDITION(scope, "Don't call this after -_invalidate");
+    return scope;
 }
 
 @synthesize parentFolder = _weak_parentFolder;
 - (ODSFolderItem *)parentFolder;
 {
-    OBPRECONDITION(_weak_scope, "Don't call this after -_invalidate");
+#if defined(OMNI_ASSERTIONS_ON)
+    ODSScope *scope = _weak_scope;
+#endif
+    OBPRECONDITION(scope, "Don't call this after -_invalidate");
     
     ODSFolderItem *parentFolder = _weak_parentFolder;
-    OBASSERT(parentFolder || (id)self == _weak_scope.rootFolder);
+    OBASSERT(parentFolder || (id)self == scope.rootFolder);
     return parentFolder;
 }
 

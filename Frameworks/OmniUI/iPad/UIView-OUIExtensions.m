@@ -1,4 +1,4 @@
-// Copyright 2010-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2017 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -403,14 +403,24 @@ static void OUIViewPerformPosingForThreading(void)
     [self addMotionEffect:[self tiltMotionEffectWithMaxTilt:maxTilt]];
 }
 
-- (id)containingViewOfClass:(Class)cls; // can return self
+- (id)containingViewOfClass:(Class)cls;
 {
-    return [self containingViewMatching:^(id view){
+    return [self enclosingViewOfClass:cls];
+}
+
+- (id)enclosingViewOfClass:(Class)cls; // can return self
+{
+    return [self enclosingViewMatching:^(id view){
         return [view isKindOfClass:cls];
     }];
 }
 
 - (id)containingViewMatching:(OFPredicateBlock)predicate;
+{
+    return [self enclosingViewMatching:predicate];
+}
+
+- (id)enclosingViewMatching:(OFPredicateBlock)predicate;
 {
     if (!predicate) {
         OBASSERT_NOT_REACHED("Treating nil predicate as true... probably not that useful");
@@ -510,19 +520,36 @@ static void OUIViewPerformPosingForThreading(void)
     };
 }
 
-#ifdef DEBUG
 - (void)expectDeallocationOfViewTreeSoon;
 {
-    [self applyToViewTree:^(UIView *treeView) {
-        OBExpectDeallocationWithPossibleFailureReason(treeView, ^NSString *(UIView *remainingView){
-            if (remainingView.superview)
-                return @"still has superview";
-            return nil;
-        });
-        return OUIViewVisitorResultContinue;
-    }];
+    if (OBExpectedDeallocationsIsEnabled()) {
+        [self applyToViewTree:^(UIView *treeView) {
+            OBExpectDeallocationWithPossibleFailureReason(treeView, ^NSString *(UIView *remainingView){
+                if (remainingView.superview)
+                    return @"still has superview";
+                return nil;
+            });
+            return OUIViewVisitorResultContinue;
+        }];
+    }
 }
-#endif
+
+// Terrible. There doesn't seem to be a proper way to set the field editor's text color, or access the field editor
+- (void)recursivelySetUITextFieldColor:(UIColor *)color;
+{
+    for (UIView *subview in self.subviews) {
+        [subview recursivelySetUITextFieldColor:color];
+    }
+}
+
+@end
+
+@implementation UITextField (RecursivelySetUITextFieldColor)
+
+- (void)recursivelySetUITextFieldColor:(UIColor *)color;
+{
+    self.textColor = color;
+}
 
 @end
 

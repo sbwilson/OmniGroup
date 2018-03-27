@@ -98,6 +98,80 @@
       "name": "iPhone 7 Plus",
       "platform": "iPhone9,4"
   },
+  "D20AP": {
+      "name": "iPhone 8",
+      "platform": "iPhone10,1"
+  },
+  "D201AP": {
+      "name": "iPhone 8",
+      "platform": "iPhone10,4"
+  },
+  "D21AP": {
+      "name": "iPhone 8 Plus",
+      "platform": "iPhone10,2"
+  },
+  "D211AP": {
+      "name": "iPhone 8 Plus",
+      "platform": "iPhone10,5"
+  },
+  "D22AP": {
+      "name": "iPhone X",
+      "platform": "iPhone10,3"
+  },
+  "D221AP": {
+      "name": "iPhone X",
+      "platform": "iPhone10,6"
+  },
+  "N27aAP": {
+    "name": "Apple Watch (1st generation)",
+    "platform": "Watch1,1",
+    "comment": "38mm"
+  },
+  "N28aAP": {
+    "name": "Apple Watch (1st generation)",
+    "platform": "Watch1,2",
+    "comment": "42mm"
+  },
+  "N27dAP": {
+    "name": "Apple Watch Series 1",
+    "platform": "Watch2,6",
+    "comment": "38mm"
+  },
+  "N28dAP": {
+    "name": "Apple Watch Series 1",
+    "platform": "Watch2,7",
+    "comment": "42mm"
+  },
+  "N74AP": {
+    "name": "Apple Watch Series 2",
+    "platform": "Watch2,3",
+    "comment": "38mm"
+  },
+  "N75AP": {
+    "name": "Apple Watch Series 2",
+    "platform": "Watch2,4",
+    "comment": "42mm"
+  },
+  "N111sAP": {
+    "name": "Apple Watch Series 3",
+    "platform": "Watch3,1",
+    "comment": "38mm cellular"
+  },
+  "N111bAP": {
+    "name": "Apple Watch Series 3",
+    "platform": "Watch3,2",
+    "comment": "42mm cellular"
+  },
+  "N121sAP": {
+    "name": "Apple Watch Series 3",
+    "platform": "Watch3,3",
+    "comment": "38mm"
+  },
+  "N121bAP": {
+    "name": "Apple Watch Series 3",
+    "platform": "Watch3,4",
+    "comment": "42mm"
+  },
   "K48AP": {
     "name": "iPad 1"
   },
@@ -204,19 +278,53 @@
   },
   "J127AP": {
     "name": "iPad Pro",
-    "platform": "iPad6,3"
+    "platform": "iPad6,3",
+    "comment": "9.7 inch"
   },
   "J128AP": {
     "name": "iPad Pro",
-    "platform": "iPad6,4"
+    "platform": "iPad6,4",
+    "comment": "9.7 inch"
   },
   "J98aAP": {
     "name": "iPad Pro",
-    "platform": "iPad6,7"
+    "platform": "iPad6,7",
+    "comment": "12.9 inch"
   },
   "J99aAP": {
     "name": "iPad Pro",
-    "platform": "iPad6,8"
+    "platform": "iPad6,8",
+    "comment": "12.9 inch"
+  },
+  "J120AP": {
+    "name": "iPad Pro (2nd generation)",
+    "platform": "iPad7,1",
+    "comment": "12.9 inch"
+  },
+  "J121AP": {
+    "name": "iPad Pro (2nd generation)",
+    "platform": "iPad7,2",
+    "comment": "12.9 inch"
+  },
+  "J207AP": {
+    "name": "iPad Pro (10.5 inch)",
+    "platform": "iPad7,3",
+    "comment": "10.5 inch"
+  },
+  "J208AP": {
+    "name": "iPad Pro (10.5 inch)",
+    "platform": "iPad7,4",
+    "comment": "10.5 inch"
+  },
+  "J71sAP": {
+    "name": "iPad (2017)",
+    "platform": "iPad6,11",
+    "comment": "9.7 inch"
+  },
+  "J72sAP": {
+    "name": "iPad (2017 LTE)",
+    "platform": "iPad6,12",
+    "comment": "9.7 inch"
   },
   "N45AP": {
     "name": "iPod Touch 1G"
@@ -252,6 +360,10 @@
   "J42dAP": {
     "name": "Apple TV 4",
     "platform": "AppleTV5,3"
+  },
+  "J105aAP": {
+    "name": "Apple TV 4K",
+    "platform": "AppleTV6,2"
   },
   "iMac,1": {
     "name": "iMac G3"
@@ -327,6 +439,21 @@
   },
   "iMac17,1": {
     "name": "iMac"
+  },
+  "iMac18,1": {
+    "name": "iMac",
+    "comment": "21.5 inch, mid 2017"
+  },
+  "iMac18,2": {
+    "name": "iMac",
+    "comment": "21.5 inch, 4K, mid 2017"
+  },
+  "iMac18,3": {
+    "name": "iMac",
+    "comment": "27 inch, 5K, mid 2017"
+  },
+  "iMacPro1,1": {
+    "name": "iMac Pro"
   },
   "Macmini1,1": {
     "name": "Mac mini"
@@ -406,6 +533,10 @@
   "MacBook9,1": {
     "name": "MacBook",
     "comment": "Early 2016 12-inch Core m3/m5/m7"
+  },
+  "MacBook10,1": {
+    "name": "MacBook",
+    "comment": "Mid 2017 12-inch"
   },
   "MacBookAir1,1": {
     "name": "MacBook Air"
@@ -523,5 +654,29 @@
   },
   "MacBookPro11,5": {
     "name": "MacBook Pro"
+  },
+  "MacBookPro13,1": {
+    "name": "MacBook Pro",
+    "comment": "13-inch, late 2016, two TB3 ports"
+  },
+  "MacBookPro13,2": {
+    "name": "MacBook Pro",
+    "comment": "13-inch, late 2016, Touch Bar, four TB3 ports"
+  },
+  "MacBookPro13,3": {
+    "name": "MacBook Pro",
+    "comment": "15-inch, late 2016, Touch Bar"
+  },
+  "MacBookPro14,1": {
+    "name": "MacBook Pro",
+    "comment": "13-inch, mid 2017"
+  },
+  "MacBookPro14,2": {
+    "name": "MacBook Pro",
+    "comment": "13-inch, mid 2017, Touch Bar"
+  },
+  "MacBookPro14,3": {
+    "name": "MacBook Pro",
+    "comment": "15-inch, mid 2017, Touch Bar"
   }
 }

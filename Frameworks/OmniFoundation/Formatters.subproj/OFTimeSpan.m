@@ -1,4 +1,4 @@
-// Copyright 2006-2008, 2010-2011, 2013-2014 Omni Development, Inc. All rights reserved.
+// Copyright 2006-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -68,6 +68,11 @@ RCS_ID("$Id$")
     _components.seconds = aValue;
 }
 
+- (void)setElapsed:(BOOL)aBool;
+{
+    elapsed = aBool;
+}
+
 - (float)years;
 {
     return _components.years;
@@ -103,12 +108,22 @@ RCS_ID("$Id$")
     return _components.seconds;
 }
 
+- (BOOL)elapsed;
+{
+    return elapsed;
+}
+
 - (float)floatValue;
 {
     float result = [self floatValueInSeconds];
     if (![createdByFormatter floatValuesInSeconds])
 	result /= 3600.0f;
     return result;
+}
+
+- (double)doubleValue;
+{
+    return (double)[self floatValue];
 }
 
 - (float)floatValueInSeconds;
@@ -119,13 +134,13 @@ RCS_ID("$Id$")
 - (NSDateComponents *)dateComponentsValue;
 {
     NSDateComponents *result = [[[NSDateComponents alloc] init] autorelease];
-    result.year = floorf(_components.years);
-    result.month = floorf(_components.months);
-    result.weekOfYear = floorf(_components.weeks);
-    result.day = floorf(_components.days);
-    result.hour = floorf(_components.hours);
-    result.minute = floorf(_components.minutes);
-    result.second = floorf(_components.seconds);
+    result.year = (NSInteger)floorf(_components.years);
+    result.month = (NSInteger)floorf(_components.months);
+    result.weekOfYear = (NSInteger)floorf(_components.weeks);
+    result.day = (NSInteger)floorf(_components.days);
+    result.hour = (NSInteger)floorf(_components.hours);
+    result.minute = (NSInteger)floorf(_components.minutes);
+    result.second = (NSInteger)floorf(_components.seconds);
     return result;
 }
 
@@ -149,7 +164,7 @@ RCS_ID("$Id$")
         return NO;
     
     OFTimeSpan *otherSpan = otherObject;
-    return (memcmp(&_components, &otherSpan->_components, sizeof(_components)) == 0);
+    return (memcmp(&_components, &otherSpan->_components, sizeof(_components)) == 0) && elapsed == otherSpan.elapsed;
 }
 
 - (NSUInteger)hash;
@@ -165,6 +180,7 @@ RCS_ID("$Id$")
 {
     OFTimeSpan *result = [[OFTimeSpan allocWithZone:zone] initWithTimeSpanFormatter:createdByFormatter];
     memcpy(&result->_components, &_components, sizeof(_components));
+    result->elapsed = elapsed;
     return result;
 }
 

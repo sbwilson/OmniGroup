@@ -1,4 +1,4 @@
-// Copyright 2010-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2017 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -9,9 +9,11 @@
 
 #import <UIKit/UICollectionViewLayout.h>
 
+NS_ASSUME_NONNULL_BEGIN
+
 // assumptions:
 // 1. all the icons are the same size.
-// 2. exterior spacing to the left and right of the outside icons should exist. Lets space these icons evenly in the space we have, like so: |--|<one>|--|<two>|--|<three>|--|. Padding should result in extra space on the sides, and icons should not be snugged up to the edges of the collection view.
+// 2. exterior spacing to the left and right of the outside icons should exist. Lets space these icons evenly in the space we have, like so: |<one>|--|<two>|--|<three>. Padding to the top, left, and right comes from the safe area insets.
 // 3. incomplete rows should have icons aligned in columns still, with trailing space at the end.
 
 @interface OUIExportOptionsCollectionViewLayout : UICollectionViewLayout
@@ -19,3 +21,5 @@
 @property(nonatomic) CGFloat minimumInterItemSpacing;
 
 @end
+
+NS_ASSUME_NONNULL_END

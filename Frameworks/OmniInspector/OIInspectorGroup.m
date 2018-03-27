@@ -1,4 +1,4 @@
-// Copyright 2002-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2002-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -193,9 +193,10 @@ static BOOL useASeparateMenuForWorkspaces = NO;
 #ifdef OMNI_ASSERTIONS_ON
     NSWindow *topWindow = [[_inspectors firstObject] window];
 #endif
+    OIInspectorRegistry *inspectorRegistry = self.inspectorRegistry;
     OIInspectorGroup *newGroup = [[OIInspectorGroup alloc] init];
-    newGroup.inspectorRegistry = self.inspectorRegistry;
-    [self.inspectorRegistry addExistingGroup:newGroup];
+    newGroup.inspectorRegistry = inspectorRegistry;
+    [inspectorRegistry addExistingGroup:newGroup];
     
     NSUInteger inspectorCount = [_inspectors count];
     
@@ -378,7 +379,8 @@ static BOOL useASeparateMenuForWorkspaces = NO;
     CGFloat position;
 
     // Snap to top or bottom of other group
-    for (OIInspectorGroup *otherGroup in self.inspectorRegistry.existingGroups) {
+    OIInspectorRegistry *inspectorRegistry = self.inspectorRegistry;
+    for (OIInspectorGroup *otherGroup in inspectorRegistry.existingGroups) {
         NSRect otherGroupFrame;
             
         if (self == otherGroup || ![otherGroup isVisible] || ![otherGroup getGroupFrame:&otherGroupFrame])
@@ -399,7 +401,7 @@ static BOOL useASeparateMenuForWorkspaces = NO;
 
     // Check for snap to side of other group
     
-    for (OIInspectorGroup *otherGroup in self.inspectorRegistry.existingGroups) {
+    for (OIInspectorGroup *otherGroup in inspectorRegistry.existingGroups) {
         NSRect otherFrame;
         CGFloat distance;
 
@@ -466,9 +468,10 @@ static BOOL useASeparateMenuForWorkspaces = NO;
         OIInspectorGroup *closestGroupWithoutSnapping = nil;
         float closestVerticalDistance = 1e10;
 
-        count = [self.inspectorRegistry.existingGroups count];
+        OIInspectorRegistry *inspectorRegistry = self.inspectorRegistry;
+        count = [inspectorRegistry.existingGroups count];
         for (index = 0; index < count; index++) {
-            OIInspectorGroup *otherGroup = [self.inspectorRegistry.existingGroups objectAtIndex:index];
+            OIInspectorGroup *otherGroup = [inspectorRegistry.existingGroups objectAtIndex:index];
             NSRect otherFrame;
 
             if (self == otherGroup || ![otherGroup isVisible] || ![otherGroup getGroupFrame:&otherFrame])
@@ -544,7 +547,7 @@ static BOOL useASeparateMenuForWorkspaces = NO;
     if (!_inspectorGroupFlags.hasPositionedWindows) {
         _inspectorGroupFlags.hasPositionedWindows = YES;
         
-        OIWorkspace *sharedWorkspace = OIWorkspace.sharedWorkspace;
+        OIWorkspace *sharedWorkspace = [OIWorkspace sharedWorkspace];
         for (index = 0; index < count; index++) {
             OIInspectorController *controller = _inspectors[index];
             NSString *identifier = controller.inspectorIdentifier;
@@ -554,9 +557,9 @@ static BOOL useASeparateMenuForWorkspaces = NO;
                 NSWindow *window = [controller window];
                 OBASSERT(window);
                 if (!index) {
-                    NSString *position = [sharedWorkspace objectForKey:[NSString stringWithFormat:@"%@-Position", identifier]];
-                    if (position)
-                        [window setFrameTopLeftPoint:NSPointFromString(position)];
+                    NSPoint position = [sharedWorkspace floatingInspectorPositionForIdentifier:identifier];
+                    if (NSEqualPoints(position, NSZeroPoint) == NO)
+                        [window setFrameTopLeftPoint:position];
                 }
             }
         }
@@ -800,27 +803,25 @@ static BOOL useASeparateMenuForWorkspaces = NO;
         return inspector.inspectorIdentifier;
     }];
 
-    OIWorkspace *sharedWorkspace = OIWorkspace.sharedWorkspace;
-    [sharedWorkspace updateInspectorsWithBlock:^(NSMutableDictionary *dictionary) {
-        [dictionary setObject:identifiers forKey:[NSString stringWithFormat:@"%@-Order", [self identifier]]];
+    OIWorkspace *sharedWorkspace = [OIWorkspace sharedWorkspace];
+    [[NSNotificationCenter defaultCenter] postNotificationName:OIWorkspaceWillChangeNotification object:self];
+
+    [sharedWorkspace setInspectorGroupOrder:identifiers forIdentifier:[self identifier]];
+
+    // Don't call -topLeftPoint when we don't have a window (i.e., we have never been shown).  Instead, just use whatever is in the plist already.  Otherwise, we'll send -frame to a nil window!
+    if ([self hasFirstFrame])
+        [sharedWorkspace setInspectorGroupPosition:[self topLeftPoint] forIdentifier:[self identifier]];
         
-        // Don't call -topLeftPoint when we don't have a window (i.e., we have never been shown).  Instead, just use whatever is in the plist already.  Otherwise, we'll send -frame to a nil window!
-        if ([self hasFirstFrame])
-            [dictionary setObject:NSStringFromPoint([self topLeftPoint]) forKey:[NSString stringWithFormat:@"%@-Position", [self identifier]]];
-        
-        NSString *visibleKey = [NSString stringWithFormat:@"%@-Visible", [self identifier]];
-        if ([self isVisible])
-            [dictionary setObject:@"YES" forKey:visibleKey];
-        else
-            [dictionary removeObjectForKey:visibleKey];
-    }];
+    [sharedWorkspace setInspectorGroupVisible:[self isVisible] forIdentifier:[self identifier]];
+
+    [[NSNotificationCenter defaultCenter] postNotificationName:OIWorkspaceDidChangeNotification object:self];
 }
 
 - (void)restoreFromIdentifier:(NSString *)restoreIdentifier withInspectors:(NSMutableDictionary *)inspectorsById;
 {
-    OIWorkspace *sharedWorkspace = OIWorkspace.sharedWorkspace;
-    NSArray *identifiers = [sharedWorkspace objectForKey:[NSString stringWithFormat:@"%@-Order", restoreIdentifier]];
-    BOOL willBeVisible = [sharedWorkspace objectForKey:[NSString stringWithFormat:@"%@-Visible", restoreIdentifier]] != nil;
+    OIWorkspace *sharedWorkspace = [OIWorkspace sharedWorkspace];
+    NSArray *identifiers = [sharedWorkspace inspectorGroupOrderForIdentifier:restoreIdentifier];
+    BOOL willBeVisible = [sharedWorkspace inspectorGroupVisibleForIdentifier: restoreIdentifier];
     
     NSUInteger index, count = [identifiers count];
     for (index = 0; index < count; index++) {
@@ -840,9 +841,9 @@ static BOOL useASeparateMenuForWorkspaces = NO;
         [inspectorsById removeObjectForKey:identifier];
         [self addInspector:controller];
         if (!index) {
-            NSString *position = [sharedWorkspace objectForKey:[NSString stringWithFormat:@"%@-Position", identifier]];
-            if (position)
-                [window setFrameTopLeftPoint:NSPointFromString(position)];
+            NSPoint position = [sharedWorkspace inspectorGroupPositionForIdentifier:identifier];
+            if (CGPointEqualToPoint(position, NSZeroPoint) == NO)
+                [window setFrameTopLeftPoint:position];
         }
     }
     if (![_inspectors count]) {
@@ -926,12 +927,13 @@ static BOOL useASeparateMenuForWorkspaces = NO;
 - (CGFloat)yPositionOfGroupBelowWithSingleHeight:(CGFloat)singleControllerHeight;
 {
     NSRect firstFrame = [self firstFrame];
-    NSUInteger index = [self.inspectorRegistry.existingGroups count];
+    OIInspectorRegistry *inspectorRegistry = self.inspectorRegistry;
+    NSUInteger index = [inspectorRegistry.existingGroups count];
     CGFloat result = NSMinY([[[[_inspectors firstObject] window] screen] visibleFrame]);
     CGFloat ignoreAbove = (NSMaxY(firstFrame) - ((CGFloat)([_inspectors count] - 1) * OIInspectorStartingHeaderButtonHeight) - singleControllerHeight);
     
     while (index--) {
-        OIInspectorGroup *group = [self.inspectorRegistry.existingGroups objectAtIndex:index];
+        OIInspectorGroup *group = [inspectorRegistry.existingGroups objectAtIndex:index];
         NSRect otherFirstFrame;
         
         if (group == self || ![group isVisible])

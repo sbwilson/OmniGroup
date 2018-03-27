@@ -1,4 +1,4 @@
-// Copyright 2011-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2011-2017 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -13,7 +13,7 @@
 #import <OmniUI/OUIFullScreenNoteTextViewController.h>
 #import <OmniUI/OUIFullScreenNoteTransition.h>
 #import <OmniUI/OUIKeyboardLock.h>
-
+#import <OmniUI/OUIInspectorPresentationController.h>
 
 RCS_ID("$Id$")
 
@@ -36,6 +36,7 @@ static const CGFloat EnterFullScreenButtonScrollingActiveAlpha = 0.4;
     [super viewDidLoad];
     
     self.enterFullScreenButton.alpha = 0.0;
+    self.enterFullScreenBackground.alpha = 0.0;
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardDidChange:) name:UIKeyboardDidChangeFrameNotification object:nil];
 }
@@ -44,12 +45,18 @@ static const CGFloat EnterFullScreenButtonScrollingActiveAlpha = 0.4;
 {
     [super viewDidAppear:animated];
 
+    // We can't ask for the presentationController before first knowing it's presented or the reciever will cacahe a presentationController until next present/dismiss cycle. This can result in the default full-screen presentation controller being cached if we havne't setup the transitioningDelegate yet.
+    BOOL isCurrentlyPresented = (self.inspector.viewController.presentingViewController != nil);
+    
     // If we're already fullscreen, no need for the enter full screen button
-    if (self.view.window.traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassCompact && self.inspector.useFullScreenOnHorizontalCompact) {
+    if (self.presentingViewController.traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassCompact && isCurrentlyPresented) {
         self.enterFullScreenButton.hidden = YES;
+        self.enterFullScreenBackground.hidden = YES;
     } else {
         self.enterFullScreenButton.hidden = NO;
+        self.enterFullScreenBackground.hidden = NO;
         self.enterFullScreenButton.alpha = EnterFullScreenButtonStandardAlpha; // fade in
+        self.enterFullScreenBackground.alpha = EnterFullScreenButtonStandardAlpha;
     }
 
     // Larger left/right insets
@@ -77,7 +84,7 @@ static const CGFloat EnterFullScreenButtonScrollingActiveAlpha = 0.4;
 - (void)keyboardDidChange:(NSNotification *)note;
 {
     // Without some help here, UITextView doesn't redisplay exposed contents when the popover grows.
-    OBFinishPortingLater("This still doesn't fully fix things -- in landscape mode, when hiding the keyboard, long notes can end up with the bottom area not redrawn after the popover grows.");
+    OBFinishPortingLater("<bug:///147853> (iOS-OmniOutliner Bug: in landscape mode, when hiding the keyboard, long notes can end up with the bottom area not redrawn after the popover grows)");
     [self.view setNeedsLayout];
     [self.view setNeedsDisplay];
 }
@@ -108,12 +115,12 @@ static const CGFloat EnterFullScreenButtonScrollingActiveAlpha = 0.4;
 #pragma mark -
 #pragma mark Full Screen support
 
-@synthesize enterFullScreenButton = _enterFullScreenButton;
-
 - (id<UIViewControllerAnimatedTransitioning>)animationControllerForPresentedController:(UIViewController *)presented presentingController:(UIViewController *)presenting sourceController:(UIViewController *)source;
 {
     OUIFullScreenNoteTransition *transition = [[OUIFullScreenNoteTransition alloc] init];
     transition.fromTextView = self.textView;
+    self.navigationController.navigationBar.hidden = YES;
+    self.inspector.mainPane.navigationController.navigationBar.hidden = YES;
     
     return transition;
 }
@@ -122,7 +129,9 @@ static const CGFloat EnterFullScreenButtonScrollingActiveAlpha = 0.4;
 {
     OUIFullScreenNoteTransition *transition = [[OUIFullScreenNoteTransition alloc] init];
     transition.fromTextView = self.textView;
-    
+    self.navigationController.navigationBar.hidden = NO;
+    self.inspector.mainPane.navigationController.navigationBar.hidden = NO;
+
     return transition;
 }
 
@@ -142,6 +151,11 @@ static const CGFloat EnterFullScreenButtonScrollingActiveAlpha = 0.4;
     };
     controller.modalPresentationStyle = UIModalPresentationOverFullScreen;
     
+    [controller loadViewIfNeeded];
+    controller.textView.textColor = self.textView.textColor;
+    controller.textView.backgroundColor = self.textView.backgroundColor;
+    controller.textView.keyboardAppearance = self.textView.keyboardAppearance;
+
     [self presentViewController:controller animated:YES completion:^() {
     }];
     
@@ -155,6 +169,7 @@ static const CGFloat EnterFullScreenButtonScrollingActiveAlpha = 0.4;
     }
     
     self.enterFullScreenButton.alpha = alpha;
+    self.enterFullScreenBackground.alpha = alpha;
     
     if (animated) {
         [UIView commitAnimations];

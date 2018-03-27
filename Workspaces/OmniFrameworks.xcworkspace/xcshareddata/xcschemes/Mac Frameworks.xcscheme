@@ -216,152 +216,15 @@
                ReferencedContainer = "container:../Frameworks/OmniDAV/OmniDAV.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "YES"
-            buildForArchiving = "YES"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "4AA1E7FA08AA764600E2FF6B"
-               BuildableName = "OAUnitTests.xctest"
-               BlueprintName = "OAUnitTests"
-               ReferencedContainer = "container:../Frameworks/OmniAppKit/OmniAppKit.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "YES"
-            buildForArchiving = "YES"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "340D5DB40DAACED300BF27F8"
-               BuildableName = "ODOTests.xctest"
-               BlueprintName = "ODOTests"
-               ReferencedContainer = "container:../Frameworks/OmniDataObjects/OmniDataObjects.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "YES"
-            buildForArchiving = "YES"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "4A4E07A808AA72B10098FF0F"
-               BuildableName = "OFUnitTests.xctest"
-               BlueprintName = "OFUnitTests"
-               ReferencedContainer = "container:../Frameworks/OmniFoundation/OmniFoundation.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "YES"
-            buildForArchiving = "YES"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "4AFE72AA08A02E9D00ED9F2D"
-               BuildableName = "ONUnitTests.xctest"
-               BlueprintName = "ONUnitTests"
-               ReferencedContainer = "container:../Frameworks/OmniNetworking/OmniNetworking.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "YES"
-            buildForArchiving = "YES"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "34EE20D014F0354300722491"
-               BuildableName = "OBUnitTests.xctest"
-               BlueprintName = "OBUnitTests"
-               ReferencedContainer = "container:../Frameworks/OmniBase/OmniBase.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "YES"
-            buildForArchiving = "YES"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "349F978E15DEA87B00D7677C"
-               BuildableName = "ODAVUnitTests.xctest"
-               BlueprintName = "ODAVUnitTests"
-               ReferencedContainer = "container:../Frameworks/OmniDAV/OmniDAV.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "YES"
-            buildForArchiving = "YES"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "34AFADA7164B1401009E39AB"
-               BuildableName = "OFXUnitTests.xctest"
-               BlueprintName = "OFXUnitTests"
-               ReferencedContainer = "container:../Frameworks/OmniFileExchange/OmniFileExchange.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
       buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      language = ""
       shouldUseLaunchSchemeArgsEnv = "YES">
       <Testables>
-         <TestableReference
-            skipped = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "34EE20D014F0354300722491"
-               BuildableName = "OBUnitTests.xctest"
-               BlueprintName = "OBUnitTests"
-               ReferencedContainer = "container:../Frameworks/OmniBase/OmniBase.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
-         <TestableReference
-            skipped = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "4AA1E7FA08AA764600E2FF6B"
-               BuildableName = "OAUnitTests.xctest"
-               BlueprintName = "OAUnitTests"
-               ReferencedContainer = "container:../Frameworks/OmniAppKit/OmniAppKit.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
-         <TestableReference
-            skipped = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "340D5DB40DAACED300BF27F8"
-               BuildableName = "ODOTests.xctest"
-               BlueprintName = "ODOTests"
-               ReferencedContainer = "container:../Frameworks/OmniDataObjects/OmniDataObjects.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
-         <TestableReference
-            skipped = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "4A4E07A808AA72B10098FF0F"
-               BuildableName = "OFUnitTests.xctest"
-               BlueprintName = "OFUnitTests"
-               ReferencedContainer = "container:../Frameworks/OmniFoundation/OmniFoundation.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
       </Testables>
       <MacroExpansion>
          <BuildableReference
@@ -379,6 +242,7 @@
       buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      language = ""
       launchStyle = "0"
       useCustomWorkingDirectory = "NO"
       ignoresPersistentStateOnLaunch = "NO"

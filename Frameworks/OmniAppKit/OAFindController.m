@@ -264,7 +264,7 @@ RCS_ID("$Id$")
 	return;
     
     @try {
-	NSPasteboard *findPasteboard = [NSPasteboard pasteboardWithName:NSFindPboard];
+	NSPasteboard *findPasteboard = [NSPasteboard pasteboardWithName: NSPasteboardNameFind];
 	[findPasteboard declareTypes:[NSArray arrayWithObject:NSStringPboardType] owner:nil];
 	[findPasteboard setString:string forType:NSStringPboardType];
     } @catch (NSException *exc) {
@@ -277,7 +277,7 @@ RCS_ID("$Id$")
     NSString *findText = nil;
     
     @try {
-	NSPasteboard *findPasteboard = [NSPasteboard pasteboardWithName:NSFindPboard];
+	NSPasteboard *findPasteboard = [NSPasteboard pasteboardWithName: NSPasteboardNameFind];
 	if ([findPasteboard availableTypeFromArray:[NSArray arrayWithObject:NSStringPboardType]])
 	    findText = [findPasteboard stringForType:NSStringPboardType];
     } @catch (NSException *exc) {

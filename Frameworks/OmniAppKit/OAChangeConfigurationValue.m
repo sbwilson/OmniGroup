@@ -108,7 +108,7 @@ BOOL OAHandleChangeConfigurationValueURL(NSURL *url, NSError * __autoreleasing *
 {
     NSURL *url = [OFConfigurationValue URLForConfigurationValues:[OFConfigurationValue configurationValues]];
     
-    NSPasteboard *pboard = [NSPasteboard pasteboardWithName:NSGeneralPboard];
+    NSPasteboard *pboard = [NSPasteboard pasteboardWithName: NSPasteboardNameGeneral];
     [pboard declareTypes:@[NSURLPboardType] owner:nil];
     [url writeToPasteboard:pboard];
 }

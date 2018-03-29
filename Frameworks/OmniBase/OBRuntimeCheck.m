@@ -741,18 +741,18 @@ static void _checkForMethodsInDeprecatedProtocols(Class cls, BOOL isSystemClass)
     }
 
     //        // Several Cocoa classes have problems.  Radar 6333766.
-    //        const char *name = class_getName(cls);
-    //        if (strcmp(name, "ISDComplainer") == 0 ||
-    //            strcmp(name, "ILMediaObjectsViewController") == 0 ||
-    //            strcmp(name, "ABBackupManager") == 0 ||
-    //            strcmp(name, "ABPeopleController") == 0 ||
-    //            strcmp(name, "ABAddressBook") == 0 ||
-    //            strcmp(name, "ABPhoneFormatsPreferencesModule") == 0 ||
-    //            strcmp(name, "GFNodeManagerView") == 0 ||
-    //            strcmp(name, "FileReference") == 0 || // IOBluetooth has non-prefixed class that implements deprecated API, 17362328
-    //            strcmp(name, "QCPatchActor") == 0)
-    //	    continue;
-    //
+	const char *name = class_getName(cls);
+	if (strcmp(name, "ISDComplainer") == 0 ||
+		strcmp(name, "ILMediaObjectsViewController") == 0 ||
+		strcmp(name, "ABBackupManager") == 0 ||
+		strcmp(name, "ABPeopleController") == 0 ||
+		strcmp(name, "ABAddressBook") == 0 ||
+		strcmp(name, "ABPhoneFormatsPreferencesModule") == 0 ||
+		strcmp(name, "GFNodeManagerView") == 0 ||
+		strcmp(name, "FileReference") == 0 || // IOBluetooth has non-prefixed class that implements deprecated API, 17362328
+		strcmp(name, "QCPatchActor") == 0)
+	return;
+	
     _checkForDeprecatedMethodsInClass(cls, DeprecatedInstanceSelectors, NO/*isClassMethod*/);
     _checkForDeprecatedMethodsInClass(object_getClass(cls), DeprecatedClassSelectors, YES/*isClassMethod*/);
 }

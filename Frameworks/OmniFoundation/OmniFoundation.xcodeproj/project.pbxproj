@@ -2358,12 +2358,10 @@
 		34F16B24194F6C3200AD9C4D /* OFUnitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OFUnitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		34F16B35194F6C6100AD9C4D /* Omni-Application-Common-AppStore.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Omni-Application-Common-AppStore.xcconfig"; sourceTree = "<group>"; };
 		34F16B36194F6C6100AD9C4D /* Omni-Application-Common-MacAppStore.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Omni-Application-Common-MacAppStore.xcconfig"; sourceTree = "<group>"; };
-		34F16B37194F6C6100AD9C4D /* Omni-Application-Common-MacAppStorePro.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Omni-Application-Common-MacAppStorePro.xcconfig"; sourceTree = "<group>"; };
 		34F16B38194F6C6100AD9C4D /* Omni-Application-Common-OmniStore.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Omni-Application-Common-OmniStore.xcconfig"; sourceTree = "<group>"; };
 		34F16B39194F6C6100AD9C4D /* Omni-Application-Common-OmniStore.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Omni-Application-Common-OmniStore.xcconfig"; sourceTree = "<group>"; };
 		34F16B3A194F6C6100AD9C4D /* Omni-Global-Common-AppStore.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Omni-Global-Common-AppStore.xcconfig"; sourceTree = "<group>"; };
 		34F16B3B194F6C6100AD9C4D /* Omni-Global-Common-MacAppStore.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Omni-Global-Common-MacAppStore.xcconfig"; sourceTree = "<group>"; };
-		34F16B3C194F6C6100AD9C4D /* Omni-Global-Common-MacAppStorePro.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Omni-Global-Common-MacAppStorePro.xcconfig"; sourceTree = "<group>"; };
 		34F16B3D194F6C6100AD9C4D /* Omni-Global-Common-OmniStore.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Omni-Global-Common-OmniStore.xcconfig"; sourceTree = "<group>"; };
 		34F16B3F194F6C6100AD9C4D /* Touch-Bundle-Common.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Touch-Bundle-Common.xcconfig"; sourceTree = "<group>"; };
 		34F16B41194F6C6100AD9C4D /* Touch-Bundle-Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Touch-Bundle-Debug.xcconfig"; sourceTree = "<group>"; };
@@ -3770,7 +3768,6 @@
 			children = (
 				34F16B35194F6C6100AD9C4D /* Omni-Application-Common-AppStore.xcconfig */,
 				34F16B36194F6C6100AD9C4D /* Omni-Application-Common-MacAppStore.xcconfig */,
-				34F16B37194F6C6100AD9C4D /* Omni-Application-Common-MacAppStorePro.xcconfig */,
 				34F16B38194F6C6100AD9C4D /* Omni-Application-Common-OmniStore.xcconfig */,
 				344D08BF1190D48A00264D89 /* Omni-Application-Common.xcconfig */,
 				4A4E080708AA73400098FF0F /* Omni-Application-Debug.xcconfig */,
@@ -3783,7 +3780,6 @@
 				4A4E080B08AA73400098FF0F /* Omni-Framework-Release.xcconfig */,
 				34F16B3A194F6C6100AD9C4D /* Omni-Global-Common-AppStore.xcconfig */,
 				34F16B3B194F6C6100AD9C4D /* Omni-Global-Common-MacAppStore.xcconfig */,
-				34F16B3C194F6C6100AD9C4D /* Omni-Global-Common-MacAppStorePro.xcconfig */,
 				34F16B3D194F6C6100AD9C4D /* Omni-Global-Common-OmniStore.xcconfig */,
 				344D08C21190D48A00264D89 /* Omni-Global-Common.xcconfig */,
 				4AB8F38B08AD0CA100DBB061 /* Omni-Global-Debug.xcconfig */,
@@ -6342,7 +6338,6 @@
 					__text,
 					"$(PRODUCT_NAME).order",
 				);
-				SWIFT_VERSION = 4.0;
 			};
 			name = Debug;
 		};
@@ -6367,7 +6362,6 @@
 					__text,
 					"$(PRODUCT_NAME).order",
 				);
-				SWIFT_VERSION = 4.0;
 			};
 			name = Release;
 		};
@@ -6405,7 +6399,6 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.omnigroup.framework.OmniFoundation;
 				PRODUCT_NAME = OmniFoundation;
-				SWIFT_VERSION = 4.0;
 			};
 			name = Debug;
 		};
@@ -6423,7 +6416,6 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.omnigroup.framework.OmniFoundation;
 				PRODUCT_NAME = OmniFoundation;
-				SWIFT_VERSION = 4.0;
 			};
 			name = Release;
 		};
@@ -6482,7 +6474,6 @@
 					__text,
 					"$(PRODUCT_NAME).order",
 				);
-				SWIFT_VERSION = 4.0;
 			};
 			name = Debug;
 		};
@@ -6507,7 +6498,6 @@
 					__text,
 					"$(PRODUCT_NAME).order",
 				);
-				SWIFT_VERSION = 4.0;
 			};
 			name = Release;
 		};

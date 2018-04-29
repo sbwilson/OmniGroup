@@ -1,4 +1,4 @@
-// Copyright 1997-2017 Omni Development, Inc. All rights reserved.
+// Copyright 1997-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -44,14 +44,6 @@ OBPerformPosing(^{
     oldDisplayIfNeededIMP = (typeof(oldDisplayIfNeededIMP))OBReplaceMethodImplementationWithSelector(self, @selector(displayIfNeeded), @selector(_OA_replacement_displayIfNeeded));
 });
 
-static NSMutableArray * _Nullable zOrder;
-
-- (nullable id)_addToZOrderArray;
-{
-    [zOrder addObject:self];
-    return nil;
-}
-
 + (BOOL)hasTabbedWindowSupport;
 {
     static BOOL _hasTabbedWindowSupport;
@@ -67,10 +59,14 @@ static NSMutableArray * _Nullable zOrder;
 // Note that this will not return miniaturized windows (or any other ordered out window)
 + (NSArray *)windowsInZOrder;
 {
-    zOrder = [[NSMutableArray alloc] init];
-    [[NSApplication sharedApplication] makeWindowsPerform:@selector(_addToZOrderArray) inOrder:YES];
-    NSArray *result = zOrder;
-    zOrder = nil;
+    NSMutableArray *result = [[NSMutableArray alloc] init];
+
+    [[NSApplication sharedApplication] enumerateWindowsWithOptions:NSWindowListOrderedFrontToBack usingBlock:^(NSWindow * _Nonnull window, BOOL * _Nonnull stop) {
+        if (window) {
+            [result addObject:window];
+        }
+    }];
+
     return result;
 }
 
@@ -568,7 +564,7 @@ OBPerformPosing(^{
 #pragma mark -
 
 NSNotificationName const OAWindowUserTabbingPreferenceDidChange = @"OAWindowUserTabbingPreferenceDidChange";
-void *OAWindowUserTabbingPreferenceDidChangeObservationContext = &OAWindowUserTabbingPreferenceDidChangeObservationContext;
+static void *OAWindowUserTabbingPreferenceDidChangeObservationContext = &OAWindowUserTabbingPreferenceDidChangeObservationContext;
 
 @interface OAWinderUserTabbingPreferenceObserver : NSObject {
   @private

@@ -449,7 +449,7 @@ NS_ASSUME_NONNULL_BEGIN
     [_elementStack removeLastObject];
 }
 
-- (void) addElement:(NSString *)elementName childBlock:(void (^)(void))block;
+- (void) addElement:(NSString *)elementName childBlock:(void (__attribute__((noescape)) ^)(void))block;
 {
     [self pushElement:elementName];
     block();

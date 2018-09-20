@@ -277,6 +277,8 @@ static BOOL displayIfNeededBlocksInProgress = NO;
     [self insertTitlebarAccessoryViewController:accessory atIndex:0];
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wobjc-protocol-method-implementation"
 - (NSPoint)convertPointToScreen:(NSPoint)windowPoint;
 {
     NSRect windowRect = (NSRect){.origin = windowPoint, .size = NSZeroSize};
@@ -290,6 +292,7 @@ static BOOL displayIfNeededBlocksInProgress = NO;
     NSRect windowRect = [self convertRectFromScreen:screenRect];
     return windowRect.origin;
 }
+#pragma clang diagnostic pop
 
 /*" Convert a point from a window's base coordinate system to the CoreGraphics global ("screen") coordinate system. "*/
 - (CGPoint)convertBaseToCGScreen:(NSPoint)windowPoint;

@@ -1,4 +1,4 @@
-// Copyright 2014-2017 Omni Development, Inc. All rights reserved.
+// Copyright 2014-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -30,6 +30,163 @@
 RCS_ID("$Id$");
 
 OB_REQUIRE_ARC
+
+
+@interface OFSEncryptingFileManager ()
++ (NSData *)_decryptData:(NSData *)encrypted url:(NSURL *)url documentKey:(OFSDocumentKey *)keyManager error:(NSError **)outError;
+@end
+
+@interface _OFSEncryptingFileManagerReadOperation : NSObject <ODAVAsynchronousOperation>
+
+- initWithURL:(NSURL *)url documentKey:(OFSDocumentKey *)keyManager underlyingOperation:(id <ODAVAsynchronousOperation>)operation;
+- initWithURL:(NSURL *)url error:(NSError *)error;
+
+@property(nonatomic,readonly) NSURL *url;
+@property(nonatomic,readonly) NSMutableData *encryptedData;
+@property(nonatomic,readonly) NSData *resultData;
+
+@end
+
+@implementation _OFSEncryptingFileManagerReadOperation
+{
+    id <ODAVAsynchronousOperation> _operation;
+    OFSDocumentKey *_keyManager;
+    NSError *_error;
+}
+
+- initWithURL:(NSURL *)url documentKey:(OFSDocumentKey *)keyManager underlyingOperation:(id <ODAVAsynchronousOperation>)operation;
+{
+    _operation = operation;
+    _keyManager = [keyManager copy];
+    _url = [url copy];
+
+    __weak _OFSEncryptingFileManagerReadOperation *weakSelf = self;
+    _operation.didFinish = ^(id<ODAVAsynchronousOperation> _Nonnull op, NSError * _Nullable errorOrNil){
+        _OFSEncryptingFileManagerReadOperation *strongSelf = weakSelf;
+        [strongSelf _didFinish:errorOrNil];
+    };
+    _operation.didReceiveData = ^(id<ODAVAsynchronousOperation>  _Nonnull op, NSData * _Nonnull data) {
+        _OFSEncryptingFileManagerReadOperation *strongSelf = weakSelf;
+        [strongSelf _didReceiveData:data];
+    };
+
+    return self;
+}
+
+- initWithURL:(NSURL *)url error:(NSError *)error;
+{
+    _error = [error copy];
+    _url = [url copy];
+
+    return self;
+}
+
+@synthesize shouldRetry = _shouldRetry;
+@synthesize willRetry = _willRetry;
+@synthesize didFinish = _didFinish;
+@synthesize didReceiveData = _didReceiveData;
+@synthesize didReceiveBytes = _didReceiveBytes;
+@synthesize didSendBytes = _didSendBytes;
+
+- (long long)expectedLength;
+{
+    OBPRECONDITION(_operation != nil);
+    return _operation.expectedLength;
+}
+
+- (long long)processedLength;
+{
+    OBPRECONDITION(_operation != nil);
+    return _operation.processedLength;
+}
+
+- (void)cancel;
+{
+    [_operation cancel];
+}
+
+- (void)startWithCallbackQueue:(NSOperationQueue * _Nullable)queue;
+{
+    if (_operation) {
+        [_operation startWithCallbackQueue:queue];
+    } else {
+        OBASSERT(_error);
+
+        // This is a non-HTTP error which we don't retry.
+        typeof(_didFinish) didFinish = _didFinish;
+        [self _clearCallbacks];
+
+        if (didFinish) {
+            if (!queue) {
+                queue = [NSOperationQueue currentQueue];
+            }
+            [queue addOperationWithBlock:^{
+                didFinish(self, _error);
+            }];
+        }
+    }
+}
+
+- (void)_clearCallbacks;
+{
+    _shouldRetry = nil;
+    _willRetry = nil;
+    _didFinish = nil;
+    _didReceiveBytes = nil;
+    _didReceiveData = nil;
+    _didSendBytes = nil;
+}
+
+#pragma mark - NSCopying
+
+- (id)copyWithZone:(NSZone *)zone;
+{
+    return self;
+}
+
+#pragma mark - Private
+
+- (void)_didReceiveData:(NSData *)data;
+{
+    if (_encryptedData == nil) {
+        _encryptedData = [[NSMutableData alloc] init];
+    }
+    [_encryptedData appendData:data];
+}
+
+- (void)_didFinish:(NSError *)errorOrNil;
+{
+    // NOTE: We aren't bridging the shouldRetry support here, but the only place it is currently used is in this class's -asynchronouslyTasteKeySlot:.
+
+    NSError * __autoreleasing error;
+
+    if (errorOrNil) {
+        error = errorOrNil;
+    } else {
+        OBASSERT(_encryptedData);
+
+        NSData *decrypted = [OFSEncryptingFileManager _decryptData:_encryptedData url:_url documentKey:_keyManager error:&error];
+
+        if (_didReceiveData) {
+            // With this block set, we don't "buffer" the data.
+            _didReceiveData(self, decrypted);
+        } else {
+            _resultData = [decrypted copy];
+        }
+    }
+
+    typeof(_didFinish) didFinish = _didFinish;
+    [self _clearCallbacks];
+
+    if (didFinish) {
+        // Here we've been called on the callback queue for the underlying operation and can just directly call the didFinish block.
+        didFinish(self, errorOrNil);
+    }
+}
+
+@end
+
+
 
 @interface OFSEncryptingFileManagerTasteOperation (/* Private interfaces */)
 - (instancetype)initWithOperation:(id <ODAVAsynchronousOperation>)op;
@@ -117,6 +274,22 @@ static BOOL errorIndicatesPlaintext(NSError *err);
     return result;
 }
 
+- (id <ODAVAsynchronousOperation>)asynchronousReadContentsOfURL:(NSURL *)url;
+{
+    OBLog(OFSFileManagerLogger, 2, @"ENCRYPTION operation: read %@", url);
+
+    if ([self maskingFileAtURL:url]) {
+        OBLog(OFSFileManagerLogger, 1, @"    --> masking");
+        NSError * __autoreleasing error;
+        NSString *description = NSLocalizedStringFromTableInBundle(@"Unable to read file.", @"OmniFileStore", OMNI_BUNDLE, @"error description");
+        NSString *reason = [NSString stringWithFormat:NSLocalizedStringFromTableInBundle(@"No such file \"%@\".", @"OmniFileStore", OMNI_BUNDLE, @"error reason"), [url absoluteString]];
+        OFSError(&error, OFSNoSuchFile, description, reason);
+        return [[_OFSEncryptingFileManagerReadOperation alloc] initWithURL:url error:error];
+    }
+
+    return [[_OFSEncryptingFileManagerReadOperation alloc] initWithURL:url documentKey:keyManager underlyingOperation:[underlying asynchronousReadContentsOfURL:url]];
+}
+
 - (NSData *)dataWithContentsOfURL:(NSURL *)url error:(NSError **)outError;
 {
     OBLog(OFSFileManagerLogger, 2, @"ENCRYPTION operation: read %@", url);
@@ -132,7 +305,12 @@ static BOOL errorIndicatesPlaintext(NSError *err);
     NSData *encrypted = [underlying dataWithContentsOfURL:url error:outError];
     if (!encrypted)
         return nil;
-    
+
+    return [[self class] _decryptData:encrypted url:url documentKey:keyManager error:outError];
+}
+
++ (NSData *)_decryptData:(NSData *)encrypted url:(NSURL *)url documentKey:(OFSDocumentKey *)keyManager error:(NSError **)outError;
+{
     unsigned dispositionFlags = [keyManager flagsForFilename:[url lastPathComponent]];
     if (dispositionFlags & OFSDocKeyFlagAlwaysUnencryptedRead) {
         OBLog(OFSFileManagerLogger, 1, @"    --> always unencrypted read");
@@ -215,7 +393,7 @@ static BOOL errorIndicatesPlaintext(NSError *err);
 {
     if ([self maskingFileAtURL:url]) {
         NSString *description = NSLocalizedStringFromTableInBundle(@"Cannot create directory.", @"OmniFileStore", OMNI_BUNDLE, @"error description");
-        NSString *reason = [NSString stringWithFormat:NSLocalizedStringFromTableInBundle(@"No such directory \"%@\"", @"OmniFileStore", OMNI_BUNDLE, @"error reason")];
+        NSString *reason = [NSString stringWithFormat:NSLocalizedStringFromTableInBundle(@"No such directory \"%@\"", @"OmniFileStore", OMNI_BUNDLE, @"error reason"), [url absoluteString]];
         OFSError(outError, OFSCannotCreateDirectory, description, reason);
         return nil;
     }
@@ -283,7 +461,41 @@ static BOOL errorIndicatesPlaintext(NSError *err);
     /* Attempt to use Range requests for longer files */
     size_t tasteLength = [OFSSegmentDecryptWorker maximumSlotOffset];
     if (file.size > (off_t)(512 + tasteLength) && [underlying respondsToSelector:@selector(asynchronousReadContentsOfFile:range:)]) {
-        readOp = [underlying asynchronousReadContentsOfFile:file range:[NSString stringWithFormat:@"bytes=0-%zu", tasteLength]];
+        NSString *range = [NSString stringWithFormat:@"bytes=0-%zu", tasteLength];
+
+        readOp = [underlying asynchronousReadContentsOfFile:file range:range];
+
+        __block NSUInteger retries = 0;
+
+        // See also the notes on -[ODAVConnection asynchronousGetContentsOfURL:withETag:range:] about why we might get a 412 Precondition failure here.
+        readOp.shouldRetry = ^id <ODAVAsynchronousOperation>(id <ODAVAsynchronousOperation> op, NSHTTPURLResponse *response){
+            if (response.statusCode != ODAV_HTTP_PRECONDITION_FAILED) {
+                return nil;
+            }
+
+            // Has the source been modified during this second?
+            NSString *DateHeader = [response allHeaderFields][@"Date"];
+            NSString *ModifiedHeader = [response allHeaderFields][@"Last-Modified"];
+            if (![DateHeader isEqual:ModifiedHeader]) {
+                return nil;
+            }
+
+            // Did the server indicate this by returning a weak validator?
+            NSString *ETag = [response allHeaderFields][@"ETag"];
+            if (![ETag isEqualToString:[NSString stringWithFormat:@"W/%@", file.ETag]]) {
+                return nil;
+            }
+
+            // Don't flood the server; wait a bit before trying again.
+            if (retries > 5) {
+                OBASSERT_NOT_REACHED("Continual modification of the resource, or server Date header not updating?");
+                return nil;
+            }
+            retries++;
+
+            usleep(250000); // Wait a 1/4 second
+            return [underlying asynchronousReadContentsOfFile:file range:range];
+        };
     }
     
     if (!readOp) {
@@ -487,61 +699,15 @@ static BOOL errorIndicatesPlaintext(NSError *err);
     
     ODAVOperation *reader = _readerOp;
 
+    reader.willRetry = ^(id <ODAVAsynchronousOperation> __nonnull original, id <ODAVAsynchronousOperation> __nonnull retry){
+        OBASSERT(original == _readerOp);
+
+        _readerOp = retry;
+        OBASSERT(retry.didFinish != NULL); // The didFinish we assigned to the original should have been copied over.
+    };
+
     reader.didFinish = ^(id <ODAVAsynchronousOperation> op, NSError *errorOrNil){
-        OBINVARIANT(op == _readerOp);
-        OBPRECONDITION([self isExecuting]);
-        _readerOp = nil;
-        BOOL gotSubrange = NO;
-        
-        /* Validate the range response */
-        if (!errorOrNil && [op respondsToSelector:@selector(statusCode)]) {
-            ODAVOperation *davOp = (ODAVOperation *)op;
-            NSInteger statusCode = [davOp statusCode];
-            if (statusCode == ODAV_HTTP_OK /* 200 */) {
-                // OK
-            } else if (statusCode == ODAV_HTTP_PARTIAL_CONTENT /* 206 */) {
-                NSString *header = [davOp valueForResponseHeader:@"Content-Range"];
-                unsigned long long firstByte, lastByte;
-                gotSubrange = YES;
-                if (ODAVParseContentRangeBytes(header, &firstByte, &lastByte, NULL)) {
-                    if (firstByte != 0 || lastByte < firstByte || lastByte+1 != [davOp.resultData length]) {
-                        errorOrNil = [NSError errorWithDomain:ODAVErrorDomain code:ODAVInvalidPartialResponse userInfo:@{ @"Content-Range": header }];
-                    }
-                } else {
-                    errorOrNil = [NSError errorWithDomain:ODAVErrorDomain code:ODAVInvalidPartialResponse userInfo:@{ @"Content-Range": (header?header:@"(missing)") }];
-                }
-            } else {
-                errorOrNil = [NSError errorWithDomain:ODAVErrorDomain code:ODAVInvalidPartialResponse userInfo:@{ @"statusCode": @(statusCode) }];
-            }
-        }
-        
-        if (errorOrNil) {
-            _storedError = errorOrNil;
-        } else {
-            NSError * __autoreleasing error = nil;
-            NSRange blobLocation = { 0, 0 };
-            if (![OFSSegmentDecryptWorker parseHeader:op.resultData truncated:gotSubrange wrappedInfo:&blobLocation dataOffset:NULL error:&error]) {
-                
-                // We couldn't parse the encryption header. See if there was a flag indicating that we are allowed to let old plaintext files show through. If so, and this is one such, then we've tasted that slot.
-                int maskSlot = self.plaintextSlot;
-                if (maskSlot >= 0 && errorIndicatesPlaintext(error)) {
-                    _storedKeySlot = maskSlot;
-                } else {
-                    _storedError = error;
-                }
-            } else {
-                /* Get the key slot index from this file. This slightly breaks the encapsulation of OFSDocumentKey; elsewhere, the fact that the key blob starts with a key slot index is internal to that class. But the fact that key slots *exist* is part of its API, so this isn't too bad. */
-                if (blobLocation.length >= 2) {
-                    char buf[2];
-                    [op.resultData getBytes:buf range:(NSRange){blobLocation.location, 2}];
-                    _storedKeySlot = OSReadBigInt16(buf, 0);
-                } else {
-                    _storedError = [NSError errorWithDomain:OFSErrorDomain code:OFSEncryptionBadFormat userInfo:@{ NSLocalizedFailureReasonErrorKey: @"undersized info field"}];
-                }
-            }
-        }
-        
-        [self finish];
+        [self _didFinish:op error:errorOrNil];
     };
 
     [reader startWithCallbackQueue:nil];
@@ -551,6 +717,64 @@ static BOOL errorIndicatesPlaintext(NSError *err);
 {
     [_readerOp cancel];
     [super cancel];
+}
+
+- (void)_didFinish:(id <ODAVAsynchronousOperation>)op error:(NSError *)errorOrNil;
+{
+    OBINVARIANT(op == _readerOp);
+    OBPRECONDITION([self isExecuting]);
+    _readerOp = nil;
+    BOOL gotSubrange = NO;
+
+    /* Validate the range response */
+    if (!errorOrNil && [op respondsToSelector:@selector(statusCode)]) {
+        ODAVOperation *davOp = (ODAVOperation *)op;
+        NSInteger statusCode = [davOp statusCode];
+        if (statusCode == ODAV_HTTP_OK /* 200 */) {
+            // OK
+        } else if (statusCode == ODAV_HTTP_PARTIAL_CONTENT /* 206 */) {
+            NSString *header = [davOp valueForResponseHeader:@"Content-Range"];
+            unsigned long long firstByte, lastByte;
+            gotSubrange = YES;
+            if (ODAVParseContentRangeBytes(header, &firstByte, &lastByte, NULL)) {
+                if (firstByte != 0 || lastByte < firstByte || lastByte+1 != [davOp.resultData length]) {
+                    errorOrNil = [NSError errorWithDomain:ODAVErrorDomain code:ODAVInvalidPartialResponse userInfo:@{ @"Content-Range": header }];
+                }
+            } else {
+                errorOrNil = [NSError errorWithDomain:ODAVErrorDomain code:ODAVInvalidPartialResponse userInfo:@{ @"Content-Range": (header?header:@"(missing)") }];
+            }
+        } else {
+            errorOrNil = [NSError errorWithDomain:ODAVErrorDomain code:ODAVInvalidPartialResponse userInfo:@{ @"statusCode": @(statusCode) }];
+        }
+    }
+
+    if (errorOrNil) {
+        _storedError = errorOrNil;
+    } else {
+        NSError * __autoreleasing error = nil;
+        NSRange blobLocation = { 0, 0 };
+        if (![OFSSegmentDecryptWorker parseHeader:op.resultData truncated:gotSubrange wrappedInfo:&blobLocation dataOffset:NULL error:&error]) {
+
+            // We couldn't parse the encryption header. See if there was a flag indicating that we are allowed to let old plaintext files show through. If so, and this is one such, then we've tasted that slot.
+            int maskSlot = self.plaintextSlot;
+            if (maskSlot >= 0 && errorIndicatesPlaintext(error)) {
+                _storedKeySlot = maskSlot;
+            } else {
+                _storedError = error;
+            }
+        } else {
+            /* Get the key slot index from this file. This slightly breaks the encapsulation of OFSDocumentKey; elsewhere, the fact that the key blob starts with a key slot index is internal to that class. But the fact that key slots *exist* is part of its API, so this isn't too bad. */
+            if (blobLocation.length >= 2) {
+                char buf[2];
+                [op.resultData getBytes:buf range:(NSRange){blobLocation.location, 2}];
+                _storedKeySlot = OSReadBigInt16(buf, 0);
+            } else {
+                _storedError = [NSError errorWithDomain:OFSErrorDomain code:OFSEncryptionBadFormat userInfo:@{ NSLocalizedFailureReasonErrorKey: @"undersized info field"}];
+            }
+        }
+    }
+
+    [self finish];
 }
 
 @end

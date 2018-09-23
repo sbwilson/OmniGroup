@@ -1,4 +1,4 @@
-// Copyright 2004-2017 Omni Development, Inc. All rights reserved.
+// Copyright 2004-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -16,14 +16,17 @@ NS_ASSUME_NONNULL_BEGIN
 + (OFVersionNumber *)mainBundleVersionNumber;
 + (OFVersionNumber *)userVisibleOperatingSystemVersionNumber;
 
++ (OFVersionNumber *)versionForBundle:(NSBundle *)bundle;
+
 // Convenience methods for testing the current operating system.  One nice thing about using these (rather than looking up the operating system and comparing it by hand) is that we can remove these methods when they become irrelevant (e.g. when we require Snow Leopard), helping us find and update any code which is unnecessarily trying to support an older operating system.
 #if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
-+ (BOOL)isOperatingSystem110OrLater;
-+ (BOOL)isOperatingSystem111OrLater;
++ (BOOL)isOperatingSystem112OrLater;
++ (BOOL)isOperatingSystem113OrLater;
++ (BOOL)isOperatingSystem114OrLater;
++ (BOOL)isOperatingSystem120OrLater;
 #else
-+ (BOOL)isOperatingSystemHighSierraOrLater; // 10.13
-+ (BOOL)isOperatingSystemSierraOrLater; // 10.12
-+ (BOOL)isOperatingSystemSierraWithTouchBarOrLater; // 10.12.1
++ (BOOL)isOperatingSystemMojaveOrLater; // 10.14
++ (BOOL)isOperatingSystemLikelyToPanicWithCrayonColorPicker;  // 10.13.6, RADAR# 42359231 <bug:///163187> (Mac-OmniGraffle Crasher: [radar and tsi] System hangs when making changes in Pencil Color Picker [10.13.6] (crayon))
 #endif
 
 - (nullable instancetype)initWithVersionString:(NSString *)versionString;

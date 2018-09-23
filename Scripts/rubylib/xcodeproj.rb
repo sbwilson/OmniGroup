@@ -273,6 +273,12 @@ module Xcode
       "AppleScript"
     end
   end
+
+  class PBXJavaArchiveBuildPhase < BuildPhase
+    def self.kind_name
+      "Build Java Resources"
+    end
+  end
   
 end
 
@@ -409,7 +415,7 @@ module Xcode
       when '<group>'
         groupID = @containingGroup[key.to_s]
         fail "no group contains child ref #{key}, died" unless groupID
-        base = resolvepath(groupID)
+        base = resolvepath(groupID, resolve_variables)
       when '<absolute>'
         base = '/';
       else

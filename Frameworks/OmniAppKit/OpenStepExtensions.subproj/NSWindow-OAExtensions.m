@@ -6,6 +6,8 @@
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
 
 #import <OmniAppKit/NSWindow-OAExtensions.h>
+
+#import <OmniAppKit/NSResponder-OAExtensions.h>
 #import <OmniAppKit/NSView-OAExtensions.h>
 #import <OmniAppKit/OAViewPicker.h>
 
@@ -277,23 +279,6 @@ static BOOL displayIfNeededBlocksInProgress = NO;
     [self insertTitlebarAccessoryViewController:accessory atIndex:0];
 }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wobjc-protocol-method-implementation"
-- (NSPoint)convertPointToScreen:(NSPoint)windowPoint;
-{
-    NSRect windowRect = (NSRect){.origin = windowPoint, .size = NSZeroSize};
-    NSRect screenRect = [self convertRectToScreen:windowRect];
-    return screenRect.origin;
-}
-
-- (NSPoint)convertPointFromScreen:(NSPoint)screenPoint;
-{
-    NSRect screenRect = (NSRect){.origin = screenPoint, .size = NSZeroSize};
-    NSRect windowRect = [self convertRectFromScreen:screenRect];
-    return windowRect.origin;
-}
-#pragma clang diagnostic pop
-
 /*" Convert a point from a window's base coordinate system to the CoreGraphics global ("screen") coordinate system. "*/
 - (CGPoint)convertBaseToCGScreen:(NSPoint)windowPoint;
 {
@@ -352,6 +337,12 @@ static BOOL displayIfNeededBlocksInProgress = NO;
         OBASSERT_NOT_REACHED("Object %@ does not respond to -_subtreeDescription; either the debugging method is gone or it is not an NSView", view);
 }
 
+- (void)_logResponderChainDescriptionMenuAction:(id)sender;
+{
+    NSView *view = [sender representedObject];
+    NSLog(@"%@", [view responderChainDescription]);
+}
+
 - (void)_copyAddressMenuAction:(id)sender;
 {
     NSString *addressString = [NSString stringWithFormat:@"%p", [sender representedObject]];
@@ -363,7 +354,7 @@ static BOOL displayIfNeededBlocksInProgress = NO;
 - (BOOL)_showMenuForPickedView:(NSView *)pickedView atScreenLocation:(NSPoint)point;
 {
     static NSMenu *constraintsOptions;
-    static NSMenuItem *headerItem, *frameItem, *alignmentRectItem, *intrinsicContentSizeItem, *ambiguousItem, *translatesItem, *horizontalItem, *verticalItem, *pickSuperviewItem, *logSubtreeItem, *copyAddressItem;
+    static NSMenuItem *headerItem, *frameItem, *alignmentRectItem, *intrinsicContentSizeItem, *ambiguousItem, *translatesItem, *horizontalItem, *verticalItem, *pickSuperviewItem, *logSubtreeItem, *logChainItem, *copyAddressItem;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         constraintsOptions = [[NSMenu alloc] initWithTitle:OBUnlocalized(@"View Debugging")];
@@ -407,6 +398,9 @@ static BOOL displayIfNeededBlocksInProgress = NO;
         
         logSubtreeItem = [constraintsOptions addItemWithTitle:OBUnlocalized(@"Log subview hierarchy") action:@selector(_logSubtreeDescriptionMenuAction:) keyEquivalent:@""];
         [logSubtreeItem setEnabled:YES];
+        
+        logChainItem = [constraintsOptions addItemWithTitle:OBUnlocalized(@"Log responder chain") action:@selector(_logResponderChainDescriptionMenuAction:) keyEquivalent:@""];
+        [logChainItem setEnabled:YES];
         
         copyAddressItem = [constraintsOptions addItemWithTitle:OBUnlocalized(@"Copy address") action:@selector(_copyAddressMenuAction:) keyEquivalent:@""];
         [copyAddressItem setEnabled:YES];
@@ -505,43 +499,7 @@ static void *RecalculateKeyViewLoopScheduledKey = &RecalculateKeyViewLoopSchedul
 
 #pragma mark -
 
-static BOOL (*original_validateUserInterfaceItem)(NSWindow *self, SEL _cmd, id <NSValidatedUserInterfaceItem>) = NULL;
-
 @implementation NSWindow (NSWindowTabbingExtensions)
-
-OBPerformPosing(^{
-    Class self = objc_getClass("NSWindow");
-    original_validateUserInterfaceItem = (typeof(original_validateUserInterfaceItem))OBReplaceMethodImplementation(self, @selector(validateUserInterfaceItem:), (IMP)[[self class] instanceMethodForSelector:@selector(_replacement_validateUserInterfaceItem:)]);
-});
-
-- (BOOL)_replacement_validateUserInterfaceItem:(id <NSValidatedUserInterfaceItem>)item;
-{
-    BOOL result = original_validateUserInterfaceItem(self, _cmd, item);
-    
-    // AppKit puts a checkmark on the menu item title, rather than toggling between Show/Hide as is the convention for other AppKit provided menu items.
-    // rdar://problem/28569216
-    //
-    // This is fixed on 10.13 and later
-    BOOL isHighSierraOrLater = [OFVersionNumber isOperatingSystemHighSierraOrLater];
-    if (!isHighSierraOrLater && item.action == @selector(toggleTabBar:)) {
-        // Why doesn't NSValidatedUserInterfaceItem conform to NSObject?
-        if ([(id)item isKindOfClass:[NSMenuItem class]]) {
-            NSMenuItem *menuItem = OB_CHECKED_CAST(NSMenuItem, item);
-            NSString *title = nil;
-            
-            if (menuItem.state) {
-                title = NSLocalizedStringFromTableInBundle(@"Hide Tab Bar", @"OmniAppKit", OMNI_BUNDLE, "menu item title");
-            } else {
-                title = NSLocalizedStringFromTableInBundle(@"Show Tab Bar", @"OmniAppKit", OMNI_BUNDLE, "menu item title");
-            }
-
-            menuItem.title = title;
-            menuItem.state = 0;
-        }
-    }
-    
-    return result;
-}
 
 - (void)withTabbingMode:(NSWindowTabbingMode)tabbingMode performBlock:(void (^)(void))block;
 {
@@ -549,13 +507,11 @@ OBPerformPosing(^{
     
     if ([[self class] hasTabbedWindowSupport]) {
         NSWindowTabbingMode savedTabbingMode = self.tabbingMode;
-        NSDisableScreenUpdates();
         @try {
             self.tabbingMode = tabbingMode;
             block();
         } @finally {
             self.tabbingMode = savedTabbingMode;
-            NSEnableScreenUpdates();
         }
     } else {
         block();

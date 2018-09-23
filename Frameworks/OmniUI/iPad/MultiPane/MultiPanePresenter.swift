@@ -16,7 +16,7 @@
     
     @objc optional func willPresent(viewController: UIViewController)
     
-    @objc optional func navigationAnimationController(for operation: UINavigationControllerOperation, animatingTo toVC: UIViewController, from fromVC: UIViewController) -> UIViewControllerAnimatedTransitioning?
+    @objc optional func navigationAnimationController(for operation: UINavigationController.Operation, animatingTo toVC: UIViewController, from fromVC: UIViewController) -> UIViewControllerAnimatedTransitioning?
     
     @objc optional func animationsToPerformAlongsideEmbeddedSidebarShowing(atLocation: MultiPaneLocation, withWidth: CGFloat) -> (()->Void)?
     
@@ -40,6 +40,13 @@ enum MultiPanePresentationMode {
     case overlaid
 }
 
+extension UIImage {
+    convenience init?(multiPanePinButtonPinnedState pinned: Bool) {
+        let name = pinned ? "OUIMultiPanePinDownButton" : "OUIMultiPanePinUpButton"
+        self.init(named: name, in: OmniUIBundle, compatibleWith: nil)
+    }
+}
+
 class MultiPanePresenter: NSObject {
    
     private var overlayPresenter: MultiPaneSlidingOverlayPresenter? // keep this around until the presentation has completed, otherwise the overlaid panes will get generic dismiss animation.
@@ -48,22 +55,27 @@ class MultiPanePresenter: NSObject {
     // Doing a live resize of the sidebar seems to result in UIBarButtonItem's with customViews bounding around. Provide an opt out. <bug:///156110> (iOS-OmniPlan Bug: Undo button in the tool bar bounces when opening Inspector and might be related to this crasher)
     @objc public var animatesSidebarLayout: Bool = true
     
-    @objc /**REVIEW**/ lazy var rightPinButton: UIBarButtonItem = {
-        let image = UIImage(named: "OUIMultiPaneRightPinButton", in: OmniUIBundle, compatibleWith: nil)
+    @objc lazy var rightPinButton: UIBarButtonItem = {
+        let image = UIImage(multiPanePinButtonPinnedState: false)
         let button = UIBarButtonItem(image: image, style: .plain, target: self, action: #selector(handlePinButton(_:)))
         button.accessibilityIdentifier = "RightPinButton"
         return button
     }()
     
-    @objc /**REVIEW**/ lazy var leftPinButton: UIBarButtonItem = {
-        let image = UIImage(named: "OUIMultiPaneLeftPinButton", in: OmniUIBundle, compatibleWith: nil)
+    @objc lazy var leftPinButton: UIBarButtonItem = {
+        let image = UIImage(multiPanePinButtonPinnedState: false)
         let button = UIBarButtonItem(image: image, style: .plain, target: self, action: #selector(handlePinButton(_:)))
         button.accessibilityIdentifier = "LeftPinButton"
         return button
     }()
     
     @objc /**REVIEW**/ func present(pane: Pane, fromViewController presentingController: UIViewController, usingDisplayMode displayMode: MultiPaneDisplayMode, interactivelyWith gesture: UIScreenEdgePanGestureRecognizer? = nil, animated: Bool = true) {
-        
+
+        // Ensure layout is up to date before we build up the animation and new constraints
+        if animated {
+            presentingController.view.layoutIfNeeded()
+        }
+
         switch (pane.presentationMode, displayMode) {
         case (.overlaid, _):
             self.overlay(pane: pane, presentingController: presentingController, gesture: gesture, animated: animated)
@@ -91,19 +103,23 @@ class MultiPanePresenter: NSObject {
             }
             
             if gesture != nil { return } // TODO: decide if we want to bail here, or try to support this gesture to drive the expand/collapse animation. It might be confusing for users that they can gesture sometimes, but not others.
+
             let operation: MultiPanePresenterOperation = pane.isVisible ? .collapse : .expand
             let animator = pane.sidebarAnimator(forOperation: operation, animate:animatesSidebarLayout)
             var additionalAnimations: (()->())?
+
             if operation == .collapse {
                 additionalAnimations = self.delegate?.animationsToPerformAlongsideEmbeddedSidebarHiding?(atLocation: pane.location, withWidth: pane.width)
             } else {
                 additionalAnimations = self.delegate?.animationsToPerformAlongsideEmbeddedSidebarShowing?(atLocation: pane.location, withWidth: pane.width)
             }
+
             if let additionalAnimations = additionalAnimations {
                 animator.addAnimations {
                     additionalAnimations()
                 }
             }
+
             self.animate(pane: pane, withAnimator: animator, forOperation: operation)
             
             break
@@ -219,7 +235,7 @@ class MultiPanePresenter: NSObject {
     
     private func navigate(to pane: Pane, presentingController: UIViewController, gesture: UIScreenEdgePanGestureRecognizer?, animated: Bool) {
         // FIXME: instead of assuming the current child controller, should we delegate back for the pane we want to use instead?
-        guard let fromController = presentingController.childViewControllers.first else {
+        guard let fromController = presentingController.children.first else {
             assertionFailure("Expected a controller to exist prior to navigation")
             return
         }
@@ -250,7 +266,7 @@ class MultiPanePresenter: NSObject {
             break
         }
         
-        let animationOperation: UINavigationControllerOperation = (operation == .pop ? .pop : .push)
+        let animationOperation: UINavigationController.Operation = (operation == .pop ? .pop : .push)
         let animation = self.delegate?.navigationAnimationController?(for: animationOperation, animatingTo: pane.viewController, from: fromController)
         
         let transitionContext = MultiPaneNavigationTransitionContext(fromViewController: fromController, toViewController: pane.viewController, operation: animationOperation, animator: animation)
@@ -383,6 +399,7 @@ extension MultiPaneAnimator {
                 assertionFailure("unexpected pane location for expand/collapse animation \(location)")
             }
         }
+
         if (animate) {
             animator.addAnimations {
                 superview.layoutIfNeeded()

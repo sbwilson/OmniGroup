@@ -1,4 +1,4 @@
-// Copyright 2004-2017 Omni Development, Inc. All rights reserved.
+// Copyright 2004-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -53,9 +53,8 @@ RCS_ID("$Id$")
             stringValue = nil;
         id oldValue = [preferences valueForKey:key];
         id defaultValue = [[preferences preferenceForKey:key] defaultObjectValue];
-        id coercedValue = [OFPreference coerceStringValue:stringValue toTypeOfPropertyListValue:defaultValue];
+        id coercedValue = [OFPreference coerceStringValue:stringValue toTypeOfPropertyListValue:defaultValue error:outError];
         if (coercedValue == nil) {
-            NSLog(@"Unable to update %@: failed to convert '%@' to the same type as '%@' (%@)", key, stringValue, defaultValue, [defaultValue class]);
             return NO;
         } else if ([coercedValue isNull]) {
             // Reset this setting
@@ -85,7 +84,7 @@ RCS_ID("$Id$")
 	    class = NSClassFromString(className);
 	    if (!class)
 		NSLog(@"Unable to find class '%@'", className);
-	    if (!OBClassIsSubclassOfClass(class, [OAAboutPanelController class]))
+	    else if (!OBClassIsSubclassOfClass(class, [OAAboutPanelController class]))
 		class = Nil;
 	}
 	if (!class)

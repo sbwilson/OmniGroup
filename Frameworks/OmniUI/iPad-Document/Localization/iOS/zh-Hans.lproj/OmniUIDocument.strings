@@ -1,5 +1,5 @@
 /* Filename appendage to indicate file is a copy of a file that has been moved to a different location */
-" (Copy)" = " （复制）";
+" (Copy)" = "（拷贝）";
 
 /* bytes */
 "%@ B" = "%@ B";
@@ -41,7 +41,7 @@
 "1 Item Selected" = "已选择 1 个项目";
 
 /* replace document description */
-"A document with the name \"%@\" already exists. Do you want to replace it? This cannot be undone." = "已存在名称为“%@”的附件。 是否要予以替换？ 此操作无法撤销。";
+"A document with the name \"%@\" already exists. Do you want to replace it? This cannot be undone." = "已存在名称为“%@”的附件。是否要予以替换？此操作无法撤销。";
 
 /* Omni Sync Server account info button title */
 "Account Info" = "帐户信息";
@@ -77,7 +77,7 @@
 "Cannot Duplicate Item" = "无法复制项目";
 
 /* item not fully downloaded error title */
-"Cannot Export Item" = "无法输出项目";
+"Cannot Export Item" = "无法导出项目";
 
 /* email action description */
 "Choose a format for emailing \"%@\":" = "选择格式以邮寄“%@”：";
@@ -119,13 +119,13 @@
 "Connecting" = "连接";
 
 /* Menu option in the document picker view */
-"Copy as Image" = "复制为图像";
+"Copy as Image" = "拷贝为图像";
 
 /* gear menu item */
-"Copy from WebDAV" = "从 WebDAV 复制";
+"Copy from WebDAV" = "从 WebDAV 拷贝";
 
 /* gear menu item */
-"Copy from…" = "复制自…";
+"Copy from…" = "拷贝自…";
 
 /* moved aside custom sample document name */
 "CustomizedSampleDocumentName" = "%@ 自定义";
@@ -161,7 +161,7 @@
 "Document Updated" = "文稿已更新";
 
 /* Toolbar button title for returning to list of documents. */
-"Documents <back button>" = "文稿";
+"Documents <back button>" = "文档";
 
 /* Duplicate document preview action title.
    Duplicate toolbar item accessibility label. */
@@ -197,19 +197,19 @@
    Export toolbar item accessibility label. */
 
 
-"Export" = "输出";
+"Export" = "导出";
 
 /* export to description */
 "Export \"%@\" as:" = "将“%@”导出为:";
 
 /* export action description */
-"Export \"%@\" to %@ as:" = "将“%1$@”输出至 %2$@ 的方式：";
+"Export \"%@\" to %@ as:" = "将“%1$@”导出至 %2$@ 的方式：";
 
 /* Menu option in the document picker view */
 "Export to WebDAV" = "导出至 WebDAV";
 
 /* Export document preview action title. */
-"Export…" = "输出…";
+"Export…" = "导出…";
 
 /* finished */
 "Finished" = "已完成";
@@ -218,7 +218,7 @@
 "Folder" = "文件夹";
 
 /* import sheet title */
-"Import" = "输入";
+"Import" = "导入";
 
 /* Info item accessibility label */
 "Info" = "信息";
@@ -261,7 +261,7 @@
 "Move to..." = "移至…";
 
 /* Move document preview action title. */
-"Move…" = "移动…";
+"Move…" = "移动...";
 
 /* Base name for newly created documents. This will have an number appended to it to make it unique. */
 "My Document" = "我的文稿";
@@ -447,16 +447,19 @@
 "Template:" = "模板：";
 
 /* Discard unsynced edits dialog: message format */
-"The \"%@\" account has %ld edited documents which have not yet been synced up to the cloud. Do you wish to discard those edits?" = "“%1$@”帐户拥有 %2$ld 篇未同步至云的已编辑文稿。 您是否希望放弃这些编辑？";
+"The \"%@\" account has %ld edited documents which have not yet been synced up to the cloud. Do you wish to discard those edits?" = "“%1$@”帐户拥有 %2$ld 篇未同步至云的已编辑文稿。您是否希望放弃这些编辑？";
 
 /* Discard unsynced edits dialog: message format */
-"The \"%@\" account has an edited document which has not yet been synced up to the cloud. Do you wish to discard those edits?" = "“%@”帐户拥有一篇未同步至云的已编辑文稿。 您是否希望放弃这些编辑？";
+"The \"%@\" account has an edited document which has not yet been synced up to the cloud. Do you wish to discard those edits?" = "“%@”帐户拥有一篇未同步至云的已编辑文稿。您是否希望放弃这些编辑？";
 
 /* Discard unsynced edits dialog: message format */
 "The \"%@\" account may have edited documents which have not yet been synced up to the cloud. Do you wish to discard any local edits?" = "“%@”帐户可能已编辑过未同步至云的文稿。您是否希望放弃所有本地编辑？";
 
 /* dialog box title when prompting for the password/passphrase for an encrypted document - parameter is the display-name of the file being opened */
 "The document \"%@\" requires a password to open." = "文稿“%@”需要密码才能打开。";
+
+/* dialog box title when prompting for the password/passphrase for an encrypted document - parameter is the display-name of the file being opened */
+"The document requires a password to open." = "此文稿需要密码才能打开。";
 
 /* Error description for a document operation failing due to a missing file. */
 "The operation couldn't be completed." = "此操作无法完成。";
@@ -474,7 +477,7 @@
 "This item cannot be duplicated because it is not fully downloaded. Please tap the item and wait for it to download before trying again." = "此项目未完全下载，因而无法复制。再次尝试前，请轻按项目并等待下载。";
 
 /* item not fully downloaded error message */
-"This item cannot be exported because it is not fully downloaded. Please tap the item and wait for it to download before trying again." = "此项目未完全下载，因而无法输出。 再次尝试前，请轻按项目并等待下载。";
+"This item cannot be exported because it is not fully downloaded. Please tap the item and wait for it to download before trying again." = "此项目未完全下载，因而无法导出。 再次尝试前，请轻按项目并等待下载。";
 
 /* sort by title */
 "Title" = "标题";

@@ -167,8 +167,6 @@ static NSString *StandardUserAgentString;
 @interface ODAVConnection (Subclass) <ODAVConnectionSubclass>
 @end
 
-static NSDateFormatter *HttpDateFormatter;
-
 @implementation ODAVConnection
 {
     NSArray *_redirects;
@@ -187,20 +185,6 @@ static NSDateFormatter *HttpDateFormatter;
         OBASSERT([entitlements[@"com.apple.security.network.client"] boolValue]);
     }
 #endif
-
-    
-    NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
-    [dateFormatter setDateFormat:@"EEE, dd MMM yyyy HH:mm:ss 'GMT'"];   /* rfc 1123 */
-    /* reference: http://developer.apple.com/library/ios/#qa/qa2010/qa1480.html */
-    [dateFormatter setLocale:[[NSLocale alloc] initWithLocaleIdentifier:@"en_US_POSIX"]];
-    [dateFormatter setTimeZone:[NSTimeZone timeZoneForSecondsFromGMT:0]];
-    
-    HttpDateFormatter = dateFormatter;
-}
-
-+ (NSDate *)dateFromString:(NSString *)httpDate;
-{
-    return [HttpDateFormatter dateFromString:httpDate];
 }
 
 - init;
@@ -364,7 +348,8 @@ static NSDateFormatter *HttpDateFormatter;
                     
                 // Might have been racing against another creator.
                 if (![makeCollectionError hasUnderlyingErrorDomain:ODAVHTTPErrorDomain code:ODAV_HTTP_METHOD_NOT_ALLOWED] &&
-                    ![makeCollectionError hasUnderlyingErrorDomain:ODAVHTTPErrorDomain code:ODAV_HTTP_CONFLICT]) {
+                    ![makeCollectionError hasUnderlyingErrorDomain:ODAVHTTPErrorDomain code:ODAV_HTTP_CONFLICT] &&
+                    ![makeCollectionError hasUnderlyingErrorDomain:ODAVHTTPErrorDomain code:ODAV_HTTP_FORBIDDEN]) {
                     COMPLETE_AND_RETURN(nil, makeCollectionError);
                 }
                 
@@ -703,30 +688,34 @@ static NSString *ODAVDepthName(ODAVDepth depth)
 
 - (ODAVOperation *)asynchronousGetContentsOfURL:(NSURL *)url; // Returns an unstarted operation
 {
+    return [self asynchronousGetContentsOfURL:url withETag:nil range:nil];
+}
+
+/*
+ NOTE: <https://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html#sec13.3.3> on weak vs. strong validators:
+
+    An entity's modification time, if represented with one-second
+    resolution, could be a weak validator, since it is possible that
+    the resource might be modified twice during a single second.
+
+ That is, if the last modification to a file is in the same second as a If-Match GET, you can get a 412 precondition failure with a ETag header of W/"etag you had".
+
+ */
+- (ODAVOperation *)asynchronousGetContentsOfURL:(NSURL *)url withETag:(nullable NSString *)ETag range:(nullable NSString *)range;
+{
     DEBUG_DAV(1, @"operation: GET %@", url);
     
     NSMutableURLRequest *request = [self _requestForURL:url];
     [request setHTTPMethod:@"GET"]; // really the default, but just for conformity with the others...
-    
-    // NOTE: If the caller never starts the task, we'll end up leaking it in our task->operation table
-    ODAVOperation *operation = [self _makeOperationForRequest:request];
-    
-    // DO NOT launch the operation here. The caller should do this so it can assign it to an ivar or otherwise store it before it has to expect any callbacks.
-    
-    return operation;
-}
 
-- (ODAVOperation *)asynchronousGetContentsOfURL:(NSURL *)url withETag:(nullable NSString *)ETag range:(NSString *)range;
-{
-    DEBUG_DAV(1, @"operation: GET %@ range=%@", url, range);
-    
-    NSMutableURLRequest *request = [self _requestForURL:url];
-    [request setHTTPMethod:@"GET"]; // really the default, but just for conformity with the others...
-
-    if (![NSString isEmptyString:ETag])
+    if (![NSString isEmptyString:ETag]) {
+        DEBUG_DAV(1, @"  If-Match: %@", ETag);
         [request setValue:ETag forHTTPHeaderField:@"If-Match"];
-    if (![NSString isEmptyString:range])
+    }
+    if (![NSString isEmptyString:range]) {
+        DEBUG_DAV(1, @"  Range: %@", range);
         [request setValue:range forHTTPHeaderField:@"Range"];
+    }
     
     // NOTE: If the caller never starts the task, we'll end up leaking it in our task->operation table
     ODAVOperation *operation = [self _makeOperationForRequest:request];
@@ -1009,6 +998,12 @@ static void OFSAddIfPredicateForURLAndLockToken(NSMutableURLRequest *request, NS
     if (_operationReason != nil)
         [request setValue:_operationReason forHTTPHeaderField:@"X-Caused-By"];
 
+    if (_customHeaderValues) {
+        [_customHeaderValues enumerateKeysAndObjectsUsingBlock:^(NSString *key, NSString *value, BOOL *stop) {
+            [request setValue:value forHTTPHeaderField:key];
+        }];
+    }
+
     // On iOS, this will be overridden by the user preference in Settings.app
     request.allowsCellularAccess = YES;
     
@@ -1111,7 +1106,7 @@ static NSDate *_serverDateForOperation(ODAVOperation *operation)
     NSString *dateHeader = [operation valueForResponseHeader:@"Date"];
     
     if (![NSString isEmptyString:dateHeader])
-        return [HttpDateFormatter dateFromString:dateHeader];
+        return [[NSDate alloc] initWithHTTPString:dateHeader];
     else
         return nil;
 }
@@ -1898,7 +1893,7 @@ static NSMutableArray <ODAVFileInfo *> * _Nullable ODAVParseMultistatus(OFXMLDoc
                         
                         if ( (propElement = [anElement firstChildNamed:@"getlastmodified"]) != nil ) {
                             NSString *lastModified = OFCharacterDataFromElement(propElement);
-                            dateModified = [HttpDateFormatter dateFromString:lastModified];
+                            dateModified = [[NSDate alloc] initWithHTTPString:lastModified];
                         }
                         
                         if ( (propElement = [anElement firstChildNamed:@"getetag"]) != nil ) {

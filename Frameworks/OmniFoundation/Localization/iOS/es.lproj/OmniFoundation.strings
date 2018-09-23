@@ -95,13 +95,13 @@
 /* Provisioning profile parsing error general description */
 "Could not parse entitlements from embedded provisioning profile" = "No se han podido analizar las autorizaciones del perfil de aprovisionamiento integrado.";
 
-/* time span formatter span */
+/* time span formatter span - DO NOT add leading or trailing whitespace */
 "d" = "d";
 
-/* time span formatter span */
+/* time span formatter span - DO NOT add leading or trailing whitespace */
 "day" = "día";
 
-/* time span formatter span */
+/* time span formatter span - DO NOT add leading or trailing whitespace */
 "days" = "días";
 
 /* invalid bundle reason */
@@ -117,7 +117,7 @@
 "eh" = "ht";
 
 /* exception reason */
-"Element '%@' not allowed at path: %@" = "Elemento '%1$@' no admitido en la ruta: %2$@";
+"Element '%@' not allowed at path: %@" = "El elemento '%1$@' no se admite en la ruta: %2$@";
 
 /* time span formatter span - DO NOT add leading or trailing whitespace */
 "em" = "mt";
@@ -152,13 +152,13 @@
 /* error reason */
 "Failed to write lock file.  %@" = "No se ha podido escribir el archivo de bloqueo.  %@";
 
-/* time span formatter span */
+/* time span formatter span - DO NOT add leading or trailing whitespace */
 "h" = "h";
 
-/* time span formatter span */
+/* time span formatter span - DO NOT add leading or trailing whitespace */
 "hour" = "hora";
 
-/* time span formatter span */
+/* time span formatter span - DO NOT add leading or trailing whitespace */
 "hours" = "horas";
 
 /* formatter input error */
@@ -167,22 +167,22 @@
 /* local bundle path readable string */
 "local configuration file" = "archivo de configuración local";
 
-/* time span formatter span (minute) */
+/* time span formatter span - DO NOT add leading or trailing whitespace (minute) */
 "m" = "m";
 
-/* time span formatter span */
+/* time span formatter span - DO NOT add leading or trailing whitespace */
 "minute" = "minuto";
 
-/* time span formatter span */
+/* time span formatter span - DO NOT add leading or trailing whitespace */
 "minutes" = "minutos";
 
-/* time span formatter span (month) */
+/* time span formatter span - DO NOT add leading or trailing whitespace (month) */
 "mo" = "me";
 
-/* time span formatter span */
+/* time span formatter span - DO NOT add leading or trailing whitespace */
 "month" = "mes";
 
-/* time span formatter span */
+/* time span formatter span - DO NOT add leading or trailing whitespace */
 "months" = "meses";
 
 /* error reason */
@@ -203,17 +203,17 @@
 /* alert title when clicking on a configuration value URL */
 "Restore all internal configuration settings to defaults" = "Restaurar todos los ajustes de configuración interna a sus valores por omisión";
 
-/* time span formatter span */
+/* time span formatter span - DO NOT add leading or trailing whitespace */
 "s" = "s";
 
-/* time span formatter span */
+/* time span formatter span - DO NOT add leading or trailing whitespace */
 "second" = "segundo";
 
-/* time span formatter span */
+/* time span formatter span - DO NOT add leading or trailing whitespace */
 "seconds" = "segundos";
 
 /* alert message format when clicking on a configuration value URL */
-"Set \"%@\" to \"%@\"" = "Ajustar “%1$@” a “%2$@”";
+"Set \"%@\" to \"%@\"" = "Ajustar “%1$@” a “%2$@";
 
 /* Document decryption error message - a file within the encrypted file wrapper can't be read */
 "The encrypted item \"%@\" is missing or unreadable." = "Falta el ítem encriptado “%@” o no se puede leer.";
@@ -280,25 +280,25 @@
 /* error message - CMS object has an unknown algorithm identifier for encryption of its content */
 "Unsupported encryption algorithm" = "Algoritmo de encriptación incompatible";
 
-/* time span formatter span */
+/* time span formatter span - DO NOT add leading or trailing whitespace */
 "w" = "s";
 
 /* error description */
 "Warning encountered while loading XML." = "Se ha encontrado una advertencia al cargar el XML.";
 
-/* time span formatter span */
+/* time span formatter span - DO NOT add leading or trailing whitespace */
 "week" = "semana";
 
-/* time span formatter span */
+/* time span formatter span - DO NOT add leading or trailing whitespace */
 "weeks" = "semanas";
 
-/* time span formatter span */
+/* time span formatter span - DO NOT add leading or trailing whitespace */
 "y" = "a";
 
-/* time span formatter span */
+/* time span formatter span - DO NOT add leading or trailing whitespace */
 "year" = "año";
 
-/* time span formatter span */
+/* time span formatter span - DO NOT add leading or trailing whitespace */
 "years" = "años";
 
 /* zlib error reason */

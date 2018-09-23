@@ -1,4 +1,4 @@
-// Copyright 2016-2017 Omni Development, Inc. All rights reserved.
+// Copyright 2016-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -36,7 +36,7 @@ extension UIViewController: MultiPaneContentController {
     /// Informs controllers that the displayMode of the MultiPaneController has changed. This messages is sent to the UIViewControllers managed by Panes of the MultiPaneController regardless of the Pane's presentation mode. View Controllers that implement this method should not assume that they are embedded (child view controllers) in the MultiPaneController when called.
     /// clients that override should call super.
     @objc /**REVIEW**/ open func multiPaneConfigurationDidChange(to configuration: MultiPaneConfiguration) {
-        for child in self.childViewControllers {
+        for child in self.children {
             child.multiPaneConfigurationDidChange(to: configuration)
         }
     }

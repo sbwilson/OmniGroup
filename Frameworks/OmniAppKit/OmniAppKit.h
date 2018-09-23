@@ -40,6 +40,7 @@
 #import <OmniAppKit/NSAppleEventDescriptor-OAExtensions.h>
 #import <OmniAppKit/NSAppleScript-OAExtensions.h>
 #import <OmniAppKit/NSApplication-OAExtensions.h>
+#import <OmniAppKit/NSArrayController-OAExtensions.h>
 #import <OmniAppKit/NSBezierPath-OAExtensions.h>
 #import <OmniAppKit/NSBundle-OAExtensions.h>
 #import <OmniAppKit/NSCell-OAExtensions.h>
@@ -104,6 +105,8 @@
 #import <OmniAppKit/OADataSourceTableColumn.h>
 #import <OmniAppKit/OADatePickerTextField.h>
 #import <OmniAppKit/OADefaultSettingIndicatorButton.h>
+#import <OmniAppKit/OADisclosureButton.h>
+#import <OmniAppKit/OADisclosureButtonCell.h>
 #import <OmniAppKit/OADocument.h>
 #import <OmniAppKit/OADocumentPositioningView.h>
 #import <OmniAppKit/OADottedLine.h>

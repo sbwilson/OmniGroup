@@ -1,4 +1,4 @@
-// Copyright 2002-2017 Omni Development, Inc. All rights reserved.
+// Copyright 2002-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -142,9 +142,22 @@ static NSMutableDictionary *helpersByExtension = nil;
 
 - (NSDictionary *)toolbarInfoForItem:(NSToolbarItemIdentifier)identifier;
 {
+    NSObject <OAToolbarHelper> *helper = nil;
+    NSString *extension = [identifier pathExtension];
+
+    if (extension != nil)
+        helper = [helpersByExtension objectForKey:extension];
+
+    NSToolbarItemIdentifier effectiveItemIdentifier;
+    if (helper != nil) {
+        effectiveItemIdentifier = [helper templateItemIdentifier];
+    } else {
+        effectiveItemIdentifier = identifier;
+    }
+
     NSDictionary *toolbarItemInfo = [ToolbarItemInfo objectForKey:[self toolbarConfigurationName]];
     OBASSERT(toolbarItemInfo);
-    NSDictionary *itemInfo = [toolbarItemInfo objectForKey:identifier];
+    NSDictionary *itemInfo = [toolbarItemInfo objectForKey:effectiveItemIdentifier];
     OBPOSTCONDITION(itemInfo);
     return itemInfo;
 }
@@ -340,7 +353,7 @@ static void copyProperty(NSToolbarItem *anItem,
         if ([customImageName containsString:@"/"])
             customImageName = [[customImageName pathComponents] componentsJoinedByString:@":"];
         
-        itemImage = [NSImage tintedImageNamed:customImageName inBundle:bundle allowingNil:YES]; // <bug:///90891> (AppleScripts in toolbars don't show custom icons) We're passing the AppleScript name as a customImageName here. That most certainly is wrong.
+        itemImage = [NSImage tintedImageNamed:customImageName inBundle:bundle allowingNil:YES];
     }
     
     if ((value = [itemInfo objectForKey:@"customView"])) {
@@ -357,14 +370,22 @@ static void copyProperty(NSToolbarItem *anItem,
         if (customView)
             [newItem setMinSize:customView.frame.size];
     } else if ([itemInfo boolForKey:@"hasButton"]) {
+        Class buttonClass;
+        if ([helper respondsToSelector:@selector(toolbarItemButtonClass)]) {
+            buttonClass = helper.toolbarItemButtonClass;
+        } else {
+            buttonClass = [OAToolbarItemButton class];
+        }
+        OBASSERT(OBClassIsSubclassOfClass(buttonClass, [OAToolbarItemButton class]));
 
         // Yosemite-style toolbar buttons
-        NSSize buttonSize = NSMakeSize(44, 32); //Matches Apple's size in Numbers and Pages as of 14 Nov. 2014
-        OAToolbarItemButton *button = [[OAToolbarItemButton alloc] initWithFrame:NSMakeRect(0, 0, buttonSize.width, buttonSize.height)];
+        NSSize buttonSize = NSMakeSize(44, 24); //height updated from 32 to 24 in response to <bug:///162819> (Mac-OmniGraffle Bug: High Sierra Only: OmniGraffle: Plug-In icons not displayed correctly on toolbar). it matches the height of the lossenge borders we draw.
+        OAToolbarItemButton *button = [[buttonClass alloc] initWithFrame:NSMakeRect(0, 0, buttonSize.width, buttonSize.height)];
         button.buttonType = NSMomentaryChangeButton;
         button.bezelStyle = NSTexturedRoundedBezelStyle;
         button.buttonType = NSMomentaryLightButton;
-
+        button.imagePosition = NSImageOnly;
+        
         button.toolbarItem = newItem;
 
         newItem.view = button;

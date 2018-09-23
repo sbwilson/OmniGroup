@@ -36,8 +36,7 @@ NS_ASSUME_NONNULL_BEGIN
     static OFVersionNumber *mainBundleVersionNumber = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        NSString *versionString = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"];
-        mainBundleVersionNumber = [[OFVersionNumber alloc] initWithVersionString:versionString];
+        mainBundleVersionNumber = [[self versionForBundle:[NSBundle mainBundle]] retain];
     });
     return mainBundleVersionNumber;
 }
@@ -69,6 +68,12 @@ NS_ASSUME_NONNULL_BEGIN
     return userVisibleOperatingSystemVersionNumber;
 }
 
++ (OFVersionNumber *)versionForBundle:(NSBundle *)bundle;
+{
+    NSString *versionString = [[bundle infoDictionary] objectForKey:@"CFBundleVersion"];
+    return [[[OFVersionNumber alloc] initWithVersionString:versionString] autorelease];
+}
+
 static BOOL isOperatingSystemAtLeastVersionString(NSString *versionString) __attribute__((unused)); // Can end up being unused when we require the latest version available of a platform's OS.
 
 static BOOL isOperatingSystemAtLeastVersionString(NSString *versionString)
@@ -83,61 +88,74 @@ static BOOL isOperatingSystemAtLeastVersionString(NSString *versionString)
 
 #if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
 
-+ (BOOL)isOperatingSystem110OrLater;
++ (BOOL)isOperatingSystem112OrLater;
 {
     static BOOL isLater;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        isLater = isOperatingSystemAtLeastVersionString(@"11.0");
+        isLater = isOperatingSystemAtLeastVersionString(@"11.2");
     });
-
+    
     return isLater;
 }
 
-+ (BOOL)isOperatingSystem111OrLater;
++ (BOOL)isOperatingSystem113OrLater;
 {
     static BOOL isLater;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        isLater = isOperatingSystemAtLeastVersionString(@"11.1");
+        isLater = isOperatingSystemAtLeastVersionString(@"11.3");
     });
+    
+    return isLater;
+}
 
++ (BOOL)isOperatingSystem114OrLater;
+{
+    static BOOL isLater;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        isLater = isOperatingSystemAtLeastVersionString(@"11.4");
+    });
+    
+    return isLater;
+}
+
++ (BOOL)isOperatingSystem120OrLater;
+{
+    static BOOL isLater;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        isLater = isOperatingSystemAtLeastVersionString(@"12.0");
+    });
+    
     return isLater;
 }
 
 #else
 
-+ (BOOL)isOperatingSystemHighSierraOrLater; // 10.13
++ (BOOL)isOperatingSystemMojaveOrLater;
 {
     static BOOL isLater;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        isLater = isOperatingSystemAtLeastVersionString(@"10.13");
+        isLater = isOperatingSystemAtLeastVersionString(@"10.14");
     });
-
+    
     return isLater;
 }
 
-+ (BOOL)isOperatingSystemSierraOrLater; // 10.12
++ (BOOL)isOperatingSystemLikelyToPanicWithCrayonColorPicker;  // 10.13.6, RADAR# 42359231 <bug:///163187> (Mac-OmniGraffle Crasher: [radar and tsi] System hangs when making changes in Pencil Color Picker [10.13.6] (crayon))
 {
-    static BOOL isLater;
+    static BOOL isAtLeast;
+    static BOOL isNotMore;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        isLater = isOperatingSystemAtLeastVersionString(@"10.12");
+        isAtLeast = isOperatingSystemAtLeastVersionString(@"10.13.6");
+        isNotMore = !isOperatingSystemAtLeastVersionString(@"10.13.7");
     });
 
-    return isLater;
-}
-
-+ (BOOL)isOperatingSystemSierraWithTouchBarOrLater; // 10.12.1 with Touch Bar support (build 12B2657 or later)
-{
-    static BOOL isLater;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        isLater = NSClassFromString(@"NSTouchBar") != nil; // Apple's ToolbarSample app tests for NSClassFromString(@"NSTouchBar"), so that's what we do too. (We can't just test for 10.12.1, because the first App Store update that called itself 10.12.1 didn't include Touch Bar support.)
-    });
-
-    return isLater;
+    return isAtLeast && isNotMore;
 }
 
 #endif

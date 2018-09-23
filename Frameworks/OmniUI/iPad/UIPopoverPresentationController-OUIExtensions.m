@@ -1,4 +1,4 @@
-// Copyright 2015-2017 The Omni Group. All rights reserved.
+// Copyright 2015-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -16,7 +16,7 @@ static unsigned int _DisabledManagedBarButtonItemsKey;
 @interface UIPopoverPresentationController (OUIPrivateExtensions)
 
 @property (nonatomic) BOOL OUI_isPresented;
-@property (nonatomic, nullable, copy) NSSet *disabledManagedBarButtonItems;
+@property (nonatomic, nullable, copy) NSHashTable *disabledManagedBarButtonItems;
 
 @end
 
@@ -26,17 +26,21 @@ static unsigned int _ManagedBarButtonItemsKey;
 
 @implementation UIPopoverPresentationController (OUIExtensions)
 
-- (NSSet *)managedBarButtonItems;
+- (NSHashTable *)managedBarButtonItems;
 {
-    NSSet *barButtonItems = objc_getAssociatedObject(self, &_ManagedBarButtonItemsKey);
+    NSHashTable *barButtonItems = objc_getAssociatedObject(self, &_ManagedBarButtonItemsKey);
     if (barButtonItems == nil) {
-        barButtonItems = [NSSet set];
+        barButtonItems = [NSHashTable hashTableWithOptions:NSHashTableObjectPointerPersonality];
+        
+        if (![self OUI_isPresented]) {
+            self.managedBarButtonItems = barButtonItems;
+        }
     }
     
     return barButtonItems;
 }
 
-- (void)setManagedBarButtonItems:(NSSet *)managedBarButtonItems;
+- (void)setManagedBarButtonItems:(NSHashTable *)managedBarButtonItems;
 {
     OBPRECONDITION(![self OUI_isPresented], "Cannot mutate managed bar button items during presentation");
     if ([self OUI_isPresented]) {
@@ -46,38 +50,47 @@ static unsigned int _ManagedBarButtonItemsKey;
     objc_setAssociatedObject(self, &_ManagedBarButtonItemsKey, managedBarButtonItems, OBJC_ASSOCIATION_COPY_NONATOMIC);
 }
 
-- (void)addManagedBarButtonItems:(NSSet *)barButtonItems;
+- (void)setManagedBarButtonItemsFromArray:(NSArray<UIBarButtonItem *> *)barButtonItems;
+{
+    [self clearManagedBarButtonItems];
+    [self addManagedBarButtonItems:barButtonItems];
+}
+
+- (void)clearManagedBarButtonItems;
+{
+    [self.managedBarButtonItems removeAllObjects];
+}
+
+- (void)addManagedBarButtonItems:(NSArray<UIBarButtonItem *> *)barButtonItems;
 {
     OBPRECONDITION(barButtonItems != nil);
 
-    NSMutableSet *managedBarButtonItems = [self.managedBarButtonItems mutableCopy];
-    [managedBarButtonItems unionSet:barButtonItems];
-    self.managedBarButtonItems = managedBarButtonItems;
+    for (UIBarButtonItem *item in barButtonItems) {
+        [self.managedBarButtonItems addObject:item];
+    }
 }
 
 - (void)addManagedBarButtonItemsObject:(UIBarButtonItem *)barButtonItem;
 {
     OBPRECONDITION(barButtonItem != nil);
 
-    NSSet *set = [NSSet setWithObject:barButtonItem];
-    [self addManagedBarButtonItems:set];
+    [self.managedBarButtonItems addObject:barButtonItem];
 }
 
-- (void)removeManagedBarButtonItems:(NSSet *)barButtonItems;
+- (void)removeManagedBarButtonItems:(NSArray<UIBarButtonItem *> *)barButtonItems;
 {
     OBPRECONDITION(barButtonItems != nil);
     
-    NSMutableSet *managedBarButtonItems = [self.managedBarButtonItems mutableCopy];
-    [managedBarButtonItems minusSet:barButtonItems];
-    self.managedBarButtonItems = managedBarButtonItems;
+    for (UIBarButtonItem *item in barButtonItems) {
+        [self.managedBarButtonItems removeObject:item];
+    }
 }
 
 - (void)removeManagedBarButtonItemsObject:(UIBarButtonItem *)barButtonItem;
 {
     OBPRECONDITION(barButtonItem != nil);
     
-    NSSet *set = [NSSet setWithObject:barButtonItem];
-    [self removeManagedBarButtonItems:set];
+    [self.managedBarButtonItems removeObject:barButtonItem];
 }
 
 #pragma mark Convenience Methods
@@ -92,21 +105,15 @@ static unsigned int _ManagedBarButtonItemsKey;
 - (void)addManagedBarButtonItemsFromNavigationItem:(nullable UINavigationItem *)navigationItem;
 {
     if (navigationItem != nil) {
-        NSMutableSet *managedBarButtonItems = [NSMutableSet set];
-
-        [managedBarButtonItems addObjectsFromArray:navigationItem.leftBarButtonItems];
-        [managedBarButtonItems addObjectsFromArray:navigationItem.rightBarButtonItems];
-
-        [self addManagedBarButtonItems:managedBarButtonItems];
+        [self addManagedBarButtonItems:navigationItem.leftBarButtonItems];
+        [self addManagedBarButtonItems:navigationItem.rightBarButtonItems];
     }
 }
 
 - (void)addManagedBarButtonItemsFromToolbar:(nullable UIToolbar *)toolbar;
 {
     if (toolbar != nil) {
-        NSSet *managedBarButtonItems = [NSSet setWithArray:toolbar.items];
-
-        [self addManagedBarButtonItems:managedBarButtonItems];
+        [self addManagedBarButtonItems:toolbar.items];
     }
 }
 
@@ -148,17 +155,17 @@ static void _PerformPosing(void)
     objc_setAssociatedObject(self, &_OUIIsPresentedKey, [NSNumber numberWithBool:isBeingPresented], OBJC_ASSOCIATION_COPY_NONATOMIC);
 }
 
-- (nullable NSSet *)disabledManagedBarButtonItems;
+- (nullable NSHashTable *)disabledManagedBarButtonItems;
 {
-    NSSet *disabledManagedBarButtonItems = objc_getAssociatedObject(self, &_DisabledManagedBarButtonItemsKey);
+    NSHashTable *disabledManagedBarButtonItems = objc_getAssociatedObject(self, &_DisabledManagedBarButtonItemsKey);
     if (disabledManagedBarButtonItems == nil) {
-        disabledManagedBarButtonItems = [NSSet set];
+        disabledManagedBarButtonItems = [NSHashTable hashTableWithOptions:NSHashTableObjectPointerPersonality];
     }
     
     return disabledManagedBarButtonItems;
 }
 
-- (void)setDisabledManagedBarButtonItems:(nullable NSSet *)disabledManagedBarButtonItems;
+- (void)setDisabledManagedBarButtonItems:(nullable NSHashTable *)disabledManagedBarButtonItems;
 {
     objc_setAssociatedObject(self, &_DisabledManagedBarButtonItemsKey, disabledManagedBarButtonItems, OBJC_ASSOCIATION_COPY_NONATOMIC);
 }
@@ -167,10 +174,12 @@ static void _PerformPosing(void)
 {
     original_presentationTransitionWillBegin(self, _cmd);
     
-    NSMutableSet *disabledManagedBarButtonItems = [NSMutableSet set];
+    NSHashTable *disabledManagedBarButtonItems = [NSHashTable hashTableWithOptions:NSHashTableObjectPointerPersonality];
     for (UIBarButtonItem *barButtonItem in self.managedBarButtonItems) {
         if ([barButtonItem isEnabled]) {
-            [barButtonItem setEnabled:NO];
+            barButtonItem.enabled = NO;
+            barButtonItem.OUI_enabledStateIsManagedByPopoverPresentationController = YES;
+
             [disabledManagedBarButtonItems addObject:barButtonItem];
         }
     }
@@ -188,7 +197,8 @@ static void _PerformPosing(void)
     original_dismissalTransitionWillBegin(self, _cmd);
     
     for (UIBarButtonItem *barButtonItem in self.disabledManagedBarButtonItems) {
-        [barButtonItem setEnabled:YES];
+        barButtonItem.OUI_enabledStateIsManagedByPopoverPresentationController = NO;
+        barButtonItem.enabled = YES;
     }
     
     self.disabledManagedBarButtonItems = nil;
@@ -200,6 +210,32 @@ static void _PerformPosing(void)
 }
 
 @end
+
+#pragma mark -
+
+static unsigned int _EnabledStateIsManagedByPopoverPresentationControllerKey;
+
+
+@implementation UIBarButtonItem (OUIPopoverPresentationExtensions)
+
+- (BOOL)OUI_enabledStateIsManagedByPopoverPresentationController;
+{
+    id value = objc_getAssociatedObject(self, &_EnabledStateIsManagedByPopoverPresentationControllerKey);
+
+    if (value != nil && [value isKindOfClass:[NSNumber class]]) {
+        return [value boolValue];
+    } else {
+        return NO;
+    }
+}
+
+- (void)setOUI_enabledStateIsManagedByPopoverPresentationController:(BOOL)enabledStateIsManagedByPopoverPresentationController;
+{
+    objc_setAssociatedObject(self, &_EnabledStateIsManagedByPopoverPresentationControllerKey, @(enabledStateIsManagedByPopoverPresentationController), OBJC_ASSOCIATION_COPY_NONATOMIC);
+}
+
+@end
+
 
 NS_ASSUME_NONNULL_END
 

@@ -260,8 +260,7 @@ const int OACalendarViewMaxNumWeeksIntersectedByMonth = 6;
 // or...
 //NSRectFill([self bounds]);
     
-    // draw a white background
-    [[NSColor whiteColor] set];
+    [[NSColor controlBackgroundColor] set];
     NSRectFill(rect);
     
     // draw the month/year
@@ -594,7 +593,11 @@ const int OACalendarViewMaxNumWeeksIntersectedByMonth = 6;
     [button setTarget:self];
     [button setContinuous:YES];
     [[button cell] setShowsStateBy:(NSPushInCellMask | NSChangeGrayCellMask | NSChangeBackgroundCellMask)];
-    [[button cell] setBackgroundColor:[NSColor whiteColor]];
+    if(@available(macOS 10.14, *)) {
+        // just let the view behind show through.
+    } else {
+        [[button cell] setBackgroundColor:[NSColor whiteColor]];
+    }
     [buttons addObject:button];
     [button release];
 
@@ -697,7 +700,7 @@ const int OACalendarViewMaxNumWeeksIntersectedByMonth = 6;
     NSRect drawRect = rect;
     int lineIndex;
     
-    [[[NSColor gridColor] colorWithAlphaComponent:0.5f] set];
+    [[NSColor gridColor] set];
     
     drawRect.size.width = 1.0f;
     for (lineIndex = 1; lineIndex < (OACalendarViewNumDaysPerWeek); lineIndex++) {

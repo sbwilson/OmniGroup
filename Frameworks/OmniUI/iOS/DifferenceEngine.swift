@@ -44,7 +44,7 @@ public extension Diffable {
     }
     
     /// Returns a difference value that can be used to update the table or collection view.
-    public func difference(from old: Self) -> Difference {
+    public func difference(from old: Self, suppressedMovePositions: (sources: Set<IndexPath>, destinations: Set<IndexPath>)? = nil) -> Difference {
         let oldSectionIdentifiers = old.sections.map({ $0.differenceIdentifier })
         let sectionIdentifiers = sections.map({ $0.differenceIdentifier })
         precondition(Set(oldSectionIdentifiers).count == oldSectionIdentifiers.count, "Old sections must have unique section identifiers to compute a difference")
@@ -66,7 +66,7 @@ public extension Diffable {
         let newWrappedItems = wrappedItems
         let oldWrappedItems = old.wrappedItems
         let itemDifference: CollectionDifference<IndexPath>
-        let itemDifferenceFast = WrappedDifferenceComparable.difference(from: oldWrappedItems, to: newWrappedItems, metaMutator: MetaMutator(sectionDifference: sectionDifference))
+        let itemDifferenceFast = WrappedDifferenceComparable.difference(from: oldWrappedItems, to: newWrappedItems, metaMutator: MetaMutator(sectionDifference: sectionDifference), suppressedMovePositions: suppressedMovePositions)
         switch itemDifferenceFast {
         case .reload:
             return Difference(sectionChanges: CollectionDifference(insertions: [], deletions: [], updates: [], moves: []), itemChanges: CollectionDifference(insertions: [], deletions: [], updates: [], moves: []), changeKind: .hasChangeButCannotApply)
@@ -97,14 +97,24 @@ public extension Diffable {
             return !omitMove
         }
 
+        var foundConflictingSectionAndItemChanges: Bool = false
+        
         // Exclude items that are covered by existing section deltas:
         let survivingInsertions = itemDifference.insertions.union(convertedInsertions).filter { indexPath in
             // No need to insert items if we're inserting the whole section
             return !sectionDifference.insertions.contains(indexPath.section)
         }
-        let survivingDeletions = itemDifference.deletions.union(convertedDeletions).filter { indexPath in
+        let survivingDeletions = itemDifference.deletions.union(convertedDeletions).compactMap { (indexPath) -> IndexPath? in
             // No need to delete items if we're deleting the whole section
-            return !sectionDifference.deletions.contains(indexPath.section)
+            guard !sectionDifference.deletions.contains(indexPath.section) else { return nil }
+            
+            // UITableView has a problem with drops that cause a row deletion in a moving section, so look for those conflicts and mark them; later, we'll note the problem in our returned Difference's applicability
+            if sectionDifference.moves.contains(where: { $0.0 == indexPath.section }) {
+                foundConflictingSectionAndItemChanges = true
+            }
+            
+            // All other deletions are to be performed unchanged
+            return indexPath
         }
         let survivingUpdates = itemDifference.updates.filter { indexPaths in
             // No need to update items if we're deleting their sections.
@@ -136,11 +146,15 @@ public extension Diffable {
         let survivingItemDifference = CollectionDifference<IndexPath>(insertions: Set(survivingInsertions), deletions: Set(survivingDeletions), updates: survivingUpdates, moves: survivingMoves)
 
         let applicability: Difference.ChangeKind
-        switch (sectionDifferenceFast, itemDifferenceFast) {
-        case (.reload, _): fallthrough
-        case (_, .reload): applicability = .hasChangeButCannotApply
-        case let (.applyDifference(sectionDiff), .applyDifference(itemDiff)):
-            applicability = (sectionDiff.isEmpty && itemDiff.isEmpty) ? .noChange : .hasChangeAndCanApply
+        if foundConflictingSectionAndItemChanges {
+            applicability = .hasChangeButCannotApply
+        } else {
+            switch (sectionDifferenceFast, itemDifferenceFast) {
+            case (.reload, _): fallthrough
+            case (_, .reload): applicability = .hasChangeButCannotApply
+            case let (.applyDifference(sectionDiff), .applyDifference(itemDiff)):
+                applicability = (sectionDiff.isEmpty && itemDiff.isEmpty) ? .noChange : .hasChangeAndCanApply
+            }
         }
         
         return Difference(sectionChanges: sectionDifference, itemChanges: survivingItemDifference, changeKind: applicability)
@@ -226,16 +240,16 @@ private let updateCrossDissolveAnimationDuration: TimeInterval = 0.05
 /// Encapsulates the difference between two `Diffable`s and can apply those differences to a table or collection view.
 public struct Difference {
     public struct TableUpdateAnimations {
-        public var sectionDeletion: UITableViewRowAnimation
-        public var sectionInsertion: UITableViewRowAnimation
-        public var sectionUpdate: UIViewAnimationOptions
+        public var sectionDeletion: UITableView.RowAnimation
+        public var sectionInsertion: UITableView.RowAnimation
+        public var sectionUpdate: UIView.AnimationOptions
         
-        public var rowDeletion: UITableViewRowAnimation
-        public var rowInsertion: UITableViewRowAnimation
+        public var rowDeletion: UITableView.RowAnimation
+        public var rowInsertion: UITableView.RowAnimation
         
-        public var rowUpdate: UIViewAnimationOptions
+        public var rowUpdate: UIView.AnimationOptions
         
-        public init(sectionDeletion: UITableViewRowAnimation = .top, sectionInsertion: UITableViewRowAnimation = .top, sectionUpdate: UIViewAnimationOptions = [.transitionCrossDissolve], rowDeletion: UITableViewRowAnimation = .top, rowInsertion: UITableViewRowAnimation = .top, rowUpdate: UIViewAnimationOptions = [.transitionCrossDissolve]) {
+        public init(sectionDeletion: UITableView.RowAnimation = .top, sectionInsertion: UITableView.RowAnimation = .top, sectionUpdate: UIView.AnimationOptions = [.transitionCrossDissolve], rowDeletion: UITableView.RowAnimation = .top, rowInsertion: UITableView.RowAnimation = .top, rowUpdate: UIView.AnimationOptions = [.transitionCrossDissolve]) {
             self.sectionDeletion = sectionDeletion
             self.sectionInsertion = sectionInsertion
             self.sectionUpdate = sectionUpdate
@@ -245,7 +259,7 @@ public struct Difference {
         }
         
         public init(fade: Bool) {
-            let animation: UITableViewRowAnimation = fade ? .fade : .none
+            let animation: UITableView.RowAnimation = fade ? .fade : .none
             self.sectionDeletion = animation
             self.sectionInsertion = animation
             self.sectionUpdate = fade ? [.transitionCrossDissolve] : []
@@ -402,7 +416,9 @@ extension Int: DifferenceIndex {
 
     public static func movesAreOrderedByIncreasingImpact(_ left: (Int, Int), _ right: (Int, Int), context: Int) -> Bool {
         // impact is distance moved
-        return abs(left.0 - left.1) < abs(right.0 - right.1)
+        let leftDistance: Int = abs(left.0 - left.1)
+        let rightDistance: Int = abs(right.0 - right.1)
+        return leftDistance < rightDistance
     }
     
     public static func moveIsFilterable(_ move: (Int, Int)) -> Bool {
@@ -553,16 +569,15 @@ private struct WrappedDifferenceComparable<Index: DifferenceIndex, Value: Differ
         return value.diff(from: preState.value)
     }
     
-    static func difference(from old: [WrappedDifferenceComparable<Index, Value>], to new: [WrappedDifferenceComparable<Index, Value>], metaMutator: MetaMutator? = nil) -> FastCollectionDifferenceWrapper<Index> {
+    static func difference(from old: [WrappedDifferenceComparable<Index, Value>], to new: [WrappedDifferenceComparable<Index, Value>], metaMutator: MetaMutator? = nil, suppressedMovePositions: (sources: Set<Index>, destinations: Set<Index>)? = nil) -> FastCollectionDifferenceWrapper<Index> {
         let newSet = Set(new)
         let oldSet = Set(old)
         
         let insertedSet = newSet.subtracting(oldSet)
         let deletedSet = oldSet.subtracting(newSet)
-        let potentiallyUpdatedSet = newSet.intersection(oldSet)
         
-        let inserted = Set<Index>(insertedSet.map({ $0.index }))
-        let deleted = Set<Index>(deletedSet.map({ $0.index }))
+        var inserted = Set<Index>(insertedSet.map({ $0.index }))
+        var deleted = Set<Index>(deletedSet.map({ $0.index }))
         
         if old.isEmpty { // avoid remaining work, only inserting in this case
             return .applyDifference(CollectionDifference(insertions: inserted, deletions: deleted, updates: [], moves: []))
@@ -577,7 +592,7 @@ private struct WrappedDifferenceComparable<Index: DifferenceIndex, Value: Differ
         var possibleMoves: [(WrappedDifferenceComparable<Index, Value>, WrappedDifferenceComparable<Index, Value>)] = []
         
         for oldWrapped in old {
-            if potentiallyUpdatedSet.contains(oldWrapped) {
+            if !deletedSet.contains(oldWrapped) {
                 guard let setIndex = newSet.index(of: oldWrapped) else { continue }
                 let newWrapped = newSet[setIndex]
                 switch newWrapped.diff(from: oldWrapped) {
@@ -586,7 +601,14 @@ private struct WrappedDifferenceComparable<Index: DifferenceIndex, Value: Differ
                     fallthrough // updated items might also have moved
                 case .unchanged:
                     if newWrapped.index != oldWrapped.index {
-                        possibleMoves.append((oldWrapped, newWrapped))
+                        if let suppressed = suppressedMovePositions, suppressed.sources.contains(oldWrapped.index) || suppressed.destinations.contains(newWrapped.index) {
+                            deleted.insert(oldWrapped.index)
+                            simulatedState.delete([oldWrapped.index])
+                            inserted.insert(newWrapped.index)
+                            simulatedState.insert([newWrapped])
+                        } else {
+                            possibleMoves.append((oldWrapped, newWrapped))
+                        }
                     }
                 case .incomparable:
                     assertionFailure("implementation of `DifferenceComparable` protocol for `\(String(describing: oldWrapped))` violates a protocol invariant")
@@ -763,8 +785,10 @@ public struct SimulatedTableView<Index: DifferenceIndex, Value: DifferenceCompar
     
     private mutating func reindex(metaMutator: MetaMutator?) {
         let newIndexes = Index.indexesReindexing(orderedItems.map({ $0.index }), metaMutator: metaMutator)
-        for (arrayIndex, index) in zip(orderedItems.indices, newIndexes) {
-            orderedItems[arrayIndex].index = index
+        orderedItems = zip(orderedItems, newIndexes).map() { item, index in
+            var changedItem = item
+            changedItem.index = index
+            return changedItem
         }
     }
     

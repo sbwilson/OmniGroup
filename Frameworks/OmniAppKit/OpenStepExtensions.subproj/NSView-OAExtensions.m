@@ -1191,6 +1191,20 @@ static NSString *_vibrancyInfo(NSView *view, NSUInteger level)
     }
 }
 
+#ifdef DEBUG
+
+- (NSArray <NSLayoutConstraint *> *)horizontalConstraints;
+{
+    return [self constraintsAffectingLayoutForOrientation:NSLayoutConstraintOrientationHorizontal];
+}
+
+- (NSArray <NSLayoutConstraint *> *)verticalConstraints;
+{
+    return [self constraintsAffectingLayoutForOrientation:NSLayoutConstraintOrientationVertical];
+}
+
+#endif
+
 @end
 
 #if OF_TRANSIENT_OBJECTS_TRACKER_ENABLED

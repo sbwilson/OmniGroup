@@ -49,6 +49,117 @@ OBDEPRECATED_METHOD(-canPerformEditingAction:forTextView:withSender:);
 
 NSString * const OUITextViewInsertionPointDidChangeNotification = @"OUITextViewInsertionPointDidChangeNotification";
 
+static NSString *_preferredTypeConformingToTypesInArray(NSString *type, NSArray<NSString *> *types)
+{
+    if (type == nil) {
+        return nil;
+    }
+
+    for (NSString *checkType in types) {
+        if (UTTypeConformsTo((__bridge CFStringRef)type, (__bridge CFStringRef)checkType)) {
+            return checkType;
+        }
+    }
+    return nil;
+}
+
+@interface _OUITextViewPasteboardProcessor : NSObject
+{
+    NSArray <NSString *> *_requestedTypes;
+    void (^_completionHandler)(NSArray <NSAttributedString *> *);
+
+    NSMutableArray <NSAttributedString *> *_collectedAttributedStrings;
+
+    NSMutableArray <NSItemProvider *> *_remainingProviders;
+    NSItemProvider *_itemProvider;
+    NSMutableArray <NSString *> *_remainingAvailableTypes;
+}
+
+- (instancetype)initWithPasteboard:(UIPasteboard *)pasteboard requestedTypes:(NSArray <NSString *> *)requestedTypes completionHandler:(void (^)(NSArray <NSAttributedString *> *))completionHandler;
+- (void)run;
+
+@end
+
+@implementation _OUITextViewPasteboardProcessor
+
+- (instancetype)initWithPasteboard:(UIPasteboard *)pasteboard requestedTypes:(NSArray <NSString *> *)requestedTypes completionHandler:(void (^)(NSArray <NSAttributedString *> *))completionHandler;
+{
+    self = [super init];
+    if (self == nil) {
+        return nil;
+    }
+    
+    _requestedTypes = [requestedTypes copy];
+    _remainingProviders = [pasteboard.itemProviders mutableCopy];
+    _collectedAttributedStrings = [[NSMutableArray alloc] init];
+    _completionHandler = [completionHandler copy];
+
+    return self;
+}
+
+- (void)run;
+{
+    [self _nextProvider];
+}
+
+- (void)_nextProvider;
+{
+    _itemProvider = [_remainingProviders firstObject];
+    if (!_itemProvider) {
+        typeof(_completionHandler) handler = _completionHandler;
+        _completionHandler = nil;
+        handler(_collectedAttributedStrings);
+        return;
+    }
+
+    [_remainingProviders removeObjectAtIndex:0];
+
+    _remainingAvailableTypes = [_itemProvider.registeredTypeIdentifiers mutableCopy];
+    [self _nextType];
+}
+
+- (void)_nextType;
+{
+    NSString *availableType = [_remainingAvailableTypes firstObject];
+    if (!availableType) {
+        [self _nextProvider];
+        return;
+    }
+    [_remainingAvailableTypes removeObjectAtIndex:0];
+
+    NSString *typeIdentifier = _preferredTypeConformingToTypesInArray(availableType, _requestedTypes);
+    if (typeIdentifier == nil) {
+        [self _nextType];
+        return;
+    }
+
+    [_itemProvider loadDataRepresentationForTypeIdentifier:typeIdentifier completionHandler:^(NSData *data, NSError *error) {
+        if (!data) {
+            [error log:@"Error loading data for type %@", typeIdentifier];
+            [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+                [self _nextType];
+            }];
+            return;
+        }
+
+        NSError *attributedStringError;
+        NSAttributedString *str = [NSAttributedString objectWithItemProviderData:data typeIdentifier:typeIdentifier error:&attributedStringError];
+        if (str) {
+            [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+                [_collectedAttributedStrings addObject:str];
+                [self _nextProvider];
+            }];
+        } else {
+            [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+                [self _nextType];
+            }];
+        }
+
+    }];
+}
+
+@end
+
 @interface OUITextViewSelectedTextHighlightView : UIView
 @property (nonatomic, copy) UIColor *selectionColor;
 @end
@@ -617,6 +728,12 @@ static BOOL _rangeIsInsertionPoint(OUITextView  *self, UITextRange *r)
 
 - (void)performUndoableEditOnRange:(NSRange)range action:(void (^)(NSMutableAttributedString *))action;
 {
+    [self performUndoableEditOnRange:self.selectedRange selectInsertionPointOnUndoRedo:NO action:action];
+}
+
+// Usually on undo we'll select the replaced text. But in the OmniJS completion suggestion, we want to restore the insertion pointer rather than selecting the replacement prefix.
+- (void)performUndoableEditOnRange:(NSRange)range selectInsertionPointOnUndoRedo:(BOOL)selectInsertionPointOnUndoRedo action:(void (^)(NSMutableAttributedString *))action;
+{
     NSTextStorage *textStorage = self.textStorage.underlyingTextStorage;
     
     OBPRECONDITION(NSMaxRange(range) <= [textStorage length]);
@@ -625,7 +742,7 @@ static BOOL _rangeIsInsertionPoint(OUITextView  *self, UITextRange *r)
     NSMutableAttributedString *edit = [[textStorage attributedSubstringFromRange:range] mutableCopy];
     action(edit);
     
-    [self _replaceAttributedStringInRange:range withAttributedString:edit isUndo:NO];
+    [self _replaceAttributedStringInRange:range withAttributedString:edit isUndo:NO selectInsertionPointOnUndoRedo:selectInsertionPointOnUndoRedo];
 }
 
 // We expect zero change in the length in this version.
@@ -672,12 +789,12 @@ static BOOL _rangeIsInsertionPoint(OUITextView  *self, UITextRange *r)
     if ([delegate respondsToSelector:@selector(textViewDidChange:)])
         [delegate textViewDidChange:self];
     
-    [[self prepareInvocationWithUndoManager: self.undoManager] _replaceAttributedStringInRange:selectedRange withAttributedString:originalString isUndo:YES];
+    [[self prepareInvocationWithUndoManager: self.undoManager] _replaceAttributedStringInRange:selectedRange withAttributedString:originalString isUndo:YES selectInsertionPointOnUndoRedo:NO];
 }
 
 - (void)performUndoableReplacementOnSelectedRange:(NSAttributedString *)replacement;
 {
-    [self _replaceAttributedStringInRange:self.selectedRange withAttributedString:replacement isUndo:NO];
+    [self _replaceAttributedStringInRange:self.selectedRange withAttributedString:replacement isUndo:NO selectInsertionPointOnUndoRedo:NO];
 }
 
 // This seems nice, but it doesn't work out since UITextView doesn't draw the selection right if we shorten the text storage out from under the selection. Here we don't know the change in length beforehand, so we can't fix the selection first. So, we've split this into -performUndoableEditToStylesInSelectedRange: and -performUndoableReplacementOnSelectedRange:
@@ -737,21 +854,21 @@ static BOOL _rangeIsInsertionPoint(OUITextView  *self, UITextRange *r)
 }
 #endif
 
-- (void)_replaceAttributedStringInRange:(NSRange)range withAttributedString:(NSAttributedString *)attributedString isUndo:(BOOL)isUndo;
+- (void)_replaceAttributedStringInRange:(NSRange)range withAttributedString:(NSAttributedString *)attributedString isUndo:(BOOL)isUndo selectInsertionPointOnUndoRedo:(BOOL)selectInsertionPointOnUndoRedo;
 {
     id <OUITextViewDelegate> delegate = self.delegate;
     NSTextStorage *textStorage = self.textStorage.underlyingTextStorage;
     
     NSAttributedString *existingAttributedString = [textStorage attributedSubstringFromRange:range];
     NSRange afterEditRange = NSMakeRange(range.location, [attributedString length]);
-    [[self prepareInvocationWithUndoManager: self.undoManager] _replaceAttributedStringInRange:afterEditRange withAttributedString:existingAttributedString isUndo:!isUndo];
+    [[self prepareInvocationWithUndoManager: self.undoManager] _replaceAttributedStringInRange:afterEditRange withAttributedString:existingAttributedString isUndo:!isUndo selectInsertionPointOnUndoRedo:selectInsertionPointOnUndoRedo];
 
     NSRange selectedRange = self.selectedRange;
     
     // Direct edits won't send the normal text changing methods
 
     // On undo, we select the range, but on 'do' we select the end of the range. For example, if you have "foo<bar>baz" with <bar> selected and you paste "bonk", you'll send up with "foobonk|bazp range" and on undo back to "foo<bar>baz"
-    if (!isUndo)
+    if (!isUndo || selectInsertionPointOnUndoRedo)
         afterEditRange = NSMakeRange(NSMaxRange(afterEditRange), 0);
     
     if (NSMaxRange(afterEditRange) < NSMaxRange(selectedRange)) {
@@ -1096,12 +1213,7 @@ static BOOL _rangeContainsPosition(id <UITextInput> input, UITextRange *range, U
 
 static NSArray *_readableTypes(void)
 {
-    // The system currently adds RTFD, UTF plain text, and WebKit archives. If we just specify kUTTypeText, we'll only get back the plain text (also, WebKit doesn't conform to text at all). So, we'll add types for everything that NSAttributedString can supposedly read, based off <UIKit/NSAttributedString.h>
-    return @[(OB_BRIDGE id)kUTTypeRTFD,
-             (OB_BRIDGE id)kUTTypeFlatRTFD,
-             (OB_BRIDGE id)kUTTypeHTML,
-             (OB_BRIDGE id)kUTTypeRTF,
-             (OB_BRIDGE id)kUTTypeText];
+    return [NSAttributedString readableTypeIdentifiersForItemProvider];
 }
 
 static BOOL _canReadFromTypes(UIPasteboard *pasteboard, NSArray *types)
@@ -1388,21 +1500,27 @@ static BOOL _canReadFromTypes(UIPasteboard *pasteboard, NSArray *types)
     pasteboard.items = items;
 }
 
-// If this pattern ends up being correct, maybe move this to UIPasteboard as a category method
-static void _enumerateBestDataForTypes(UIPasteboard *pasteboard, NSArray *types, void (^applier)(NSData *))
+static void _readAttributedStrings(UIPasteboard *pasteboard, NSArray *types, void (^applier)(NSAttributedString *))
 {
-    NSIndexSet *itemSet = [pasteboard itemSetWithPasteboardTypes:types];
-    [itemSet enumerateIndexesUsingBlock:^(NSUInteger itemIndex, BOOL *stop) {
-        for (NSString *type in types) {
-            NSArray *datas = [pasteboard dataForPasteboardType:type inItemSet:[NSIndexSet indexSetWithIndex:itemIndex]];
-            OBASSERT([datas count] <= 1);
-            NSData *data = [datas lastObject];
-            if (OFNOTNULL(data)) {
-                applier(data);
-                break;
-            }
-        }
+    __block BOOL done = NO;
+    __block NSArray <NSAttributedString *> *attributedStrings = nil;
+    _OUITextViewPasteboardProcessor *processor = [[_OUITextViewPasteboardProcessor alloc] initWithPasteboard:pasteboard requestedTypes:types completionHandler:^(NSArray <NSAttributedString *> *results){
+        attributedStrings = results;
+        done = YES;
     }];
+
+    [processor run];
+
+    BOOL finished = OFRunLoopRunUntil(10.0, OFRunLoopRunTypePolling, ^{
+        return done;
+    });
+    if (!finished) {
+        return;
+    }
+
+    for (NSAttributedString *str in attributedStrings) {
+        applier(str);
+    }
 }
 
 - (void)paste:(nullable id)sender;
@@ -1454,14 +1572,8 @@ static void _copyAttribute(NSMutableDictionary *dest, NSDictionary *src, NSStrin
     if (!attributedString) {
         // Handle our default readable types.
         NSMutableAttributedString *result = [NSMutableAttributedString new];
-        _enumerateBestDataForTypes(pasteboard, _readableTypes(), ^(NSData *data){
-            __autoreleasing NSError *error = nil;
-            NSAttributedString *str = [[NSAttributedString alloc] initWithData:data options:@{} documentAttributes:NULL error:&error];
-            if (!str)
-                [error log:@"Error reading pasteboard item"];
-            else {
-                [result appendAttributedString:str];
-            }
+        _readAttributedStrings(pasteboard, _readableTypes(), ^(NSAttributedString *str){
+            [result appendAttributedString:str];
         });
         
         [result enumerateAttribute:NSFontAttributeName inRange:NSMakeRange(0, [result length]) options:0 usingBlock:^(UIFont *font, NSRange range, BOOL *stop) {
@@ -1531,47 +1643,6 @@ static void _copyAttribute(NSMutableDictionary *dest, NSDictionary *src, NSStrin
     // We might be able to save some time by keeping this around, but we also want to reset the inspector to its base state if it comes up again. ALSO, this is the easiest hack to get rid of lingering OSTextSelectionStyle objects which have problematic reference behavior. ARC will fix it all, of course.
     _textInspector.delegate = nil;
     _textInspector = nil;
-}
-#pragma mark - UITextDragDelegate
-// <rdar://34420183> UITextView does not automatically include attributed strings in its drags
-// Register our attributed text so that we can drop it both within our app and in other apps
-- (nullable id<UITextDragDelegate>)textDragDelegate
-{
-    if ([OFVersionNumber isOperatingSystem111OrLater])
-        return nil; // This issue was fixed in iOS 11.1: it provides com.apple.uikit.attributedstring, com.apple.rtfd, com.apple.flat-rtfd, and public.utf8-plain-text
-
-    if (self.shouldDragAttributedText)
-        return self;
-    else
-        return nil;
-}
-
-- (NSArray<UIDragItem *> *)textDraggableView:(UIView<UITextDraggable> *)textDraggableView itemsForDrag:(id<UITextDragRequest>)dragRequest;
-{
-    if (self.shouldDragAttributedText) {
-        NSAttributedString *selectedString = [self.attributedText attributedSubstringFromRange:self.selectedRange];
-        NSItemProvider *provider = [[NSItemProvider alloc] initWithObject:selectedString];
-        return @[[[UIDragItem alloc] initWithItemProvider:provider]];
-    } else {
-        NSString *selectedString = [[self.attributedText attributedSubstringFromRange:self.selectedRange] string];
-        NSItemProvider *provider = [[NSItemProvider alloc] initWithObject:selectedString];
-        return @[[[UIDragItem alloc] initWithItemProvider:provider]];
-    }
-    
-}
-
-- (nullable UITargetedDragPreview *)textDraggableView:(UIView<UITextDraggable> *)textDraggableView dragPreviewForLiftingItem:(UIDragItem *)item session:(id<UIDragSession>)session
-{
-    if (self.selectedTextRange.empty)
-        return nil;
-
-    NSArray *rects = [self selectionRectsForRange:self.selectedTextRange];
-    NSMutableArray *values = [NSMutableArray array];
-    for (UITextSelectionRect *rect in rects) {
-        [values addObject:[NSValue valueWithCGRect:rect.rect]];
-    }
-    UIDragPreviewParameters *parameters = [[UIDragPreviewParameters alloc] initWithTextLineRects:values];
-    return [[UITargetedDragPreview alloc] initWithView:self parameters:parameters];
 }
 
 #pragma mark - OUIThemedAppearanceClient

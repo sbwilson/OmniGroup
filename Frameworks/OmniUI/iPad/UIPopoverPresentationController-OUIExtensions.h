@@ -1,4 +1,4 @@
-// Copyright 2015-2017 The Omni Group. All rights reserved.
+// Copyright 2015-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -25,12 +25,16 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface UIPopoverPresentationController (OUIExtensions)
 
-@property (nonatomic, copy) NSSet *managedBarButtonItems;
+// N.B. This is a read-only hash table because UIBarButtonItem violates the contract of -isEqual:/-hash, so we cannot safely use NSSet. Instead, the implementation manages the creation and lifecycle of a pointer-semantics hash table to attempt to deduplicate items while avoiding problems with object uniquing for sets.
+@property (nonatomic, readonly) NSHashTable *managedBarButtonItems;
 
-- (void)addManagedBarButtonItems:(NSSet *)barButtonItems;
+- (void)setManagedBarButtonItemsFromArray:(NSArray<UIBarButtonItem *> *)barButtonItems;
+- (void)clearManagedBarButtonItems;
+
+- (void)addManagedBarButtonItems:(NSArray<UIBarButtonItem *> *)barButtonItems;
 - (void)addManagedBarButtonItemsObject:(UIBarButtonItem *)barButtonItem;
 
-- (void)removeManagedBarButtonItems:(NSSet *)barButtonItems;
+- (void)removeManagedBarButtonItems:(NSArray<UIBarButtonItem *> *)barButtonItems;
 - (void)removeManagedBarButtonItemsObject:(UIBarButtonItem *)barButtonItem;
 
 // Convenience Methods
@@ -38,6 +42,14 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)addManagedBarButtonItemsFromNavigationController:(nullable UINavigationController *)navigationController;
 - (void)addManagedBarButtonItemsFromNavigationItem:(nullable UINavigationItem *)navigationItem;
 - (void)addManagedBarButtonItemsFromToolbar:(nullable UIToolbar *)toolbar;
+
+@end
+
+#pragma mark -
+
+@interface UIBarButtonItem (OUIPopoverPresentationExtensions)
+
+@property (nonatomic) BOOL OUI_enabledStateIsManagedByPopoverPresentationController;
 
 @end
 

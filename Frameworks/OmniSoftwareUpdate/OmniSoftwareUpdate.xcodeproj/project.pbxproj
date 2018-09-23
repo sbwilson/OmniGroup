@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 46;
+	objectVersion = 51;
 	objects = {
 
 /* Begin PBXAggregateTarget section */
@@ -728,6 +728,8 @@
 		341605EB0C693324002839DF /* OSUItem.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OSUItem.m; sourceTree = "<group>"; };
 		3416076E0C6A27AA002839DF /* OSUFlippedView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OSUFlippedView.h; sourceTree = "<group>"; };
 		3416076F0C6A27AA002839DF /* OSUFlippedView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OSUFlippedView.m; sourceTree = "<group>"; };
+		3420BBF9214C69D300E7A60D /* OmniSystemInfo.xcfilelist */ = {isa = PBXFileReference; lastKnownFileType = text.xcfilelist; path = OmniSystemInfo.xcfilelist; sourceTree = SOURCE_ROOT; };
+		3420BBFA214C6A1200E7A60D /* OmniSoftwareUpdate.xcfilelist */ = {isa = PBXFileReference; lastKnownFileType = text.xcfilelist; path = OmniSoftwareUpdate.xcfilelist; sourceTree = "<group>"; };
 		3424B2230636F5DB0097A113 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
 		3433C1F71A12BB920021318A /* OSUSettings.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OSUSettings.h; sourceTree = "<group>"; };
 		3433C1F81A12BB920021318A /* OSUSettings.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OSUSettings.m; sourceTree = "<group>"; };
@@ -1299,6 +1301,7 @@
 		34A5F50C184E474C00E8BA9A /* Supporting Files */ = {
 			isa = PBXGroup;
 			children = (
+				3420BBF9214C69D300E7A60D /* OmniSystemInfo.xcfilelist */,
 				151FB8701DEF9955003E84F5 /* OmniSoftwareUpdate.strings */,
 				151FB87A1DEF9979003E84F5 /* OmniSystemInfo.strings */,
 				42943FD31CBC2AC1005E9862 /* OSUDevices.json */,
@@ -1354,6 +1357,7 @@
 				34775A231266672800FCDD2D /* InfoPlist.h */,
 				32DBCF5E0370ADEE00C91783 /* OmniSoftwareUpdate_Prefix.h */,
 				34127E911BAA192000C33C0E /* OmniSoftwareUpdate.h */,
+				3420BBFA214C6A1200E7A60D /* OmniSoftwareUpdate.xcfilelist */,
 				34821EFD063407360097A113 /* Checking */,
 				08FB77AEFE84172EC02AAC07 /* Mac */,
 				34A2E0DD184F91B9009E0D9F /* iOS */,
@@ -1619,9 +1623,9 @@
 			buildPhases = (
 				348A78651B583C390082D55D /* Headers */,
 				348A78661B583C390082D55D /* Resources */,
+				348A790C1B5847FE0082D55D /* Build Strings */,
 				348A78631B583C390082D55D /* Sources */,
 				348A78641B583C390082D55D /* Frameworks */,
-				348A790C1B5847FE0082D55D /* Build Strings */,
 			);
 			buildRules = (
 			);
@@ -1638,8 +1642,8 @@
 			buildConfigurationList = 348D92FB1AB798A40093AD35 /* Build configuration list for PBXNativeTarget "OSUCheckService" */;
 			buildPhases = (
 				348D92DE1AB798A30093AD35 /* Sources */,
-				348D92DF1AB798A30093AD35 /* Frameworks */,
 				348D92E01AB798A30093AD35 /* Resources */,
+				348D92DF1AB798A30093AD35 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -1661,8 +1665,8 @@
 				34CF60B1184E771100C09946 /* Build Strings Files */,
 				34CF60B0184E76E700C09946 /* Copy trust root */,
 				34A5F4FF184E474C00E8BA9A /* Sources */,
-				34A5F500184E474C00E8BA9A /* Frameworks */,
 				3424EE381AB79C4F005DB3C9 /* Copy XPC Services */,
+				34A5F500184E474C00E8BA9A /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -1681,8 +1685,8 @@
 			buildPhases = (
 				4912123709D39ED7003DC19F /* Resources */,
 				4912123809D39ED7003DC19F /* Sources */,
-				4912123909D39ED7003DC19F /* Frameworks */,
 				348D92FC1AB798A40093AD35 /* Embed XPC Services */,
+				4912123909D39ED7003DC19F /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -1704,8 +1708,8 @@
 				E23AB62115DAF56200B86ED1 /* Build String Files */,
 				A24A971B1249A32A005C98E1 /* Copy trust root */,
 				4A40EBFA08AB009A00E1769D /* Sources */,
-				4A40EBFF08AB009A00E1769D /* Frameworks */,
 				5F1C024C16DC8FA8006F9D51 /* Copy XPC Services */,
+				4A40EBFF08AB009A00E1769D /* Frameworks */,
 				3440A02A1D28790D00298619 /* Check Version Number */,
 			);
 			buildRules = (
@@ -1761,10 +1765,10 @@
 			buildConfigurationList = 5F1C024416DC8D82006F9D51 /* Build configuration list for PBXNativeTarget "OSUInstallerService" */;
 			buildPhases = (
 				5F1C023316DC8D82006F9D51 /* Sources */,
-				5F1C023416DC8D82006F9D51 /* Frameworks */,
 				5F1C023516DC8D82006F9D51 /* Resources */,
 				5F049B0716DE7D5E004F398B /* Copy Helpers */,
 				5FF0FAFD16E80C7C00F87CB7 /* Copy Privileged Helpers */,
+				5F1C023416DC8D82006F9D51 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -1802,7 +1806,7 @@
 		0867D690FE84028FC02AAC07 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0930;
+				LastUpgradeCheck = 1000;
 				TargetAttributes = {
 					3489E8BF1AD56BA10039E24D = {
 						CreatedOnToolsVersion = 6.2;
@@ -2179,10 +2183,11 @@
 			);
 			name = "Check Version Number";
 			outputPaths = (
+				"$(DERIVED_FILE_DIR)/$(TARGET_NAME)-CheckVersionNumber",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "./OSUInstallerPrivilegedHelper/CheckVersionNumber || (touch OSUInstallerPrivilegedHelper/Info.plist; exit 1)";
+			shellPath = /bin/zsh;
+			shellScript = "set -e\n\n./OSUInstallerPrivilegedHelper/CheckVersionNumber || (touch OSUInstallerPrivilegedHelper/Info.plist; exit 1)\n\n# Dummy file to make incremental builds not run this script repeatedly.\ntouch \"$DERIVED_FILE_DIR/$TARGET_NAME-CheckVersionNumber\"\n";
 			showEnvVarsInLog = 0;
 		};
 		348A790C1B5847FE0082D55D /* Build Strings */ = {
@@ -2222,10 +2227,14 @@
 			buildActionMask = 2147483647;
 			files = (
 			);
+			inputFileListPaths = (
+				"$(SRCROOT)/$(TARGET_NAME).xcfilelist",
+			);
 			inputPaths = (
 			);
 			name = "Build Strings Files";
 			outputPaths = (
+				"$(DERIVED_FILE_DIR)/$(TARGET_NAME)-BuildStringFiles",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -2238,13 +2247,17 @@
 			files = (
 			);
 			inputPaths = (
+				"$(SRCROOT)/OSUInstallerPrivilegedHelper/Info.plist",
+				"$(SRCROOT)/OSUInstallerPrivilegedHelper/launchd.plist",
 			);
 			name = "Preprocess plists";
 			outputPaths = (
+				"$(TEMP_DIR)/Preprocessed-Info.plist",
+				"$(TEMP_DIR)/Preprocessed-launchd.plist",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "cd OSUInstallerPrivilegedHelper\nexport OTHER_PREPROCESSOR_DEFINITIONS=\"$INFOPLIST_PREPROCESSOR_DEFINITIONS\"\n\n# Speed incremental builds by not touching the plists if the input hasn't changed (causing relinking of this tool, causing re-copying in the framework, causing re-signing of the framework, etc.) This does mean that if build settings change (which can be expanded in the result) then you'll need to do a clean build. This is rare, though, compared to incremental builds that don't change settings.\n\nif [ ! -f \"$TEMP_DIR/Preprocessed-Info.plist\" -o Info.plist -nt \"$TEMP_DIR/Preprocessed-Info.plist\" ]; then\n    ../../../Scripts/PreprocessFiles --strip-xml-comments Info.plist -o \"$TEMP_DIR/Preprocessed-Info.plist\"\nfi\n\nif [ ! -f \"$TEMP_DIR/Preprocessed-launchd.plist\" -o launchd.plist -nt \"$TEMP_DIR/Preprocessed-launchd.plist\" ]; then\n    ../../../Scripts/PreprocessFiles --strip-xml-comments launchd.plist -o \"$TEMP_DIR/Preprocessed-launchd.plist\"\nfi\n";
+			shellScript = "cd OSUInstallerPrivilegedHelper\nexport OTHER_PREPROCESSOR_DEFINITIONS=\"$INFOPLIST_PREPROCESSOR_DEFINITIONS\"\n\n../../../Scripts/PreprocessFiles --strip-xml-comments Info.plist -o \"$TEMP_DIR/Preprocessed-Info.plist\"\n../../../Scripts/PreprocessFiles --strip-xml-comments launchd.plist -o \"$TEMP_DIR/Preprocessed-launchd.plist\"\n";
 			showEnvVarsInLog = 0;
 		};
 		A24A971B1249A32A005C98E1 /* Copy trust root */ = {
@@ -2269,10 +2282,14 @@
 			buildActionMask = 2147483647;
 			files = (
 			);
+			inputFileListPaths = (
+				"$(SRCROOT)/$(TARGET_NAME).xcfilelist",
+			);
 			inputPaths = (
 			);
 			name = "Build String Files";
 			outputPaths = (
+				"$(DERIVED_FILE_DIR)/$(TARGET_NAME)-BuildStringFiles",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -2711,7 +2728,10 @@
 				CODE_SIGN_ENTITLEMENTS = OSUCheckService/OSUCheckService.entitlements;
 				GCC_PREFIX_HEADER = "OSUCheckService/OSUCheckService-Prefix.pch";
 				INFOPLIST_FILE = OSUCheckService/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = "$(value) @loader_path/../../../../../../../";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(value)",
+					"@loader_path/../../../../../../../",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = "${PRODUCT_NAME}";
 				PRODUCT_NAME = "com.omnigroup.OmniSoftwareUpdate.$(TARGET_NAME:rfc1034identifier)$(OMNI_STORE_BUNDLE_IDENTIFIER_SUFFIX)";
 				SKIP_INSTALL = YES;
@@ -2727,7 +2747,10 @@
 				CODE_SIGN_ENTITLEMENTS = OSUCheckService/OSUCheckService.entitlements;
 				GCC_PREFIX_HEADER = "OSUCheckService/OSUCheckService-Prefix.pch";
 				INFOPLIST_FILE = OSUCheckService/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = "$(value) @loader_path/../../../../../../../";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(value)",
+					"@loader_path/../../../../../../../",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = "${PRODUCT_NAME}";
 				PRODUCT_NAME = "com.omnigroup.OmniSoftwareUpdate.$(TARGET_NAME:rfc1034identifier)$(OMNI_STORE_BUNDLE_IDENTIFIER_SUFFIX)";
 				SKIP_INSTALL = YES;
@@ -2903,7 +2926,10 @@
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = NO;
 				GCC_PREFIX_HEADER = "OSUInstallerService/OSUInstallerService-Prefix.pch";
 				INFOPLIST_FILE = OSUInstallerService/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = "$(value) @loader_path/../../../../../../../";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(value)",
+					"@loader_path/../../../../../../../",
+				);
 				MACH_O_TYPE = mh_execute;
 				OTHER_LDFLAGS = (
 					"-sectcreate",
@@ -2924,7 +2950,10 @@
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = NO;
 				GCC_PREFIX_HEADER = "OSUInstallerService/OSUInstallerService-Prefix.pch";
 				INFOPLIST_FILE = OSUInstallerService/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = "$(value) @loader_path/../../../../../../../";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(value)",
+					"@loader_path/../../../../../../../",
+				);
 				MACH_O_TYPE = mh_execute;
 				OTHER_LDFLAGS = (
 					"-sectcreate",

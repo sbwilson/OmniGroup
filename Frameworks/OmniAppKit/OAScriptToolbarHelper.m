@@ -1,4 +1,4 @@
-// Copyright 2002-2017 Omni Development, Inc. All rights reserved.
+// Copyright 2002-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -153,35 +153,69 @@ static BOOL OAScriptToolbarItemsDisabled = NO;
         if (FSGetCatalogInfo(&fsref, kFSCatInfoFinderInfo, &catalogInfo, NULL, NULL, NULL) == noErr) {
             if ((((FileInfo *)(&catalogInfo.finderInfo))->finderFlags & kHasCustomIcon) != 0) {
                 hasCustomIcon = YES;
-                [toolbarItem setImage:[[NSWorkspace sharedWorkspace] iconForFile:path]];
+
+                NSImage *image = [[NSWorkspace sharedWorkspace] iconForFile:path];
+
+                NSView *view = toolbarItem.view;
+                if ([view isKindOfClass:[NSButton class]]) {
+                    NSButton *button = (NSButton *)view;
+                    button.imageScaling = NSImageScaleProportionallyDown;
+                    button.image = image;
+                } else {
+                    [toolbarItem setImage:image];
+                }
+
             }
         }
     }
 
     if (!hasCustomIcon) {
+        NSString *imageName;
+
         if (isAutomatorWorfklow) {
-            [toolbarItem setImage:[NSImage imageNamed:@"OAAutomatorWorkflowIconTemplate" inBundle:OMNI_BUNDLE]];
+            imageName = @"AutomatorWorkflow";
         } else {
-            [toolbarItem setImage:[NSImage imageNamed:@"OAScriptIconTemplate" inBundle:OMNI_BUNDLE]];
+            imageName = @"Script";
         }
+
+        if ([NSColor currentControlTint] == NSGraphiteControlTint) {
+            imageName = [imageName stringByAppendingString:@"-Graphite"];
+        }
+
+        [toolbarItem setImage:[NSImage imageNamed:imageName inBundle:OMNI_BUNDLE]];
     }
 #pragma clang diagnostic pop
 
     return toolbarItem;
 }
 
+- (Class)toolbarItemButtonClass;
+{
+    return [OAUserSuppliedImageToolbarItemButton class];
+}
+
 - (void)executeScriptItem:(id)sender;
 {
     OBRetainAutorelease(sender);
-    OAToolbarItem *toolbarItem = sender;
+    OAToolbarItem *toolbarItem = nil;
     
+    if ([sender isKindOfClass:[OAToolbarItem class]]) {
+        toolbarItem = sender;
+    } else if ([sender isKindOfClass:[OAToolbarItemButton class]]) {
+        toolbarItem = [sender toolbarItem];
+    } else {
+        OBASSERT_NOT_REACHED("Unexpected sender class.");
+        NSBeep();
+        return;
+    }
+
     OAToolbarWindowController *windowController = OB_CHECKED_CAST_OR_NIL(OAToolbarWindowController, [[toolbarItem toolbar] delegate]);
-    if (!windowController) {
+    if (windowController == nil) {
         OBASSERT_NOT_REACHED("How are we activating a script toolbar item w/o a window controller?");
         return;
     }
-    OBRetainAutorelease(windowController);  // The script may cause the window to be closed
 
+    OBRetainAutorelease(windowController);  // The script may cause the window to be closed
     if ([windowController respondsToSelector:@selector(scriptToolbarItemShouldExecute:)] && ![windowController scriptToolbarItemShouldExecute:sender]) {
 	return;
     }
@@ -192,7 +226,7 @@ static BOOL OAScriptToolbarItemsDisabled = NO;
         }
     };
     
-    NSString *itemPath = [[self pathForItem:sender] stringByExpandingTildeInPath];
+    NSString *itemPath = [[self pathForItem:toolbarItem] stringByExpandingTildeInPath];
     NSString *typename = [[NSWorkspace sharedWorkspace] typeOfFile:itemPath error:NULL];
 
     // This code only supports 10.8 and later so we always use the sandbox savvy APIs, since they also support unsandboxed applications.

@@ -44,8 +44,6 @@ typedef NS_ENUM(NSUInteger, ODAVDepth) {
 
 @interface ODAVConnection : NSObject
 
-+ (NSDate *)dateFromString:(NSString *)httpDate;
-
 - (instancetype)init NS_UNAVAILABLE;
 - initWithSessionConfiguration:(ODAVConnectionConfiguration *)configuration baseURL:(NSURL *)baseURL NS_DESIGNATED_INITIALIZER;
 
@@ -60,6 +58,8 @@ typedef NS_ENUM(NSUInteger, ODAVDepth) {
 // Completely override the user agent string, otherwise the configuration's userAgent will be used.
 @property(nonatomic,copy) NSString *userAgent;
 @property(nonatomic,copy) NSString *operationReason;
+
+@property(nonatomic,copy,nullable) NSDictionary <NSString *, NSString *> *customHeaderValues;
 
 // NOTE: These get called on a private queue, not the queue the connection was created on or the queue the operations were created or started on
 // validateCertificateForChallenge: Decide whether to trust a server (NSURLAuthenticationMethodServerTrust), and return the adjusted SecTrustRef credential if so. Returning nil is equivalent to not setting a callback in the first place, which results in NSURLSessionAuthChallengeRejectProtectionSpace. (TODO: Should it be default handling instead of reject?)
@@ -82,7 +82,7 @@ typedef NS_ENUM(NSUInteger, ODAVDepth) {
 
 - (void)getContentsOfURL:(NSURL *)url ETag:(nullable NSString *)ETag completionHandler:(ODAVConnectionOperationCompletionHandler)completionHandler;
 - (ODAVOperation *)asynchronousGetContentsOfURL:(NSURL *)url; // Returns an unstarted operation
-- (ODAVOperation *)asynchronousGetContentsOfURL:(NSURL *)url withETag:(nullable NSString *)ETag range:(NSString *)range;
+- (ODAVOperation *)asynchronousGetContentsOfURL:(NSURL *)url withETag:(nullable NSString *)ETag range:(nullable NSString *)range;
 
 - (void)postData:(NSData *)data toURL:(NSURL *)url completionHandler:(ODAVConnectionURLAndDataCompletionHandler)completionHandler;
 

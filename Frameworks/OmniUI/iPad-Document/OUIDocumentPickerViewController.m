@@ -549,10 +549,14 @@ static NSString * const FilteredItemsBinding = @"filteredItems";
             }];
         }];
     } copy];
+    
+    // Let the app controller know we're about to create a new document
+    [[OUIDocumentAppController controller] documentPickerViewController:self willCreateNewDocumentFromTemplateAtURL:templateURL inStore:documentStore];
 
     NSOperationQueue *queue = [[NSOperationQueue alloc] init];
     [queue addOperationWithBlock:^{
-        Class cls = [[OUIDocumentAppController controller] documentClassForURL:temporaryURL];
+        OUIDocumentAppController *controller = [OUIDocumentAppController controller];
+        Class cls = [controller documentClassForURL:temporaryURL];
 
         // This reads the document immediately, which is why we dispatch to a background queue before calling it. We do file coordination on behalf of the document here since we don't get the benefit of UIDocument's efforts during our synchronous read.
 
@@ -2699,8 +2703,8 @@ static UIImage *ImageForScope(ODSScope *scope) {
             else
                 canMove = NO;
 
-            // Exporting more than one thing is really fine, except when sending OmniPlan files via Mail. But we don't have a good way to restrict just that. bug:///147627
-            _exportBarButtonItem.enabled = (!isViewingTrash && count == 1);
+            OUIDocumentAppController *controller = [OUIDocumentAppController sharedController];
+            _exportBarButtonItem.enabled = (!isViewingTrash && (count == 1 || controller.allowsMultiFileSharing));
 
             _moveBarButtonItem.enabled = canMove;
             _duplicateDocumentBarButtonItem.enabled = YES;
@@ -2715,9 +2719,6 @@ static UIImage *ImageForScope(ODSScope *scope) {
 - (BOOL)_shouldEnableCreateNewDocument;
 {
     if (!OUIAppController.controller.shouldEnableCreateNewDocument)
-        return NO;
-    OUIDocumentPickerFilter *filter = [OUIDocumentPickerViewController selectedFilterForPicker:self.documentPicker];
-    if (OFISEQUAL(filter.identifier, ODSDocumentPickerFilterPlugInIdentifier))
         return NO;
     return YES;
 }
@@ -3396,10 +3397,7 @@ static UIImage *ImageForScope(ODSScope *scope) {
             };
 
             OUIDocumentPickerFilter *filter = [OUIDocumentPickerViewController selectedFilterForPicker:self.documentPicker];
-            if (OFISEQUAL(filter.identifier, ODSDocumentPickerFilterPlugInIdentifier)) {
-                buttonMessage = NSLocalizedStringFromTableInBundle(@"When plug-ins are installed, they will appear here.", @"OmniUIDocument", OMNI_BUNDLE, @"empty picker button text");
-                buttonAction = NULL;
-            } else if (OFISEQUAL(filter.identifier, ODSDocumentPickerFilterTemplateIdentifier)) {
+            if (OFISEQUAL(filter.identifier, ODSDocumentPickerFilterTemplateIdentifier)) {
                 buttonTitle = NSLocalizedStringFromTableInBundle(@"Tap here, or on the + in the toolbar, to add a custom template.", @"OmniUIDocument", OMNI_BUNDLE, @"empty picker button text");
             } else {
                 buttonTitle = NSLocalizedStringFromTableInBundle(@"Tap here, or on the + in the toolbar, to add a document.", @"OmniUIDocument", OMNI_BUNDLE, @"empty picker button text");

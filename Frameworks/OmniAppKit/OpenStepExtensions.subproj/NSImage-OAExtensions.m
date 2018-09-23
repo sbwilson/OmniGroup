@@ -1,4 +1,4 @@
-// Copyright 1997-2017 Omni Development, Inc. All rights reserved.
+// Copyright 1997-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -198,7 +198,7 @@ OBPerformPosing(^{
     OBASSERT(!graphiteImage.isTemplate, "Template tinted images aren't supported");
     if (defaultImage.isTemplate)
         return defaultImage;
-    
+
     NSImage *tintedImage = [self tintedImageWithSize:defaultImage.size flipped:NO drawingHandler:^BOOL(NSRect dstRect) {
         NSRect srcRect = { .origin = NSZeroPoint, .size = defaultImage.size };
         NSImage *sourceImage;
@@ -210,6 +210,7 @@ OBPerformPosing(^{
                 sourceImage = defaultImage;
                 break;
         }
+
         [sourceImage drawInRect:dstRect fromRect:srcRect operation:NSCompositingOperationSourceOver fraction:1.0 respectFlipped:NO hints:nil];
         return YES;
     }];

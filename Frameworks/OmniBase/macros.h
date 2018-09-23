@@ -33,24 +33,6 @@
     #define OB_AUTORELEASE(x) [(x) autorelease]
 #endif
 
-// Useful in cases where you'd previously take/return 'id' to avoid having to cast to a specific subclass.
-#if defined(__has_feature) && __has_feature(objc_kindof)
-    #define OB_KINDOF(cls) __kindof cls *
-#else
-    #define OB_KINDOF(cls) id
-#endif
-
-// Generics to go after collection types like "NSArray OB_GENERIC1(NSString *)" or "NSArray OB_KINDOF(Foo)"
-#if defined(__has_feature) && __has_feature(objc_generics)
-    #define OB_GENERIC1(t) <t>
-    #define OB_GENERIC2(t1,t2) <t1,t2>
-    #define OB_GENERIC_ARG(t) t // Useful in a generic class for argument or return types
-#else
-    #define OB_GENERIC1(t)
-    #define OB_GENERIC2(t1,t2)
-    #define OB_GENERIC_ARG(t) id
-#endif
-
 #if !defined(SWAP)
 #define SWAP(A, B) do { __typeof__(A) __temp = (A); (A) = (B); (B) = __temp;} while(0)
 #endif
@@ -60,6 +42,10 @@
 #else
     #define OB_REQUIRE_ARC ARC_must_be_enabled_for_this_file
 #endif
+
+
+#define OB_NANP * __nullable OB_AUTORELEASING * __nullable  // Nullable autoreleasing object, nullable pointer
+#define OB_NANNP * __nullable OB_AUTORELEASING * __nonnull  // Nullable autoreleasing object, nonnullable pointer
 
 // These macros are expanded out because if you do something like MIN(MIN(A,B),C), you'll get a shadowed local variable warning. It's harmless in that case but the warning does occasionally point out bad code elsewhere, so I want to avoid causing it spuriously.
 

@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 46;
+	objectVersion = 51;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -356,18 +356,6 @@
 		};
 /* End PBXContainerItemProxy section */
 
-/* Begin PBXCopyFilesBuildPhase section */
-		340490AA15E53DDC0044F67F /* CopyFiles */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "include/${PRODUCT_NAME}";
-			dstSubfolderSpec = 16;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
-
 /* Begin PBXFileReference section */
 		0867D69BFE84028FC02AAC07 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		089C1667FE841158C02AAC07 /* en */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
@@ -392,6 +380,7 @@
 		340ECC9617A1A16200CABA13 /* ODAVOperation-Internal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "ODAVOperation-Internal.h"; sourceTree = "<group>"; };
 		341348531A1E860400A03EEC /* ODAVMoveRedirectTestCase.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ODAVMoveRedirectTestCase.m; sourceTree = "<group>"; };
 		34201EE11464897900A45403 /* ODAVFeatures.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ODAVFeatures.h; sourceTree = "<group>"; };
+		3420BB8B214C67C000E7A60D /* OmniDAV.xcfilelist */ = {isa = PBXFileReference; lastKnownFileType = text.xcfilelist; path = OmniDAV.xcfilelist; sourceTree = "<group>"; };
 		3421AE820F71F89C0096AADB /* Omni-Application-Common.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = "Omni-Application-Common.xcconfig"; sourceTree = "<group>"; };
 		3421AE840F71F89C0096AADB /* Omni-Application-Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = "Omni-Application-Debug.xcconfig"; sourceTree = "<group>"; };
 		3421AE850F71F89C0096AADB /* Omni-Application-Release.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = "Omni-Application-Release.xcconfig"; sourceTree = "<group>"; };
@@ -700,6 +689,7 @@
 		32C88DFF0371C24200C91783 /* Other Sources */ = {
 			isa = PBXGroup;
 			children = (
+				3420BB8B214C67C000E7A60D /* OmniDAV.xcfilelist */,
 				32DBCF5E0370ADEE00C91783 /* OmniDAV_Prefix.h */,
 				34C017AE10995295001C110D /* odav */,
 			);
@@ -961,7 +951,6 @@
 			buildPhases = (
 				340490A815E53DDC0044F67F /* Sources */,
 				340490A915E53DDC0044F67F /* Frameworks */,
-				340490AA15E53DDC0044F67F /* CopyFiles */,
 			);
 			buildRules = (
 			);
@@ -1080,7 +1069,7 @@
 		0867D690FE84028FC02AAC07 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0930;
+				LastUpgradeCheck = 1000;
 				TargetAttributes = {
 					34D621AE1B38807700DCE250 = {
 						CreatedOnToolsVersion = 7.0;
@@ -1360,10 +1349,14 @@
 			buildActionMask = 2147483647;
 			files = (
 			);
+			inputFileListPaths = (
+				"$(SRCROOT)/$(TARGET_NAME).xcfilelist",
+			);
 			inputPaths = (
 			);
 			name = "Build Strings From Target";
 			outputPaths = (
+				"$(DERIVED_FILE_DIR)/$(TARGET_NAME)-BuildStringFiles",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -1621,7 +1614,7 @@
 		};
 		349F979D15DEA87B00D7677C /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 3421AE880F71F89C0096AADB /* Omni-Bundle-Debug.xcconfig */;
+			baseConfigurationReference = 34E88F591EC11731007B918E /* Omni-XCTest-Debug.xcconfig */;
 			buildSettings = {
 				CLANG_ENABLE_OBJC_ARC = YES;
 				FRAMEWORK_SEARCH_PATHS = (
@@ -1638,7 +1631,7 @@
 		};
 		349F979E15DEA87B00D7677C /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 3421AE890F71F89C0096AADB /* Omni-Bundle-Release.xcconfig */;
+			baseConfigurationReference = 34E88F5A1EC11731007B918E /* Omni-XCTest-Release.xcconfig */;
 			buildSettings = {
 				CLANG_ENABLE_OBJC_ARC = YES;
 				FRAMEWORK_SEARCH_PATHS = (

@@ -96,11 +96,11 @@ extern NSString * const OUITextViewInsertionPointDidChangeNotification;
 
 - (void)performUndoableEditOnSelectedRange:(void (^)(NSMutableAttributedString *))action;
 - (void)performUndoableEditOnRange:(NSRange)range action:(void (^)(NSMutableAttributedString *))action;
+- (void)performUndoableEditOnRange:(NSRange)range selectInsertionPointOnUndoRedo:(BOOL)selectInsertionPointOnUndoRedo action:(void (^)(NSMutableAttributedString *))action;
 - (void)performUndoableEditToStylesInSelectedRange:(void (^)(NSTextStorage *textStorage))action;
 - (void)performUndoableReplacementOnSelectedRange:(NSAttributedString *)replacement;
 
 @property (nonatomic, assign) BOOL alwaysHighlightSelectedText;
-@property (nonatomic, assign) BOOL shouldDragAttributedText;
 
 @end
 

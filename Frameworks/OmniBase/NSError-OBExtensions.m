@@ -1,4 +1,4 @@
-// Copyright 2005-2017 Omni Development, Inc. All rights reserved.
+// Copyright 2005-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -338,11 +338,13 @@ static NSString * const OFSuppressedErrorCode = @"code";
     
     NSMutableArray *suppressionStack = [[NSThread currentThread] threadDictionary][OFSuppressedErrorStack];
     if (suppressionStack) {
-        NSString *domain = self.domain;
-        NSNumber *code = @(self.code);
         for (NSDictionary *suppression in suppressionStack) {
-            if ([domain isEqual:suppression[OFSuppressedErrorDomain]] && [code isEqual:suppression[OFSuppressedErrorCode]])
+            NSString *domain = suppression[OFSuppressedErrorDomain];
+            NSInteger code = [suppression[OFSuppressedErrorCode] integerValue];
+
+            if ([self hasUnderlyingErrorDomain:domain code:code]) {
                 return;
+            }
         }
     }
     

@@ -1,4 +1,4 @@
-// Copyright 2014-2017 Omni Development, Inc. All rights reserved.
+// Copyright 2014-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -7,9 +7,11 @@
 
 #import <OmniInspector/OIAppearance.h>
 
+#import <OmniAppKit/NSAppearance-OAExtensions.h>
+
 RCS_ID("$Id$");
 
-@interface OIAppearanceDynamicColor : NSObject
+@interface OIAppearanceDynamicColor : NSColor
 + (NSColor *)dynamicColorForView:(NSView *)view darkColor:(NSColor *)darkColor lightColor:(NSColor *)lightColor;
 @property (nonatomic, weak) NSView *view;
 @property (nonatomic) NSColor *darkColor;
@@ -41,12 +43,20 @@ RCS_ID("$Id$");
 
 - (NSColor *)inspectorBackgroundColorForView:(NSView *)view;
 {
-    return [OIAppearanceDynamicColor dynamicColorForView:view darkColor:self.DarkInspectorBackgroundColor lightColor:self.LightInspectorBackgroundColor];
+    if (@available(macOS 10.13, *)) {
+        return [OIAppearanceDynamicColor dynamicColorForView:view darkColor:[NSColor colorNamed:@"DarkInspectorBackgroundColor" bundle:OMNI_BUNDLE] lightColor:[NSColor colorNamed:@"LightInspectorBackgroundColor" bundle:OMNI_BUNDLE]];
+    } else {
+        return [OIAppearanceDynamicColor dynamicColorForView:view darkColor:self.DarkInspectorBackgroundColor lightColor:self.LightInspectorBackgroundColor];
+    }
 }
 
 - (NSColor *)inspectorHeaderSeparatorColorForView:(NSView *)view;
 {
-    return [OIAppearanceDynamicColor dynamicColorForView:view darkColor:self.DarkInspectorHeaderSeparatorColor lightColor:self.LightInspectorHeaderSeparatorColor];
+    if (@available(macOS 10.13, *)) {
+        return [OIAppearanceDynamicColor dynamicColorForView:view darkColor:[NSColor colorNamed:@"DarkInspectorHeaderSeparatorColor" bundle:OMNI_BUNDLE] lightColor:[NSColor colorNamed:@"LightInspectorHeaderSeparatorColor" bundle:OMNI_BUNDLE]];
+    } else {
+        return [OIAppearanceDynamicColor dynamicColorForView:view darkColor:self.DarkInspectorHeaderSeparatorColor lightColor:self.LightInspectorHeaderSeparatorColor];
+    }
 }
 
 @end
@@ -65,7 +75,7 @@ RCS_ID("$Id$");
 
 static BOOL _isDarkAppearance(NSAppearance *appearance)
 {
-    return OFISEQUAL(appearance.name, NSAppearanceNameVibrantDark);
+    return appearance.OA_isDarkAppearance;
 }
 
 - (NSColor *)_currentColor;
@@ -123,6 +133,16 @@ static BOOL _isDarkAppearance(NSAppearance *appearance)
 - (nullable NSColor *)colorUsingColorSpace:(NSColorSpace *)space;
 {
     return [self._currentColor colorUsingColorSpace:space];
+}
+
+- (NSColorType)type NS_AVAILABLE_MAC(10_13);
+{
+    return NSColorTypeComponentBased;
+}
+
+- (nullable NSColor *)colorUsingType:(NSColorType)type NS_AVAILABLE_MAC(10_13);
+{
+    return [self._currentColor colorUsingType:type];
 }
 
 - (nullable NSColor *)blendedColorWithFraction:(CGFloat)fraction ofColor:(NSColor *)color;

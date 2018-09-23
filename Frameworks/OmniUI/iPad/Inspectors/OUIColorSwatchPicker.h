@@ -1,4 +1,4 @@
-// Copyright 2010-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -31,6 +31,7 @@ extern NSString * const OUIColorSwatchPickerTextColorPalettePreferenceKey;
 @property(assign,nonatomic) BOOL showsNavigationSwatch; // If set, the last swatch is reserved for the detail color picker
 
 - (void)sizeHeightToFit;
+@property (nonatomic, readonly) CGFloat layoutWidth;
 
 - (BOOL)hasMatchForColor:(OAColor *)color;
 - (void)setSwatchSelectionColor:(OAColor *)color;

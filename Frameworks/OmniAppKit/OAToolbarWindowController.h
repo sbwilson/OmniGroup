@@ -1,4 +1,4 @@
-// Copyright 2002-2017 Omni Development, Inc. All rights reserved.
+// Copyright 2002-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -42,6 +42,10 @@ typedef NS_ENUM(NSUInteger, OAToolbarDidChangeKind) {
 - (NSArray<NSToolbarItemIdentifier> *)allowedItems;
 
 - (nullable OAToolbarItem *)finishSetupForToolbarItem:(OAToolbarItem *)item toolbar:(NSToolbar *)toolbar willBeInsertedIntoToolbar:(BOOL)willInsert;
+
+@optional
+
+@property(nonatomic,readonly) Class toolbarItemButtonClass;
 
 @end
 

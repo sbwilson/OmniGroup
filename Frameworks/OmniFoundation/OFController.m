@@ -44,6 +44,7 @@ typedef OFWeakReference <id <OFControllerStatusObserver>> *OFControllerStatusObs
 
 static OFController *sharedController = nil;
 static BOOL CrashOnAssertionOrUnhandledException = NO; // Cached so we can get this w/in the handler w/o calling into ObjC (since it might be unsafe)
+static BOOL LogExceptionHandlerShouldLogException = NO;
 static int CrashShouldExitWithCode = 0; // If this is set, OFCrashImmediately will exit with this code.
 
 
@@ -155,6 +156,9 @@ static NSString *ControllerClassName(NSBundle *bundle)
     CrashOnAssertionOrUnhandledException = YES;
     CrashShouldExitWithCode = [[[NSProcessInfo processInfo] environment][@"OFCrashShouldExitWithCode"] intValue];
 
+    // Debugging support which is expected to be a defaults write, not a OFPreference registered default
+    LogExceptionHandlerShouldLogException = [[NSUserDefaults standardUserDefaults] boolForKey:@"LogExceptionHandlerShouldLogException"];
+    
     NSExceptionHandler *handler = [NSExceptionHandler defaultExceptionHandler];
     [handler setDelegate:self];
     [handler setExceptionHandlingMask:[self exceptionHandlingMask]];
@@ -307,7 +311,7 @@ static void _replacement_userNotificationCenterSetDelegate(id self, SEL _cmd, id
         [observerLock unlock];
         block();
     } else {
-        NSNumber *key = [NSNumber numberWithInt:state];
+        NSNumber *key = [NSNumber numberWithInteger:state];
         NSMutableArray *queue = [_queues objectForKey:key];
         if (queue == nil) {
             if (_queues == nil)
@@ -469,6 +473,8 @@ static void OFCrashImmediately(void)
         exit(CrashShouldExitWithCode);
     }
 
+    OBAnalyzerNotReached();
+
     unsigned int *bad = (unsigned int *)sizeof(unsigned int);
     bad[-1] = 0; // Crash immediately; crazy approach is to defeat the clang error about dereferencing NULL, which is the point!
 }
@@ -609,9 +615,7 @@ static NSString *OFSymbolicBacktrace(NSException *exception) {
 
 #define IGNORE_CRASH(clsName, sel) if (selector == (sel) && [NSStringFromClass([object class]) isEqualToString:(clsName)]) crash = NO;
         // On the WWDC beta of High Sierra, opening the print panel on a system with a Touch Bar raises an exception because PMPrintWindowController is returning an NSPopoverTouchBarItem with an identifier of "com.apple.print.touchbar.printerButtons" when asked to create an item with identifier "com.apple.print.touchbar.printerPopoverItem". See bug:///145271 (Frameworks-Mac Regression: [macOS High Sierra] Crash when opening the print dialog).
-        if ([OFVersionNumber isOperatingSystemHighSierraOrLater]) {
-            IGNORE_CRASH(@"NSTouchBar", @selector(itemForIdentifier:))
-        }
+        IGNORE_CRASH(@"NSTouchBar", @selector(itemForIdentifier:))
 
         // NSRemoteSavePanel sometimes fails an assertion when it turns on the "hide extension" checkbox on by itself. Seems harmless?
         IGNORE_CRASH(@"NSRemoteSavePanel", @selector(connection:didReceiveRequest:))
@@ -656,14 +660,26 @@ static NSString *OFSymbolicBacktrace(NSException *exception) {
         /*
          bug reporter #37711145
          <bug:///154713> (Mac-OmniFocus Crasher: Crash resizing the attachments window)
-         Same as above, but in NSOutlineView instead of our own view class
+         <bug:///157567> (Mac-OmniFocus Crasher: High Sierra: Crash resizing OmniOutliner document column mapping import window)
+         Same as above, but in NSTableView/NSOutlineView instead of our own view class
+         Seems fixed on Mojave
          */
-        IGNORE_CRASH(@"NSOutlineView", @selector(_enableNeedsDisplayInRectNotifications))
-        IGNORE_CRASH(@"NSOutlineView", @selector(_disableNeedsDisplayInRectNotifications))
+        if (![OFVersionNumber isOperatingSystemMojaveOrLater]) {
+            IGNORE_CRASH(@"NSOutlineView", @selector(_enableNeedsDisplayInRectNotifications))
+            IGNORE_CRASH(@"NSOutlineView", @selector(_disableNeedsDisplayInRectNotifications))
+            IGNORE_CRASH(@"NSTableView", @selector(_enableNeedsDisplayInRectNotifications))
+            IGNORE_CRASH(@"NSTableView", @selector(_disableNeedsDisplayInRectNotifications))
+        }
         
         /* bug reporter #37539192 <bug:///155090> (Mac-OmniGraffle Crasher: Crash trying to Add People to a file recently saved to iCloud on a Touchbar Mac) */
         IGNORE_CRASH(@"SHKRemoteView", @selector(_mapPerProcessIdentifiers:of:))
-        
+
+        // <bug:///154432> (Mac-OmniGraffle Crasher: High Sierra: Crash contacting Omni from a full screen window)
+        IGNORE_CRASH(@"NSToolbarFullScreenWindow", @selector(startRectForSheet:))
+
+        // <bug:///159503> (Mac-OmniGraffle Crasher: [needs repro] [7.7.1] -[GraphicView(NSTouchBar) _colorPickerTouchBarItemChanged:] (in OmniGraffle) (GraphicView-TouchBar.m:797))
+        IGNORE_CRASH(@"NSScrollingBehaviorLegacy", @selector(scrollView:panGestureRecognizerEndedOrFailed:))
+
 #undef IGNORE_CRASH
 
         // XPC services (like the 'define' service) sometimes time out:
@@ -733,6 +749,9 @@ static NSString * const OFControllerAssertionHandlerException = @"OFControllerAs
     OBRecordBacktrace(NULL, OBBacktraceBuffer_NSException);
 
     /*
+     
+     NOTE: This is no longer the case on 10.14b7
+     
      At some point (10.9?) CFRelease(NULL) (and possibly all such NULL dereferences) started hitting this path:
      
      0x7fff93f5fc71 -- 0   ExceptionHandling                   0x00007fff93f5fc71 NSExceptionHandlerUncaughtSignalHandler + 35
@@ -742,6 +761,11 @@ static NSString * const OFControllerAssertionHandlerException = @"OFControllerAs
      and sending us NSLogUncaughtSystemExceptionMask. It seems very odd that they are calling into ObjC from a signal handler.
      Without checking for all the 'log uncaught' masks, our process would simply exit instead of bringing up the crash catcher.
      */
+    
+    if (LogExceptionHandlerShouldLogException) {
+        // 10.13.6 and 10.14 b7: uncaught exception mask is still 0x100 (NSLogOtherExceptionMask) since AppKit seems to have a top-level handler.
+        NSLog(@"-exceptionHandler:shouldLogException: %@ mask: 0x%lx", exception, aMask);
+    }
     
     if (CrashOnAssertionOrUnhandledException && (aMask & (NSLogUncaughtExceptionMask|NSLogUncaughtSystemExceptionMask|NSLogUncaughtRuntimeErrorMask))) {
         if (aMask & (NSLogUncaughtSystemExceptionMask|NSLogUncaughtRuntimeErrorMask)) {

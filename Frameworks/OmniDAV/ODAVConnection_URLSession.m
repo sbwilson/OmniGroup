@@ -133,7 +133,8 @@ NS_ASSUME_NONNULL_BEGIN
      */
 
     ODAVOperation *op = [self _operationForTask:task isCompleting:YES];
-    [op _didCompleteWithError:error];
+
+    [op _didCompleteWithError:error connection:self];
 
     @synchronized(self) {
         DEBUG_TASK(1, @"Removing operation %@ for task %@", op, task);
@@ -171,7 +172,6 @@ NS_ASSUME_NONNULL_BEGIN
 
     ODAVConnection_URLSession *connection = _weak_connection;
     if (!connection) {
-        OBASSERT_NOT_REACHED("Connection delegate method called after deallocation");
         if (completionHandler) {
             completionHandler(NSURLSessionAuthChallengePerformDefaultHandling, nil);
         }
@@ -194,7 +194,6 @@ willPerformHTTPRedirection:(NSHTTPURLResponse *)response
     
     ODAVConnection_URLSession *connection = _weak_connection;
     if (!connection) {
-        OBASSERT_NOT_REACHED("Connection delegate method called after deallocation");
         if (completionHandler) {
             completionHandler(request);
         }
@@ -215,7 +214,6 @@ didReceiveChallenge:(NSURLAuthenticationChallenge *)challenge
     
     ODAVConnection_URLSession *connection = _weak_connection;
     if (!connection) {
-        OBASSERT_NOT_REACHED("Connection delegate method called after deallocation");
         if (completionHandler) {
             completionHandler(NSURLSessionAuthChallengePerformDefaultHandling, nil);
         }
@@ -235,7 +233,6 @@ didCompleteWithError:(nullable NSError *)error;
     
     ODAVConnection_URLSession *connection = _weak_connection;
     if (!connection) {
-        OBASSERT_NOT_REACHED("Connection delegate method called after deallocation");
         return;
     }
 
@@ -251,11 +248,10 @@ totalBytesExpectedToSend:(int64_t)totalBytesExpectedToSend;
     
     ODAVConnection_URLSession *connection = _weak_connection;
     if (!connection) {
-        OBASSERT_NOT_REACHED("Connection delegate method called after deallocation");
         return;
     }
 
-    [[connection _operationForTask:task] _didSendBodyData:bytesSent totalBytesSent:totalBytesSent totalBytesExpectedToSend:totalBytesSent];
+    [[connection _operationForTask:task] _didSendBodyData:bytesSent totalBytesSent:totalBytesSent totalBytesExpectedToSend:totalBytesExpectedToSend];
 }
 
 #pragma mark - NSURLSessionDataDelegate
@@ -268,7 +264,6 @@ didReceiveResponse:(NSURLResponse *)response
     
     ODAVConnection_URLSession *connection = _weak_connection;
     if (!connection) {
-        OBASSERT_NOT_REACHED("Connection delegate method called after deallocation");
         if (completionHandler) {
             completionHandler(NSURLSessionResponseAllow);
         }
@@ -289,7 +284,6 @@ didReceiveResponse:(NSURLResponse *)response
     
     ODAVConnection_URLSession *connection = _weak_connection;
     if (!connection) {
-        OBASSERT_NOT_REACHED("Connection delegate method called after deallocation");
         return;
     }
 

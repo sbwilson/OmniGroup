@@ -236,7 +236,7 @@ static void ODOEditingContextInternalInsertObject(ODOEditingContext *self, ODOOb
             if (mostRecentSnapshot == nil) {
                 mostRecentSnapshot = self->_objectIDToCommittedPropertySnapshot[previouslyRegisteredObject.objectID];
             }
-            *outMostRecentSnapshot = mostRecentSnapshot;
+            *outMostRecentSnapshot = [[mostRecentSnapshot retain] autorelease];
         }
         
         self->_objectIDToLastProcessedSnapshot[previouslyRegisteredObject.objectID] = nil;
@@ -1407,7 +1407,7 @@ static BOOL _fetchPrimaryKeyCallback(struct sqlite3 *sqlite, ODOSQLStatement *st
             NSString *reason = [fetch reason];
             if ([reason length] == 0)
                 reason = @"UNKNOWN";
-            ODOSQLStatementLogSQL(@"/* Memory fetch: %@  reason: %@ */\n/* ... %g sec, count now %d */\n", [[fetch entity] name], reason, end - start, [ctx.results count]);
+            ODOSQLStatementLogSQL(@"/* Memory fetch: %@  reason: %@ */\n/* ... %g sec, count now %ld */\n", [[fetch entity] name], reason, end - start, [ctx.results count]);
         }
     }
 

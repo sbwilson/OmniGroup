@@ -26,7 +26,7 @@
 "hours" = "heures";
 
 /* modifier, used for scanning user input. Do NOT add whitespace */
-"last" = "le/la dernier/dernière";
+"last" = "dernier";
 
 /* last month, used for scanning user input. Do NOT add whitespace */
 "last month" = "le mois dernier";
@@ -47,7 +47,7 @@
 "months" = "mois";
 
 /* modifier, the most commonly used translation of \"next\", or some other shorthand way of saying things like \"next week\", used for scanning user input. Do NOT add whitespace */
-"next" = "le/la prochain(e)";
+"next" = "prochain";
 
 /* next month, used for scanning user input. Do NOT add whitespace */
 "next month" = "le mois prochain";
@@ -65,7 +65,7 @@
 "now" = "maintenant";
 
 /* modifier, the most commonly used translation of \"this\", or some other shorthand way of saying things like \"this week\", used for scanning user input. Do NOT add whitespace */
-"this" = "ce/cette";
+"this" = "ce";
 
 /* this month, used for scanning user input. Do NOT add whitespace */
 "this month" = "ce mois-ci";

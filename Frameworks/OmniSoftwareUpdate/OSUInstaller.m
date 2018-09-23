@@ -1,4 +1,4 @@
-// Copyright 2007-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2007-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -20,6 +20,8 @@
 #import "OSUSendFeedbackErrorRecovery.h"
 
 RCS_ID("$Id$");
+
+#define OSUPackageFormatPreferenceKey @"OSUPreferredPackageFormat"
 
 static BOOL OSUInstallerHasReceivedApplicationWillTerminate;
 
@@ -105,10 +107,12 @@ static BOOL _isApplicationSuperficiallyValid(NSString *path, NSError **outError)
         
         // Allow the user to change the preference ordering, for testing
         NSArray *preferredFormats = nil;
-        id value = [[NSUserDefaults standardUserDefaults] objectForKey:@"OSUPreferredPackageFormat"];
+        NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+        id value = [defaults objectForKey:OSUPackageFormatPreferenceKey];
         
         if (value && [value isKindOfClass:[NSString class]]) {
             preferredFormats = [NSArray arrayWithObject:value];
+            [defaults setObject:preferredFormats forKey:OSUPackageFormatPreferenceKey];
         } else if (value && [value isKindOfClass:[NSArray class]]) {
             preferredFormats = value;
         }
@@ -470,7 +474,7 @@ static BOOL _isApplicationSuperficiallyValid(NSString *path, NSError **outError)
     handler = [handler copy];
     
     void (^localCompletionHandler)(NSInteger result) = ^(NSInteger result) {
-        if (result == NSFileHandlingPanelOKButton) {
+        if (result == NSModalResponseOK) {
             NSURL *resultURL = [[[panel URLs] lastObject] absoluteURL];
             handler(nil, [resultURL path]);
         } else {

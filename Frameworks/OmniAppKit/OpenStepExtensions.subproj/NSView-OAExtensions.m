@@ -1047,12 +1047,43 @@ static unsigned int ViewMaxDebugDepth = 10;
     return debugDictionary;
 }
 
+// SBW: my own string for the debug dictionary:
+- (NSString *) qbDescriptionForViewHierarchy: (NSView *) view indent: (NSUInteger) indent
+{
+	NSMutableString * string = [NSMutableString string];
+	
+	// The indent
+	for( NSUInteger i = 0; i < indent; i++ )
+	{
+		[string appendString: @"    "];
+	}
+	
+	// Next, the actual object
+	[string appendString: @"- "];
+	[string appendString: view.shortDescription];
+	[string appendFormat: @"(%@)", NSStringFromRect(view.frame)];
+	[string appendString: @"\n"];
+	if( view.subviews.count > 0 )
+	{
+		for( NSView * v in view.subviews )
+		{
+			[string appendString: [v qbDescriptionForViewHierarchy: v indent: indent + 1]];
+		}
+	}
+	return string;
+}
+
 - (NSString *)descriptionWithLocale:(id)locale indent:(NSUInteger)level;
 {
     if (level < ViewMaxDebugDepth)
-        return [[self debugDictionary] descriptionWithLocale:locale indent:level];
+	{
+//        return [[self debugDictionary] descriptionWithLocale:locale indent:level];
+		return [self qbDescriptionForViewHierarchy: self indent: level];
+	}
     else
+	{
         return [self shortDescription];
+	}
 }
 
 // [TAB] I believe this is a false positive?

@@ -103,6 +103,8 @@ NS_ASSUME_NONNULL_BEGIN
     [_recentlyUpdatedObjects release];
     [_recentlyDeletedObjects release];
     
+    [_label release];
+    
     [super dealloc];
 }
 
@@ -515,12 +517,9 @@ static void _validateForDeleteApplier(const void *value, void *context)
     
 #ifdef OMNI_ASSERTIONS_ON
     // All the to-one relationships must be nil at this point. Otherwise, observation across a keyPath won't trigger due to objects along that keyPath being deleted and we might leak observation info.  Additionally, when a 'did delete' notification goes out and the observer removes its observed keyPath, the crossings of to-one relationships can return nil and be correct w/o asserting about asserting that we aren't doing KVC on deleted objects.
-    {
-        for (ODORelationship *rel in object.entity.toOneRelationships) {
-            struct _ODOPropertyFlags flags = ODOPropertyFlags(rel);
-            ODOObject *destination = _ODOObjectValueAtIndex(object, flags.snapshotIndex);
-            OBASSERT(destination == nil);
-        }
+    for (ODORelationship *rel in object.entity.toOneRelationships) {
+        ODOObject *destination = _ODOObjectGetObjectValueForProperty(object, rel);
+        OBASSERT(destination == nil);
     }
 #endif
     
@@ -531,7 +530,7 @@ static void _validateForDeleteApplier(const void *value, void *context)
     
     // Turn the object into a fault.  This is what CoreData does, and our OFMTask/OFMProjectInfo mirroring expects this.
     // This also clears our properties.  Some of these may have already been cleared due to delete propagation, but not all of them.  Also, in the case that we are undoing an assertion, delete propagation won't clear any relationships for us in the deleted objects.
-    [object _turnIntoFault:YES/*deleting*/];
+    [object _turnIntoFault:ODOFaultEventDeletion];
 }
 
 static void _removeDenyApplier(const void *value, void *context)
@@ -1213,7 +1212,6 @@ BOOL ODOEditingContextObjectIsInsertedNotConsideringDeletions(ODOEditingContext 
         
         // Deleted objects currently get -willDelete, but no -didSave.
         if (deleted != nil) {
-            // _processedDeletedObjects was moved aside above so that ODOObjectClearValues() doesn't assert on the passed in object being -isDeleted.
             ODOEditingContextDidDeleteObjects(self, deleted);
             [deleted release];
         }
@@ -1265,167 +1263,18 @@ BOOL ODOEditingContextObjectIsInsertedNotConsideringDeletions(ODOEditingContext 
     return [_registeredObjectByID objectForKey:objectID];
 }
 
-static BOOL _fetchPrimaryKeyCallback(struct sqlite3 *sqlite, ODOSQLStatement *statement, void *context, NSError **outError)
-{
-    ODORowFetchContext *ctx = context;
-
-    OBASSERT(sqlite3_column_count(statement->_statement) == (int)[ctx->schemaProperties count]); // should just be the primary keys we fetched
-    
-    // Get the primary key first
-    OBASSERT(ctx->primaryKeyColumnIndex <= INT_MAX); // sqlite3 sensisibly only allows a few billion columns.    
-    id value = nil;
-    if (!ODOSQLStatementCreateValue(sqlite, statement, (int)ctx->primaryKeyColumnIndex, &value, [ctx->primaryKeyAttribute type], [ctx->primaryKeyAttribute valueClass], outError))
-        return NO;
-    
-    // Unique the fetch vs the registered objects.
-    ODOObjectID *objectID = [[ODOObjectID alloc] initWithEntity:ctx->entity primaryKey:value];
-    [value release];
-    
-    ODOEditingContext *editingContext = ctx->editingContext;
-    ODOObject *object = [editingContext objectRegisteredForID:objectID];
-    if (!object) {
-        // Object hasn't been created as a fault or a fully realized object yet.  Create a fresh object and fill it out.
-        object = [[ctx->instanceClass alloc] initWithEditingContext:editingContext objectID:objectID isFault:NO];
-        
-        if (!ODOExtractNonPrimaryKeySchemaPropertiesFromRowIntoObject(sqlite, statement, object, ctx, outError)) {
-            [object release];
-            [objectID release];
-            return NO;
-        }
-        [editingContext _registerObject:object];
-        
-        OBASSERT(ctx->fetched);
-        [ctx->fetched addObject:object];
-        [object release];
-    } else if ([object isDeleted]) {
-        // Deleted objects are now turned into faults until they are saved.  So, we drop them when fetching.
-        object = nil;
-    } else if ([object isFault]) {
-        // Create the values array to take the values we are about to fetch
-        _ODOObjectCreateNullValues(object);
-
-        // Object was previously created as a fault, but hasn't been filled in yet.  Let's do so and mark it cleared.
-        if (!ODOExtractNonPrimaryKeySchemaPropertiesFromRowIntoObject(sqlite, statement, object, ctx, outError)) {
-            [objectID release];
-            return NO; // object will remain a fault but might have some values in it.  they'll get reset if we get fetched again.  might be nice to clean them out, though.
-        }
-        [object _setIsFault:NO];
-        
-        OBASSERT(ctx->fetched);
-        [ctx->fetched addObject:object];
-    } else {
-        // Object has previously been fetched and we are redundantly fetching it.  
-    }
-    [objectID release];
-
-    if (object)
-        [ctx->results addObject:object];
-    
-    return YES;
-}
-
 - (nullable NSArray *)executeFetchRequest:(ODOFetchRequest *)fetch error:(NSError **)outError;
 {
-    OBINVARIANT([self _checkInvariants]);
-
-    if (_isResetting) {
-        // Act as if we are attached to an empty database
-        return [NSArray array];
-    }
-    
-    // TODO: Can't be in the middle of another fetch or we'll b0rk it up.  Add some sort of assertion to check this method vs. itself and faulting.
-    
-    // It's unclear whether it is worthwhile caching the conversion from SQL to a statement and if so how best to do it.  Instead, we'll build a statement, use it and discard it.  Predicates can have both column expressions and constants.  To avoid quoting issues, we could try to build a SQL string with bindings ('?') and a list of constants in parallel, prepare the statement and then bind the constants.  One problem with this is the IN expression.  The rhs might have any number of values 'foo IN ("a", "b", "c")' so we would have to count the collection to get the right number of slots to bind.
-    // TODO: If we *do* start caching the statements we'll need to be wary of the copy semantics for text/blob (mostly text) bindings.  Right now we are copying (safe but slower), but if we try to optimize this uncarefully, we could end up crashing (since qualifiers could be reused and the original bytes might have been deallocated).
-    
-    // We just select the primary keys and will build faults for any objects that we don't have in memory already.
-    ODOEntity *rootEntity = [fetch entity];
-    ODOAttribute *primaryKeyAttribute = [rootEntity primaryKeyAttribute];
-    NSPredicate *predicate = [fetch predicate];
-    
-    __block ODORowFetchContext ctx;
-    memset(&ctx, 0, sizeof(ctx));
-    ctx.entity = rootEntity;
-    ctx.instanceClass = [rootEntity instanceClass];
-    ctx.schemaProperties = [rootEntity _schemaProperties];
-    ctx.primaryKeyAttribute = primaryKeyAttribute;
-    ctx.primaryKeyColumnIndex = [ctx.schemaProperties indexOfObjectIdenticalTo:primaryKeyAttribute];
-    ctx.editingContext = self;
-    ctx.results = [NSMutableArray array];
-    ctx.fetched = [NSMutableArray array]; // We need to know about this
-    
-    OBASSERT(ctx.primaryKeyColumnIndex != NSNotFound);
-    
-    // Even if we aren't connected, we can still do in-memory operations.  If the database is totally fresh (no saves have been done since the schema was created) doing a fetch is pointless.  This is an optimization for the import case where we fill caches prior to saving for the first time
-    if ([_database connection] && ![_database isFreshlyCreated]) {
-        //NSLog(@"fetch: %@, predicate = %@, sort = %@", [[fetch entity] name], [fetch predicate], [fetch sortDescriptors]);
-        if (ODOSQLDebugLogLevel > 0) {
-            NSString *reason = [fetch reason];
-            if ([reason length] == 0)
-                reason = @"UNKNOWN";
-            //ODOSQLStatementLogSQL(@"/* execute fetch: %@  predicate: %@  sort: %@  reason: %@ */", [[fetch entity] name], [fetch predicate], [fetch sortDescriptors], reason);
-            ODOSQLStatementLogSQL(@"/* SQL fetch: %@  reason: %@ */ ", [[fetch entity] name], reason);
-        }
-        
-        ODOSQLStatement *query = [[ODOSQLStatement alloc] initSelectProperties:ctx.schemaProperties fromEntity:rootEntity connection:_database.connection predicate:predicate error:outError];
-        if (query == nil) {
-            OBASSERT_NOT_REACHED("Failed to build query: %@", outError != NULL ? (id)[*outError toPropertyList] : (id)@"Missing error");
-            OBINVARIANT([self _checkInvariants]);
-            return nil;
-        }
-        
-        BOOL success = [_database.connection performSQLAndWaitWithError:outError block:^BOOL(struct sqlite3 *sqlite, NSError **blockError) {
-            // TODO: Append the sort descriptors as a 'order by'?  Can't if they have non-schema properties, so for now we can just sort in memory.
-            ODOSQLStatementCallbacks callbacks;
-            memset(&callbacks, 0, sizeof(callbacks));
-            callbacks.row = _fetchPrimaryKeyCallback;
-            
-            return ODOSQLStatementRun(sqlite, query, callbacks, &ctx, blockError);
-        }];
-        
-        [query invalidate];
-        [query release];
-        
-        if (!success) {
-#ifdef DEBUG
-            NSLog(@"Failed to run query: %@", outError ? (id)[*outError toPropertyList] : (id)@"Missing error");
-#endif
-            OBINVARIANT([self _checkInvariants]);
-            return nil;
-        }
-
-        // Inform all the newly fetched objects that they have been fetched.  Do this *outside* running the fetch so that if they cause further fetching/faulting, they won't screw up our fetch in progress.
-        ODOObjectAwakeObjectsFromFetch(ctx.fetched);
-    }
-    
-    if ([self hasChanges]) {
-        CFAbsoluteTime start = CFAbsoluteTimeGetCurrent();
-        ODOUpdateResultSetForInMemoryChanges(self, ctx.results, rootEntity, predicate);
-        CFAbsoluteTime end = CFAbsoluteTimeGetCurrent();
-
-        if (ODOSQLDebugLogLevel > 0) {
-            NSString *reason = [fetch reason];
-            if ([reason length] == 0)
-                reason = @"UNKNOWN";
-            ODOSQLStatementLogSQL(@"/* Memory fetch: %@  reason: %@ */\n/* ... %g sec, count now %ld */\n", [[fetch entity] name], reason, end - start, [ctx.results count]);
-        }
+    NSMutableArray <__kindof ODOObject *> *results = ODOFetchObjects(self, fetch.entity, fetch.predicate, fetch.reason, outError);
+    if (!results) {
+        return nil;
     }
 
-    NSArray *sortDescriptors = [fetch sortDescriptors];
+    NSArray *sortDescriptors = fetch.sortDescriptors;
     if ([sortDescriptors count] > 0)
-        [ctx.results sortUsingDescriptors:sortDescriptors];
+        [results sortUsingDescriptors:sortDescriptors];
     
-#ifdef DEBUG
-    // Help make sure we don't have support for *fetching* a predicate that we'll evaluate differently in memory.
-    // This won't detect the inverse case (SQL doesn't match but in memory doesn't).
-    if (predicate) {
-        for (ODOObject *object in ctx.results)
-            OBPOSTCONDITION([predicate evaluateWithObject:object]); // Might have a predicate supplying a relationship's identifier where it should supply the actual object
-    }
-#endif
-    
-    OBINVARIANT([self _checkInvariants]);
-    return ctx.results;
+    return results;
 }
 
 - (__kindof ODOObject *)insertObjectWithEntityName:(NSString *)entityName;
@@ -1524,6 +1373,13 @@ NSString * const ODODeletedObjectPropertySnapshotsKey = @"ODODeletedObjectProper
 
 NSNotificationName const ODOEditingContextWillResetNotification = @"ODOEditingContextWillReset";
 NSNotificationName const ODOEditingContextDidResetNotification = @"ODOEditingContextDidReset";
+
+#pragma mark - NSObject subclass
+
+- (NSString *)debugDescription;
+{
+    return [NSString stringWithFormat:@"<%@:%p %@>", NSStringFromClass([self class]), self, self.label ?: @"(null)"];
+}
 
 #pragma mark - Private
 

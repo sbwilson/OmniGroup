@@ -27,6 +27,8 @@
 
 RCS_ID("$Id$")
 
+NSString * const ODODatabaseInMemoryFileURLString = @"file::memory:";
+
 NSString * const ODODatabaseMetadataTableName = @"ODOMetadata";
 NSString * const ODODatabaseMetadataKeyColumnName = @"key";
 NSString * const ODODatabaseMetadataPlistColumnName = @"value";
@@ -220,8 +222,12 @@ static BOOL ODOVacuumOnDisconnect = NO;
     }
     
     // SQLite will silently create the database file if it didn't exist already.  Check if it exists before trying (alternatively, we could do some select to see if it is empty after opening).
-    NSString *path = [[fileURL absoluteURL] path];
-    BOOL existed = [[NSFileManager defaultManager] fileExistsAtPath:path];
+    NSString *path = nil;
+    BOOL existed = NO;
+    if (![[fileURL absoluteString] isEqualToString:ODODatabaseInMemoryFileURLString]) {
+        path = [[fileURL absoluteURL] path];
+        existed = [[NSFileManager defaultManager] fileExistsAtPath:path];
+    }
     
     ODOSQLConnectionOptions options = 0;
     if (ODOAsynchronousWrites) {
@@ -300,9 +306,11 @@ static BOOL ODOVacuumOnDisconnect = NO;
             [self _disconnectWithoutNotifying:NULL];
             
             // Since we created the file and it is bogus; blow it away.
-            NSError *removeError = nil;
-            if (![[NSFileManager defaultManager] removeItemAtPath:path error:&removeError]) {
-                NSLog(@"Unable to remove '%@' - %@", path, [removeError toPropertyList]);
+            if (path != nil) {
+                NSError *removeError = nil;
+                if (![[NSFileManager defaultManager] removeItemAtPath:path error:&removeError]) {
+                    NSLog(@"Unable to remove '%@' - %@", path, [removeError toPropertyList]);
+                }
             }
             
             return NO;
@@ -783,40 +791,6 @@ static BOOL _populateCachedMetadataRowCallback(struct sqlite3 *sqlite, ODOSQLSta
     OBASSERT([_cachedStatements objectForKey:key] == nil);
     
     [_cachedStatements setObject:statement forKey:key];
-}
-
-// Selects only primary key of the relationship destination.  Has a single bind parameter which is for the destination's foreign key pointing back at the source entity.
-- (ODOSQLStatement *)_queryForDestinationPrimaryKeysByDestinationForeignKeyStatement:(ODORelationship *)rel error:(NSError **)outError;
-{
-    ODOSQLStatement *query = [self _cachedStatementForKey:rel];
-    if (query)
-        return query;
-
-    ODORelationship *inverseRel = [rel inverseRelationship];
-    OBASSERT(inverseRel);
-    OBASSERT([inverseRel isToMany] == NO);
-    
-    ODOEntity *destEntity = [rel destinationEntity];
-    ODOAttribute *destPrimaryKey = [destEntity primaryKeyAttribute];
-    
-    NSPredicate *predicate = ODOKeyPathEqualToValuePredicate([inverseRel name], @"something"); // Fake up a constant for the build.  Don't use nil/null since that'd get translated to 'IS NULL'.
-    
-    query = [[ODOSQLStatement alloc] initSelectProperties:[NSArray arrayWithObject:destPrimaryKey] fromEntity:destEntity connection:self.connection predicate:predicate error:outError];
-    if (query == nil) {
-        return nil;
-    }
-    
-    BOOL prepareSuccess = [self.connection performSQLAndWaitWithError:outError block:^BOOL(struct sqlite3 *sqlite, NSError **blockError) {
-        return [query prepareIfNeededWithSQLite:sqlite error:blockError];
-    }];
-    if (!prepareSuccess) {
-        [query release];
-        return nil;
-    }
-    
-    [self _setCachedStatement:query forKey:rel];
-    
-    return [query autorelease];
 }
 
 @end

@@ -232,7 +232,7 @@ RCS_ID("$Id$")
     if (path == nil)
         return;
 
-    OAWebPageViewer *viewer = [OAWebPageViewer sharedViewerNamed:@"Release Notes"];
+    OAWebPageViewer *viewer = [OAWebPageViewer sharedViewerNamed:@"Release Notes" options:OAWebPageViewerOptionsStandardReleaseNotesOptions];
     
     // don't go fullscreen
     NSRect frame = [[viewer window] frame];

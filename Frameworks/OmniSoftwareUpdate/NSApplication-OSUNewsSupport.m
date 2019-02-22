@@ -45,7 +45,7 @@ OBDidLoad(^{
     }
     NSURL *webURL = [OSUChecker sharedUpdateChecker].currentNewsURL;
     
-    OAWebPageViewer *webViewer = [OAWebPageViewer sharedViewerNamed:@"News"];
+    OAWebPageViewer *webViewer = [OAWebPageViewer sharedViewerNamed:@"News" options:OAWebPageViewerOptionsStandardNewsOptions];
     
     // don't go fullscreen
     NSRect frame = [[webViewer window] frame];

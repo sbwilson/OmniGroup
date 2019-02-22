@@ -592,7 +592,7 @@ static void _applyFullSearch(OAApplication *self, SEL theAction, id theTarget, i
             title = NSLocalizedStringFromTableInBundle(@"Help", @"OmniAppKit", [OAApplication bundle], "Help window default title");
         }
 
-        OAWebPageViewer *viewer = [OAWebPageViewer sharedViewerNamed:@"Help"];
+        OAWebPageViewer *viewer = [OAWebPageViewer sharedViewerNamed:@"Help" options:OAWebPageViewerOptionsStandardHelpOptions];
         viewer.usesWebPageTitleForWindowTitle = NO;
 
         CGFloat startingWidth = [infoDict floatForKey:@"OAHelpWidth" defaultValue:800.0f];
@@ -989,8 +989,8 @@ static void _applyFullSearch(OAApplication *self, SEL theAction, id theTarget, i
 
 + (void)_setupOmniApplication;
 {
-    [OBObject self]; // Trigger OBInvokeRegisteredLoadActions()
-    
+    OBInvokeRegisteredLoadActions();
+
     // Wait until defaults are registered via OBInvokeRegisteredLoadActions() to look this up.
     OATargetSelection = [[NSUserDefaults standardUserDefaults] boolForKey:@"OATargetSelection"];
 

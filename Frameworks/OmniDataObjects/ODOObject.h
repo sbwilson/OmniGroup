@@ -25,13 +25,20 @@ typedef NS_ENUM(NSUInteger, ODOAwakeEvent) {
     ODOAwakeEventUndoneDeletion, // deleted an object, then performed an undo
 };
 
+typedef NS_ENUM(NSUInteger, ODOFaultEvent) {
+    ODOFaultEventGeneric = 0, // some caller just wanted the object to be faulted
+    ODOFaultEventDeletion, // deleted an object (possibly by cascading)
+    ODOFaultEventInvalidation, // invalidated the associated OmniDataObjects stack
+};
+
 @interface ODOObject : OFObject {
   @package
     ODOEditingContext *_editingContext;
     ODOObjectID *_objectID;
     void *_observationInfo;
 
-    OB_STRONG id *_valueStorage; // One for each -snapshotProperty on the ODOEntity.
+    // Packed buffer of scalar- and object-typed values
+    void *_valueStorage;
 }
 
 + (BOOL)objectIDShouldBeUndeletable:(ODOObjectID *)objectID;
@@ -96,8 +103,8 @@ typedef void (^ODOObjectSetDefaultAttributeValues)(__kindof ODOObject *object);
 
 @property (nonatomic, readonly, getter=isFault) BOOL fault;
 
-- (void)willTurnIntoFault;
-- (void)didTurnIntoFault;
+- (void)willTurnIntoFault:(ODOFaultEvent)faultEvent NS_REQUIRES_SUPER;
+- (void)didTurnIntoFault:(ODOFaultEvent)faultEvent NS_REQUIRES_SUPER;
 
 - (void)turnIntoFault;
 
@@ -119,8 +126,8 @@ typedef void (^ODOObjectSetDefaultAttributeValues)(__kindof ODOObject *object);
 - (BOOL)hasBeenDeletedOrInvalidated;
 
 - (BOOL)hasChangedKeySinceLastSave:(NSString *)key NS_SWIFT_NAME(hasChangedKeySinceLastSave(_:));
-@property (nonatomic, nullable, readonly) NSDictionary *changedValues;
-@property (nonatomic, nullable, readonly) NSDictionary *changedNonDerivedValues;
+@property (nonatomic, nullable, readonly) NSDictionary<NSString *, id> *changedValues;
+@property (nonatomic, nullable, readonly) NSDictionary<NSString *, id> *changedNonDerivedValues;
 
 - (nullable id)lastProcessedValueForKey:(NSString *)key;
 - (nullable id)committedValueForKey:(NSString *)key;

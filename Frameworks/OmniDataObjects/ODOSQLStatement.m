@@ -585,14 +585,13 @@ BOOL ODOSQLStatementRunWithoutResults(struct sqlite3 *sqlite, ODOSQLStatement *s
 }
 
 
-BOOL ODOExtractNonPrimaryKeySchemaPropertiesFromRowIntoObject(struct sqlite3 *sqlite, ODOSQLStatement *statement, ODOObject *object, ODORowFetchContext *ctx, NSError **outError)
+BOOL ODOExtractNonPrimaryKeySchemaPropertiesFromRowIntoObject(struct sqlite3 *sqlite, ODOSQLStatement *statement, ODOObject *object, NSArray <ODOProperty *> *schemaProperties, NSUInteger primaryKeyColumnIndex, NSError **outError)
 {
     ODOObjectSetChangeProcessingEnabled(object, NO);
     @try {
-        NSArray *schemaProperties = ctx->schemaProperties;
         NSUInteger propertyIndex = [schemaProperties count];
         while (propertyIndex--) {
-            if (propertyIndex == ctx->primaryKeyColumnIndex)
+            if (propertyIndex == primaryKeyColumnIndex)
                 continue;
             
             ODOProperty *prop = [schemaProperties objectAtIndex:propertyIndex];
@@ -618,7 +617,7 @@ BOOL ODOExtractNonPrimaryKeySchemaPropertiesFromRowIntoObject(struct sqlite3 *sq
             OBASSERT(!ODOObjectChangeProcessingEnabled(object)); // this should be off anyway since we haven't yet awoken from fetch.
             
             // Set the internal value directly
-            ODOObjectSetInternalValueForProperty(object, value, prop);
+            _ODOObjectSetObjectValueForProperty(object, prop, value);
             [value release];
             
             OBASSERT(![object isUpdated]); // In this case, mutating the object should not have marked it edited

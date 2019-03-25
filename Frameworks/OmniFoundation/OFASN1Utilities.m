@@ -1911,7 +1911,7 @@ enum OFKeyAlgorithm OFASN1KeyInfoGetAlgorithm(NSData *publicKeyInformation, unsi
 
 #pragma mark Error helpers
 
-NSError *OFNSErrorFromASN1Error(int errCode_, NSString *extra)
+NSError *OFNSErrorFromASN1Error(int errCode_, NSString * _Nullable extra)
 {
     NSString *detail;
     int errCode = errCode_;

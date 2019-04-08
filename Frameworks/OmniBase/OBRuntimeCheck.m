@@ -951,7 +951,8 @@ static void OBPerformRuntimeChecksOnLoad(void) __attribute__((constructor));
 static void OBPerformRuntimeChecksOnLoad(void)
 {
     OBReportWarningsInSystemLibraries = (getenv("OBReportWarningsInSystemLibraries") != NULL);
-    if(atoi(getenv("OBPerformRuntimeChecksOnLoad")) != 0) {
+    char * performRuntimeChecks = getenv("OBPerformRuntimeChecksOnLoad");
+    if(performRuntimeChecks && atoi(performRuntimeChecks) != 0) {
         @autoreleasepool {
             OBRequestRuntimeChecks();
         }

@@ -1,4 +1,4 @@
-// Copyright 2010-2018 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -24,6 +24,9 @@ NS_ASSUME_NONNULL_BEGIN
 #define OUI_PRESENT_ALERT(error) [[[OUIAppController controller] class] presentAlert:(error) fromViewController:[[[[UIApplication sharedApplication] delegate] window] rootViewController] file:__FILE__ line:__LINE__]
 #define OUI_PRESENT_ALERT_FROM(error, viewController) [[[OUIAppController controller] class] presentAlert:(error) fromViewController:(viewController) file:__FILE__ line:__LINE__]
 
+/// An error with a @(NO) for this user info key will not get an error reporting option.
+extern NSErrorUserInfoKey const OUIShouldOfferToReportErrorUserInfoKey;
+
 /// Posted when attention is sought or no longer sought. Notifications user info will have key for the sort of attention, mapping to a boolean value which is YES if attention is sought or NO if attention is no longer sought.
 extern NSNotificationName const OUIAttentionSeekingNotification;
 /// The key for when attention is sought for new "News" from Omni.
@@ -44,10 +47,23 @@ extern NSString * const OUIAttentionSeekingForNewsKey;
 + (nonnull instancetype)sharedController NS_EXTENSION_UNAVAILABLE_IOS("Use view controller based solutions where available instead.");
 
 + (NSString *)applicationName;
-+ (nullable NSString *)applicationEdition;
-+ (nullable NSString *)helpEdition;
-+ (nullable NSString *)helpTitle;
-+ (BOOL)inSandboxStore;
+
+typedef NS_OPTIONS(NSUInteger, OUIApplicationEditionOptions) {
+    OUIApplicationEditionOptionsNone                        = 0,
+    OUIApplicationEditionOptionsIncludeApplicationName      = 1 << 0,
+    OUIApplicationEditionOptionsIncludeMajorVersionNumber   = 1 << 1,
+    OUIApplicationEditionOptionsVerbose                     = (OUIApplicationEditionOptionsIncludeApplicationName | OUIApplicationEditionOptionsIncludeMajorVersionNumber),
+};
+
+@property (class, nonatomic, nullable, readonly) NSString *applicationEdition;
++ (nullable NSString *)applicationEditionWithOptions:(OUIApplicationEditionOptions)options;
+
+@property (class, nonatomic, nullable, readonly) NSString *majorVersionNumberString;
+
+@property (class, nonatomic, nullable, readonly) NSString *helpEdition;
+@property (class, nonatomic, nullable, readonly) NSString *helpTitle;
+
+@property (class, nonatomic, readonly, getter=inSandboxStore) BOOL sandboxStore;
 
 + (BOOL)canHandleURLScheme:(NSString *)urlScheme;
 + (void)openURL:(NSURL*)url options:(NSDictionary<NSString *, id> *)options completionHandler:(void (^ __nullable)(BOOL success))completion NS_AVAILABLE_IOS(10_0) NS_EXTENSION_UNAVAILABLE_IOS("");
@@ -56,8 +72,8 @@ extern NSString * const OUIAttentionSeekingForNewsKey;
 + (void)presentError:(NSError *)error NS_EXTENSION_UNAVAILABLE_IOS("Use +presentError:fromViewController: or another variant instead.");
 + (void)presentError:(NSError *)error fromViewController:(UIViewController *)viewController;
 + (void)presentError:(NSError *)error fromViewController:(UIViewController *)viewController file:(const char * _Nullable)file line:(int)line;
-+ (void)presentError:(NSError *)error fromViewController:(UIViewController *)viewController file:(const char * _Nullable)file line:(int)line optionalActionTitle:(NSString *)optionalActionTitle optionalAction:(void (^ __nullable)(UIAlertAction *action))optionalAction;
-+ (void)presentError:(NSError *)error fromViewController:(UIViewController *)viewController cancelButtonTitle:(NSString *)cancelButtonTitle optionalActionTitle:(NSString *)optionalActionTitle optionalAction:(void (^ __nullable)(UIAlertAction *action))optionalAction;
++ (void)presentError:(NSError *)error fromViewController:(UIViewController *)viewController file:(const char * _Nullable)file line:(int)line optionalActionTitle:(nullable NSString *)optionalActionTitle optionalAction:(void (^ __nullable)(UIAlertAction *action))optionalAction;
++ (void)presentError:(NSError *)error fromViewController:(UIViewController *)viewController cancelButtonTitle:(NSString *)cancelButtonTitle optionalActionTitle:(nullable NSString *)optionalActionTitle optionalAction:(void (^ __nullable)(UIAlertAction *action))optionalAction;
 
 + (void)presentAlert:(NSError *)error file:(const char * _Nullable)file line:(int)line NS_EXTENSION_UNAVAILABLE_IOS("Use +presentAlert:fromViewController:file:line: instead.");  // 'OK' instead of 'Cancel' for the button title
 
@@ -65,11 +81,15 @@ extern NSString * const OUIAttentionSeekingForNewsKey;
 
 - (NSOperationQueue *)backgroundPromptQueue;
 
+@property(nonatomic,nullable,retain) IBOutlet UIWindow *window;
+
 // Can be set by early startup code and queried by later startup code to determine whether to launch into a plain state (no inbox item opened, no last document opened, etc). This can be used by applications integrating crash reporting software when they detect a crash from a previous launch and want to report it w/o other launch-time activities.
 @property(nonatomic,assign) BOOL shouldPostponeLaunchActions;
 - (void)addLaunchAction:(void (^)(void))launchAction;
 
+// Implicitly includes Done as the right bar button
 - (void)showAboutScreenInNavigationController:(UINavigationController * _Nullable)navigationController NS_EXTENSION_UNAVAILABLE_IOS("");
+- (void)showAboutScreenInNavigationController:(UINavigationController * _Nullable)navigationController withDoneButton:(BOOL)withDoneButton NS_EXTENSION_UNAVAILABLE_IOS("");
 @property(nonatomic,readonly) BOOL hasOnlineHelp;
 - (void)showOnlineHelp:(nullable id)sender NS_EXTENSION_UNAVAILABLE_IOS("");
 
@@ -123,6 +143,8 @@ extern NSString *const OUIAboutScreenBindingsDictionaryCopyrightStringKey; // @"
 extern NSString *const OUIAboutScreenBindingsDictionaryFeedbackAddressKey; // @"feedbackAddress"
 
 - (NSString *)feedbackMenuTitle;
+- (NSString *)currentSKU;
+- (NSString *)purchaseDateString;
 - (NSString *)appSpecificDebugInfo;
 - (UIBarButtonItem *)newAppMenuBarButtonItem; // insert this into your view controllers; see -additionalAppMenuOptionsAtPosition: for customization
 - (NSArray *)additionalAppMenuOptionsAtPosition:(OUIAppMenuOptionPosition)position; // override to supplement super's return value with additional OUIMenuOptions

@@ -1,4 +1,4 @@
-// Copyright 2014-2018 Omni Development, Inc. All rights reserved.
+// Copyright 2014-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -10,6 +10,7 @@
 #import <Security/Security.h>
 #import <OmniBase/macros.h>
 
+NS_ASSUME_NONNULL_BEGIN
 
 enum OFASN1ErrorCodes {
     OFASN1Success                  = 0,
@@ -22,7 +23,7 @@ enum OFASN1ErrorCodes {
     OFASN1UnexpectedIndefinite,
     OFASN1TrailingData,
 };
-NSError * _Nonnull OFNSErrorFromASN1Error(int errCode, NSString * _Nullable extra) __attribute__((cold)) OB_HIDDEN;
+NSError *OFNSErrorFromASN1Error(int errCode, NSString * _Nullable extra) __attribute__((cold)) OB_HIDDEN;
 
 #define CLASS_MASK             0xC0
 #define CLASS_UNIVERSAL        0x00
@@ -92,14 +93,16 @@ struct parsedItem {
     struct parsedTag i;
 };
 
-enum OFASN1ErrorCodes OFASN1IndefiniteObjectExtent(NSData * _Nonnull buf, NSUInteger position, NSUInteger maxIndex, NSUInteger * _Nonnull outEndPos) OB_HIDDEN;
-BOOL OFASN1IsSentinelAt(NSData * _Nonnull buf, NSUInteger position) OB_HIDDEN;
-enum OFASN1ErrorCodes OFASN1ParseBERSequence(NSData * _Nonnull buf, NSUInteger position, NSUInteger endPosition, BOOL requireDER, const struct scanItem * _Nonnull items, struct parsedItem * _Nonnull found, unsigned count) OB_HIDDEN;
-enum OFASN1ErrorCodes OFASN1UnDERSmallInteger(NSData * _Nonnull buf, const struct parsedTag * _Nonnull v, int * _Nonnull resultp) OB_HIDDEN;
-enum OFASN1ErrorCodes OFASN1ParseTagAndLength(NSData * _Nonnull buffer, NSUInteger where, NSUInteger maxIndex, BOOL requireDER, struct parsedTag * _Nonnull outTL) OB_HIDDEN;
-enum OFASN1ErrorCodes OFASN1EnumerateMembersAsBERRanges(NSData * _Nonnull buf, struct parsedTag obj, enum OFASN1ErrorCodes (NS_NOESCAPE ^ _Nonnull cb)(NSData * _Nonnull samebuf, struct parsedTag item, NSRange berRange)) OB_HIDDEN;
-enum OFASN1ErrorCodes OFASN1ExtractStringContents(NSData * _Nonnull buf, struct parsedTag s, NSData OB_NANNP outData) OB_HIDDEN;
+enum OFASN1ErrorCodes OFASN1IndefiniteObjectExtent(NSData *buf, NSUInteger position, NSUInteger maxIndex, NSUInteger *outEndPos) OB_HIDDEN;
+BOOL OFASN1IsSentinelAt(NSData *buf, NSUInteger position) OB_HIDDEN;
+enum OFASN1ErrorCodes OFASN1ParseBERSequence(NSData *buf, NSUInteger position, NSUInteger endPosition, BOOL requireDER, const struct scanItem *items, struct parsedItem *found, unsigned count) OB_HIDDEN;
+enum OFASN1ErrorCodes OFASN1UnDERSmallInteger(NSData *buf, const struct parsedTag *v, int *resultp) OB_HIDDEN;
+enum OFASN1ErrorCodes OFASN1ParseTagAndLength(NSData *buffer, NSUInteger where, NSUInteger maxIndex, BOOL requireDER, struct parsedTag *outTL) OB_HIDDEN;
+enum OFASN1ErrorCodes OFASN1EnumerateMembersAsBERRanges(NSData *buf, struct parsedTag obj, enum OFASN1ErrorCodes (NS_NOESCAPE ^cb)(NSData *samebuf, struct parsedTag item, NSRange berRange)) OB_HIDDEN;
+enum OFASN1ErrorCodes OFASN1ExtractStringContents(NSData *buf, struct parsedTag s, NSData OB_NANNP outData) OB_HIDDEN;
 #define OFASN1ParseItemsInObject(b, p, der, i, v)    ({ SAME_LENGTH(i, v); OFASN1ParseBERSequence(b, (p).content.location, ((p).indefinite && !(p).content.length)? 0 : NSMaxRange((p).content), der,  (i), (v), ARRAYLENGTH(i)); })
 
-enum OFASN1ErrorCodes OFASN1ParseSymmetricEncryptionParameters(NSData * _Nonnull buf, enum OFASN1Algorithm algid, NSRange range, NSData *_Nonnull* _Nonnull outNonce, int * _Nonnull outTagSize) OB_HIDDEN;
-enum OFASN1ErrorCodes OFASN1ParsePBKDF2Parameters(NSData * _Nonnull buf, NSRange range, NSData *_Nonnull* _Nonnull outSalt, int * _Nonnull outIterations, int * _Nonnull outKeyLength, enum OFASN1Algorithm * _Nonnull outPRF) OB_HIDDEN;
+enum OFASN1ErrorCodes OFASN1ParseSymmetricEncryptionParameters(NSData *buf, enum OFASN1Algorithm algid, NSRange range, NSData OB_NANNP outNonce, int *outTagSize) OB_HIDDEN;
+enum OFASN1ErrorCodes OFASN1ParsePBKDF2Parameters(NSData *buf, NSRange range, NSData OB_NANNP outSalt, int *outIterations, int *outKeyLength, enum OFASN1Algorithm *outPRF) OB_HIDDEN;
+
+NS_ASSUME_NONNULL_END

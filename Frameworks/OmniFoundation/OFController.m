@@ -680,6 +680,71 @@ static NSString *OFSymbolicBacktrace(NSException *exception) {
         // <bug:///159503> (Mac-OmniGraffle Crasher: [needs repro] [7.7.1] -[GraphicView(NSTouchBar) _colorPickerTouchBarItemChanged:] (in OmniGraffle) (GraphicView-TouchBar.m:797))
         IGNORE_CRASH(@"NSScrollingBehaviorLegacy", @selector(scrollView:panGestureRecognizerEndedOrFailed:))
 
+        // <bug:///154165> (Mac-OmniGraffle Crasher: [needs repro] [7.9.2] +[NSXPCSharedListener connectionForListenerNamed:fromServiceNamed:] (in ViewBridge))
+
+        /*
+         Assertion Failed:
+         ---------------------------
+         Object: <NSVBOpenPanel:0x7fc740d81ec0>
+         Selector: viewWillInvalidate:
+         File: /BuildRoot/Library/Caches/com.apple.xbs/Sources/AppKit/AppKit-1671/Nav.subproj/OpenAndSavePanelRemote/NSVBOpenAndSavePanels.m
+         Line: 374
+         Description: bridge absent
+         ---------------------------
+         */
+        IGNORE_CRASH(@"NSVBOpenPanel", @selector(viewWillInvalidate:))
+        
+        // the following are being captured by <bug:///137535> (Mac-OmniGraffle Crasher: [7.9.2] crash_info (ViewBridge): "ViewBridge hint(s))
+        /*
+         Assertion Failed:
+         ---------------------------
+         Object: <NSVBSavePanel:0x7f9e9730ffa0>
+         Selector: viewWillInvalidate:
+         File:
+         /BuildRoot/Library/Caches/com.apple.xbs/Sources/AppKit/AppKit-1561.60.100/Nav.subproj/OpenAndSavePanelRemote/NSVBOpenAndSavePanels.m
+         Line: 387
+         Description: bridge absent
+         ---------------------------
+         */
+        IGNORE_CRASH(@"NSVBSavePanel", @selector(viewWillInvalidate:))
+        /*
+         Assertion Failed:
+         ---------------------------
+         Object: <NSViewServiceMarshal:0x7fffcbc571f0>
+         Selector: informHostsOfConnectionToService:
+         File: /Library/Caches/com.apple.xbs/Sources/ViewBridge/ViewBridge-283/NSViewServiceMarshal.m
+         Line: 997
+         Description: Invalid parameter not satisfying: pid
+         ---------------------------
+         */
+        IGNORE_CRASH(@"NSViewServiceMarshal", @selector(informHostsOfConnectionToService:))
+        /*
+         Assertion Failed:
+         ---------------------------
+         Object: <NSVBSavePanel:0x7fddd60a1e80>
+         Selector: _attachSandboxExtensions:toURL:orURLs:
+         File: /Library/Caches/com.apple.xbs/Sources/AppKit/AppKit-1504.83.101/Nav.subproj/OpenAndSavePanelRemote/NSVBOpenAndSavePanels.m
+         Line: 449
+         Description: unexpected class type for sandbox extension string!
+         ---------------------------
+         */
+        IGNORE_CRASH(@"NSViewServiceMarshal", @selector(_attachSandboxExtensions:toURL:orURLs:))
+        /*
+         Assertion Failed:
+         ---------------------------
+         Object: <NSRemoteView:0x600002924280>
+         Selector: synchronizeAnimationsInActions:
+         File: /BuildRoot/Library/Caches/com.apple.xbs/Sources/ViewBridge/ViewBridge-401.1/NSRemoteView.m
+         Line: 6384
+         Description: {
+         "01_frame" = "{{0, 0}, {1189, 621}}";
+         "__self__" = "<NSRemoteView:0x600002924280>";
+         } unable to wrap fence
+         ---------------------------
+         */
+        IGNORE_CRASH(@"NSRemoteView", @selector(synchronizeAnimationsInActions:))
+
+        
 #undef IGNORE_CRASH
 
         // XPC services (like the 'define' service) sometimes time out:

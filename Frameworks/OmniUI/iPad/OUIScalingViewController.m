@@ -1,4 +1,4 @@
-// Copyright 2010-2017 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2018 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -246,7 +246,7 @@ static OUIScalingView *_scalingView(OUIScalingViewController *self)
 // OUIScalingScrollViewDelegate
 - (CGRect)scalingScrollViewContentViewFullScreenBounds:(OUIScalingScrollView *)scalingScrollView;
 {
-    return scalingScrollView.bounds;
+    return UIEdgeInsetsInsetRect(scalingScrollView.bounds, scalingScrollView.safeAreaInsets);
 }
 
 // By default, assume that a view's scaled size should be simply its unscaledContentSize * scale.

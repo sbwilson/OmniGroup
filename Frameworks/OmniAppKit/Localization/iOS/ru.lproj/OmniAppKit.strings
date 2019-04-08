@@ -10,5 +10,8 @@
 /* button title */
 "OK" = "OK";
 
+/* button title */
+"Retry" = "Повторить";
+
 /* style validation error message for {key} */
 "Unexpected value for key “%@”" = "Неожиданное значение ключа «%@»";

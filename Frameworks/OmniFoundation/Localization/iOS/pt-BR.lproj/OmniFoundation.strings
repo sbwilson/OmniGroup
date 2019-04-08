@@ -144,6 +144,9 @@
 "ey" = "ad";
 
 /* error reason */
+"Failed to convert '%@' to the same type as '%@' (%@)" = "Falha ao converter '%1$@' no mesmo tipo como '%2$@' (%3$@)";
+
+/* error reason */
 "Failed to create directory for lock file at \"%@\"." = "Falha ao criar o diretório do arquivo de bloqueio em “%@”.";
 
 /* error reason */
@@ -259,6 +262,9 @@
 
 /* error description */
 "Unable to lock document." = "Não foi possível bloquear o documento.";
+
+/* error description */
+"Unable to parse value" = "Não foi possível analisar o valor";
 
 /* Document decryption error - unexpected content-type found while unwrapping a Cryptographic Message Syntax object
    Document decryption error - unknown content-type found while unwrapping a Cryptographic Message Syntax object */

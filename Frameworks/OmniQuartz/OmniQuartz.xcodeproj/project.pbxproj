@@ -743,7 +743,7 @@
 		0867D690FE84028FC02AAC07 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1010;
+				LastUpgradeCheck = 1020;
 				TargetAttributes = {
 					34218E4919C23ECE00899C9A = {
 						CreatedOnToolsVersion = 6.1;
@@ -752,7 +752,7 @@
 			};
 			buildConfigurationList = 34DB335E08C62AB500BC2748 /* Build configuration list for PBXProject "OmniQuartz" */;
 			compatibilityVersion = "Xcode 3.2";
-			developmentRegion = English;
+			developmentRegion = en;
 			hasScannedForEncodings = 1;
 			knownRegions = (
 				en,

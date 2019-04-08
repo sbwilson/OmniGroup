@@ -127,6 +127,12 @@
 /* gear menu item */
 "Copy from…" = "Copiar de…";
 
+/* Create Document From Template Document Shortcut Title */
+"Create New Document" = "Criar Novo Documento";
+
+/* Create Document From Template Document Shortcut Title */
+"Create New Document From %@" = "Criar Novo Documento de %@";
+
 /* moved aside custom sample document name */
 "CustomizedSampleDocumentName" = "%@ Personalizado";
 
@@ -314,6 +320,9 @@
 
 /* Local Documents device-specific display name (should match the name of the On My iPhone location in the Files app on an iPhone) */
 "On My iPhone" = "No Meu iPhone";
+
+/* Open Document Shortcut Title */
+"Open %@" = "Abrir %@";
 
 /* empty picker text for Recent Documents */
 "Open a document to add it to this view." = "Abra um documento para adicioná-lo a esta visualização.";

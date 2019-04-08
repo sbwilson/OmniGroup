@@ -144,6 +144,9 @@
 "ey" = "at";
 
 /* error reason */
+"Failed to convert '%@' to the same type as '%@' (%@)" = "Impossibile convertire \"%1$@\" nello stesso tipo di \"%2$@\" (%3$@)";
+
+/* error reason */
 "Failed to create directory for lock file at \"%@\"." = "Creazione della directory per il documento di blocco in “%@” non riuscita.";
 
 /* error reason */
@@ -259,6 +262,9 @@
 
 /* error description */
 "Unable to lock document." = "Impossibile bloccare il documento.";
+
+/* error description */
+"Unable to parse value" = "Impossibile analizzare il valore";
 
 /* Document decryption error - unexpected content-type found while unwrapping a Cryptographic Message Syntax object
    Document decryption error - unknown content-type found while unwrapping a Cryptographic Message Syntax object */

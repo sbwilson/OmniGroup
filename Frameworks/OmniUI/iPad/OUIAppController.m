@@ -1,4 +1,4 @@
-// Copyright 2010-2018 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -63,6 +63,8 @@ NSString * const OUIAttentionSeekingForNewsKey = @"OUIAttentionSeekingForNewsKey
 
 @implementation OUIAppController
 {
+    UIWindow *_window;
+
     NSMutableArray *_launchActions;
     OUIMenuController *_appMenuController;
     NSOperationQueue *_backgroundPromptQueue;
@@ -199,6 +201,9 @@ static void __iOS7B5CleanConsoleOutput(void)
 }
 
 
+// UIApplicationDelegate has an @optional window property.
+@synthesize window = _window;
+
 - (id)init NS_EXTENSION_UNAVAILABLE_IOS("Use view controller based solutions where available instead.");
 {
     if (!(self = [super init])) {
@@ -230,7 +235,20 @@ static void __iOS7B5CleanConsoleOutput(void)
 
 + (nullable NSString *)applicationEdition;
 {
+    return [self applicationEditionWithOptions:OUIApplicationEditionOptionsNone];
+}
+
++ (nullable NSString *)applicationEditionWithOptions:(OUIApplicationEditionOptions)options;
+{
+    OBRequestConcreteImplementation(self, _cmd);
     return nil;
+}
+
++ (nullable NSString *)majorVersionNumberString;
+{
+    NSString *versionString = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
+    NSArray *components = [versionString componentsSeparatedByString:@"."];
+    return components.firstObject;
 }
 
 + (nullable NSString *)helpEdition;
@@ -284,11 +302,13 @@ static void __iOS7B5CleanConsoleOutput(void)
 {
     UIApplication *sharedApplication = [UIApplication sharedApplication];
     NSString *scheme = [[url scheme] lowercaseString];
-    if ([self canHandleURLScheme:scheme]) {
+
+    // +canHandleURLScheme: is for special URLs; check for file URLs too, but should maybe just remove this check.
+    if ([url isFileURL] || [self canHandleURLScheme:scheme]) {
         id <UIApplicationDelegate> appDelegate = [sharedApplication delegate];
         if ([appDelegate respondsToSelector:@selector(application:openURL:options:)]) {
             BOOL success = [appDelegate application:sharedApplication openURL:url options:@{
-                UIApplicationOpenURLOptionsOpenInPlaceKey: @(NO),
+                UIApplicationOpenURLOptionsOpenInPlaceKey: @([url isFileURL]),
                 UIApplicationOpenURLOptionsSourceApplicationKey: [[NSBundle mainBundle] bundleIdentifier],
             }];
             if (completion != NULL)
@@ -296,8 +316,11 @@ static void __iOS7B5CleanConsoleOutput(void)
             return;
         }
     }
+
     [sharedApplication openURL:url options:options completionHandler:completion];
 }
+
+NSErrorUserInfoKey const OUIShouldOfferToReportErrorUserInfoKey = @"OUIShouldOfferToReport";
 
 + (BOOL)shouldOfferToReportError:(NSError *)error;
 {
@@ -317,6 +340,11 @@ static void __iOS7B5CleanConsoleOutput(void)
         }
     }
 
+    id value = error.userInfo[OUIShouldOfferToReportErrorUserInfoKey];
+    if (value && ![value boolValue]) {
+        return NO;
+    }
+
     return YES;
 }
 
@@ -334,12 +362,12 @@ static void __iOS7B5CleanConsoleOutput(void)
     [self presentError:error fromViewController:viewController file:NULL line:0];
 }
 
-+ (void)presentError:(NSError *)error fromViewController:(UIViewController *)viewController cancelButtonTitle:(NSString *)cancelButtonTitle optionalActionTitle:(NSString *)optionalActionTitle optionalAction:(void (^ __nullable)(UIAlertAction *action))optionalAction;
++ (void)presentError:(NSError *)error fromViewController:(UIViewController *)viewController cancelButtonTitle:(NSString *)cancelButtonTitle optionalActionTitle:(nullable NSString *)optionalActionTitle optionalAction:(void (^ __nullable)(UIAlertAction *action))optionalAction;
 {
     [self _presentError:error fromViewController:viewController file:nil line:0 cancelButtonTitle:cancelButtonTitle optionalActionTitle:optionalActionTitle optionalAction:optionalAction];
 }
 
-+ (void)_presentError:(NSError *)error fromViewController:(UIViewController *)viewController file:(const char * _Nullable)file line:(int)line cancelButtonTitle:(NSString *)cancelButtonTitle optionalActionTitle:(NSString *)optionalActionTitle optionalAction:(void (^ __nullable)(UIAlertAction *action))optionalAction;
++ (void)_presentError:(NSError *)error fromViewController:(UIViewController *)viewController file:(const char * _Nullable)file line:(int)line cancelButtonTitle:(NSString *)cancelButtonTitle optionalActionTitle:(nullable NSString *)optionalActionTitle optionalAction:(void (^ __nullable)(UIAlertAction *action))optionalAction;
 {
     if (error == nil || [error causedByUserCancelling])
         return;
@@ -518,13 +546,35 @@ static void __iOS7B5CleanConsoleOutput(void)
     return NO;
 }
 
+- (NSString *)currentSKU
+{
+    return @"";
+}
+
+- (NSString *)purchaseDateString
+{
+    return @"";
+}
+
 - (NSString *)fullReleaseString;
 {
     NSDictionary *infoDictionary = [[NSBundle mainBundle] infoDictionary];
     NSString *testFlightString = [[self class] inSandboxStore] ? @" TestFlight" : @"";
     NSString *appEdition = [[self class] applicationEdition];
     NSString *editionString = [NSString isEmptyString:appEdition] ? @"" : [@" " stringByAppendingString:appEdition];
-    return [NSString stringWithFormat:@"%@ %@%@%@ (v%@)", [[self class] applicationName], [infoDictionary objectForKey:@"CFBundleShortVersionString"], editionString, testFlightString, [infoDictionary objectForKey:@"CFBundleVersion"]];
+    
+    NSString *baseString = [NSString stringWithFormat:@"%@ %@%@%@ (v%@)", [[self class] applicationName], [infoDictionary objectForKey:@"CFBundleShortVersionString"], editionString, testFlightString, [infoDictionary objectForKey:@"CFBundleVersion"]];
+    
+    NSString *currentSKU = [self currentSKU];
+    if (![NSString isEmptyString:currentSKU]) {
+        baseString = [baseString stringByAppendingString:[NSString stringWithFormat:@": %@", currentSKU]];
+        NSString *purchaseDateString = [self purchaseDateString];
+        if (![NSString isEmptyString:purchaseDateString]) {
+            baseString = [baseString stringByAppendingString:[NSString stringWithFormat:@"/%@", purchaseDateString]];
+        }
+    }
+    
+    return baseString;
 }
 
 - (NSString *)_feedbackAddress;
@@ -828,6 +878,11 @@ NSString *const OUIAboutScreenBindingsDictionaryFeedbackAddressKey = @"feedbackA
 
 - (nullable OUIWebViewController *)showWebViewWithURL:(NSURL *)url title:(nullable NSString *)title modalPresentationStyle:(UIModalPresentationStyle)presentationStyle modalTransitionStyle:(UIModalTransitionStyle)transitionStyle animated:(BOOL)animated navigationBarHidden:(BOOL)navigationBarHidden NS_EXTENSION_UNAVAILABLE_IOS("")
 {
+    return [self showWebViewWithURL:url title:title modalPresentationStyle:presentationStyle modalTransitionStyle:UIModalTransitionStyleCoverVertical animated:animated navigationBarHidden:navigationBarHidden withDoneButton:YES];
+}
+
+- (nullable OUIWebViewController *)showWebViewWithURL:(NSURL *)url title:(nullable NSString *)title modalPresentationStyle:(UIModalPresentationStyle)presentationStyle modalTransitionStyle:(UIModalTransitionStyle)transitionStyle animated:(BOOL)animated navigationBarHidden:(BOOL)navigationBarHidden withDoneButton:(BOOL)withDoneButton NS_EXTENSION_UNAVAILABLE_IOS("")
+{
     UINavigationController *webNavigationController = [[UINavigationController alloc] init];
     webNavigationController.navigationBar.barStyle = UIBarStyleDefault;
     webNavigationController.navigationBarHidden = navigationBarHidden;
@@ -835,11 +890,17 @@ NSString *const OUIAboutScreenBindingsDictionaryFeedbackAddressKey = @"feedbackA
     webNavigationController.modalTransitionStyle = transitionStyle;
 
     OUIWebViewController *webController = [self showWebViewWithURL:url title:title animated:NO /* will animate the presentation of webNavigationController instead */ navigationController:webNavigationController];
+    webController.wantsDoneButton = withDoneButton;
     [self.window.rootViewController presentViewController:webNavigationController animated:animated completion:nil];
     return webController;
 }
 
 - (nullable OUIWebViewController *)showWebViewWithURL:(NSURL *)url title:(nullable NSString *)title animated:(BOOL)animated navigationController:(UINavigationController *)navigationController NS_EXTENSION_UNAVAILABLE_IOS("")
+{
+    return [self showWebViewWithURL:url title:title animated:animated navigationController:navigationController withDoneButton:YES];
+}
+
+- (nullable OUIWebViewController *)showWebViewWithURL:(NSURL *)url title:(nullable NSString *)title animated:(BOOL)animated navigationController:(UINavigationController *)navigationController withDoneButton:(BOOL)withDoneButton NS_EXTENSION_UNAVAILABLE_IOS("")
 {
     OBASSERT(url != nil); //Seems like it would be a mistake to ask to show nothing. —LM
     if (url == nil) {
@@ -850,6 +911,7 @@ NSString *const OUIAboutScreenBindingsDictionaryFeedbackAddressKey = @"feedbackA
     webController.delegate = self;
     webController.title = title;
     webController.URL = url;
+    webController.wantsDoneButton = withDoneButton;
     
     assert(navigationController != nil); // This is no longer nullable
     [navigationController pushViewController:webController animated:animated];
@@ -945,14 +1007,19 @@ NSString *const OUIAboutScreenBindingsDictionaryFeedbackAddressKey = @"feedbackA
     return jsonBindingsString;
 }
 
-- (void)showAboutScreenInNavigationController:(UINavigationController * _Nullable)navigationController NS_EXTENSION_UNAVAILABLE_IOS("")
+- (void)showAboutScreenInNavigationController:(UINavigationController * _Nullable)navigationController withDoneButton:(BOOL)withDoneButton NS_EXTENSION_UNAVAILABLE_IOS("")
 {
     OUIWebViewController *webViewController;
     if (navigationController == nil)
-        webViewController = [self showWebViewWithURL:[self aboutScreenURL] title:[self aboutScreenTitle] modalPresentationStyle:UIModalPresentationFormSheet modalTransitionStyle:UIModalTransitionStyleCoverVertical animated:YES navigationBarHidden:NO];
+    webViewController = [self showWebViewWithURL:[self aboutScreenURL] title:[self aboutScreenTitle] modalPresentationStyle:UIModalPresentationFormSheet modalTransitionStyle:UIModalTransitionStyleCoverVertical animated:YES navigationBarHidden:NO withDoneButton:withDoneButton];
     else
-        webViewController = [self showWebViewWithURL:[self aboutScreenURL] title:[self aboutScreenTitle] animated:YES navigationController:navigationController];
+    webViewController = [self showWebViewWithURL:[self aboutScreenURL] title:[self aboutScreenTitle] animated:YES navigationController:navigationController withDoneButton:withDoneButton];
     [webViewController invokeJavaScriptBeforeLoad:[self _aboutPanelJSONBindingsString]];
+}
+
+- (void)showAboutScreenInNavigationController:(UINavigationController * _Nullable)navigationController NS_EXTENSION_UNAVAILABLE_IOS("")
+{
+    [self showAboutScreenInNavigationController:navigationController withDoneButton:YES];
 }
 
 - (void)_showAboutScreen:(id)sender NS_EXTENSION_UNAVAILABLE_IOS("");

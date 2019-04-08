@@ -179,7 +179,7 @@
 		08FB7793FE84155DC02AAC07 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1010;
+				LastUpgradeCheck = 1020;
 				TargetAttributes = {
 					8DD76F740486A8DE00D96B5E = {
 						DevelopmentTeam = 34YW5XSRB7;
@@ -189,13 +189,14 @@
 			};
 			buildConfigurationList = 34DB3AAD08C7AADC00BC2748 /* Build configuration list for PBXProject "FixStringsFile" */;
 			compatibilityVersion = "Xcode 3.2";
-			developmentRegion = English;
+			developmentRegion = en;
 			hasScannedForEncodings = 1;
 			knownRegions = (
-				English,
-				Japanese,
-				French,
-				German,
+				fr,
+				de,
+				ja,
+				en,
+				Base,
 			);
 			mainGroup = 08FB7794FE84155DC02AAC07 /* FixStringsFile */;
 			projectDirPath = "";

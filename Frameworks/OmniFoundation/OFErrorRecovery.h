@@ -1,4 +1,4 @@
-// Copyright 2007-2010 Omni Development, Inc.  All rights reserved.
+// Copyright 2007-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -13,11 +13,6 @@
 // A way to simplify error recovery.  Each instance of subclasses handles a single error recovery.
 
 @interface OFErrorRecovery : OFObject
-{
-@private
-    NSString *_localizedRecoveryOption;
-    id _object;
-}
 
 + (NSError *)errorRecoveryErrorWithError:(NSError *)error;
 + (NSError *)errorRecoveryErrorWithError:(NSError *)error object:(id)object;

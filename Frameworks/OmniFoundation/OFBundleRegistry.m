@@ -1,4 +1,4 @@
-// Copyright 1997-2018 Omni Development, Inc. All rights reserved.
+// Copyright 1997-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -71,7 +71,7 @@ static NSUserDefaults *StandardUserDefaults = nil;
     
 #ifdef OMNI_ASSERTIONS_ON
     do {
-        if ([[NSBundle mainBundle] bundleIdentifier] == nil)
+        if ([[NSBundle mainBundle] bundleIdentifier] == nil || OFIsRunningUnitTests())
             // This *could* possibly be a horribly misconfigured app, but you aren't going to get very far if so. The most likely case is that this is a command line tool which doesn't have a real Info.plist.
             break;
         
@@ -316,13 +316,13 @@ static NSString *_normalizedPath(NSString *path)
 #endif
 
 #ifdef DEBUG
-
-#if !defined(TARGET_OS_IPHONE) || !TARGET_OS_IPHONE
-                    // Also look next to the controlling bundle in DEBUG builds. This allows us to find locally built copies of plugins in development.
-                    // (But don't look here if we're sandboxed, because that won't work.)
-                    if (![[NSProcessInfo processInfo] isSandboxed])
-                        [newPath addObject:[_normalizedPath([[OFController controllingBundle] bundlePath]) stringByDeletingLastPathComponent]];
-#endif
+// This breaks assertions in OmniFoundation about only loading things from inside the bundle; add the plugins to a copy files build phase.
+//#if !defined(TARGET_OS_IPHONE) || !TARGET_OS_IPHONE
+//                    // Also look next to the controlling bundle in DEBUG builds. This allows us to find locally built copies of plugins in development.
+//                    // (But don't look here if we're sandboxed, because that won't work.)
+//                    if (![[NSProcessInfo processInfo] isSandboxed])
+//                        [newPath addObject:[_normalizedPath([[OFController controllingBundle] bundlePath]) stringByDeletingLastPathComponent]];
+//#endif
 #endif
                 } else
                     [newPath addObject:path];

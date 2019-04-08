@@ -1,4 +1,4 @@
-// Copyright 2008-2018 Omni Development, Inc. All rights reserved.
+// Copyright 2008-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -158,6 +158,7 @@ static NSString *StandardUserAgentString;
         return nil;
     
     _userAgent = [StandardUserAgentString copy];
+    _maximumChallengeRetryCount = 3;
     
     return self;
 }
@@ -332,19 +333,20 @@ static __weak id <ODAVConnectionTimeoutDelegate> TimeoutDelegate = nil;
             }
         }
         
-        if (result == nil && ([fileInfoError causedByUnreachableHost] || [fileInfoError causedByDAVPermissionFailure])) {
+        if (result == nil && (fileInfoError.causedByUnreachableHost || fileInfoError.causedByDAVPermissionFailure || fileInfoError.causedByAppTransportSecurity)) {
             COMPLETE_AND_RETURN(nil, fileInfoError);  // If we're not connected to the Internet, then no other error is particularly relevant
         }
         
         if (OFURLEqualToURLIgnoringTrailingSlash(requestedDirectoryURL, baseURL)) {
             __autoreleasing NSError *baseError;
             ODAVErrorWithInfo(&baseError, ODAVCannotCreateDirectory,
-                             @"Unable to create remote directory for container",
-                             ([NSString stringWithFormat:@"Account base URL doesn't exist at %@", baseURL]), nil);
+                             @"Unable to create remote directory",
+                             ([NSString stringWithFormat:@"Base URL doesn't exist at %@", baseURL]), nil);
             COMPLETE_AND_RETURN(nil, baseError);
         }
         
-        [self makeCollectionAtURLIfMissing:[requestedDirectoryURL URLByDeletingLastPathComponent] baseURL:baseURL completionHandler:^(ODAVURLResult * _Nullable parentResult, NSError * _Nullable errorOrNil) {
+        NSURL *parentDirectoryURL = [requestedDirectoryURL URLByDeletingLastPathComponent];
+        [self makeCollectionAtURLIfMissing:parentDirectoryURL baseURL:baseURL completionHandler:^(ODAVURLResult * _Nullable parentResult, NSError * _Nullable errorOrNil) {
             if (!parentResult) {
                 COMPLETE_AND_RETURN(nil, errorOrNil);
             }
@@ -1332,7 +1334,7 @@ static void fudgeTrust(SecTrustRef tref)
     }
     
     NSOperation *finish;
-    if (findOp && challenge.previousFailureCount <= 3) {
+    if (findOp && challenge.previousFailureCount <= _configuration.maximumChallengeRetryCount) {
         finish = [NSBlockOperation blockOperationWithBlock:^{
             OBPRECONDITION(findOp.finished);
             

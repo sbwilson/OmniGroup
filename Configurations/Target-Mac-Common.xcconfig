@@ -33,4 +33,4 @@ WARNING_CFLAGS = $(value) -DNSApp=Use_NSApplication_sharedApplication -Wno-error
 OMNI_TARGET_COMMON_INFOPLIST_PREPROCESSOR_DEFINITIONS = OMNI_BUILDING_FOR_MAC
 
 // Enable the hardened runtime by default in all our build products
-ENABLE_HARDENED_RUNTIME = YES
+ENABLE_HARDENED_RUNTIME = NO

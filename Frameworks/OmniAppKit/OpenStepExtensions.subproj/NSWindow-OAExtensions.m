@@ -351,10 +351,20 @@ static BOOL displayIfNeededBlocksInProgress = NO;
     [pboard writeObjects:[NSArray arrayWithObject:addressString]];
 }
 
+- (void) _copyQUIClass:(id)sender;
+{
+	NSString *quiClassName = [[sender representedObject] valueForKey: @"quiClass"];
+	NSPasteboard *pboard = [NSPasteboard generalPasteboard];
+	[pboard clearContents];
+	[pboard writeObjects:[NSArray arrayWithObject:quiClassName]];
+}
+
+
 - (BOOL)_showMenuForPickedView:(NSView *)pickedView atScreenLocation:(NSPoint)point;
 {
     static NSMenu *constraintsOptions;
     static NSMenuItem *headerItem, *frameItem, *alignmentRectItem, *intrinsicContentSizeItem, *ambiguousItem, *translatesItem, *horizontalItem, *verticalItem, *pickSuperviewItem, *logSubtreeItem, *logChainItem, *copyAddressItem;
+	static NSMenuItem *quiThemeItem;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         constraintsOptions = [[NSMenu alloc] initWithTitle:OBUnlocalized(@"View Debugging")];
@@ -404,6 +414,12 @@ static BOOL displayIfNeededBlocksInProgress = NO;
         
         copyAddressItem = [constraintsOptions addItemWithTitle:OBUnlocalized(@"Copy address") action:@selector(_copyAddressMenuAction:) keyEquivalent:@""];
         [copyAddressItem setEnabled:YES];
+		
+		// SBW: Adds the ability to fetch QUI details
+		[constraintsOptions addItem:[NSMenuItem separatorItem]];
+		
+		quiThemeItem = [constraintsOptions addItemWithTitle:OBUnlocalized(@"QUI Theme: <nil>") action:@selector(_copyQUIClass:) keyEquivalent:@""];
+		[quiThemeItem setEnabled: YES];
     });
     
     [headerItem setTitle:[NSString stringWithFormat:@"%@", [pickedView shortDescription]]];
@@ -412,6 +428,7 @@ static BOOL displayIfNeededBlocksInProgress = NO;
     [intrinsicContentSizeItem setTitle:[NSString stringWithFormat:@"Intrinsic Content Size: %@", NSStringFromSize([pickedView intrinsicContentSize])]];
     [ambiguousItem setTitle:OBUnlocalized([pickedView hasAmbiguousLayout] ? @"Has ambiguous layout" : @"Does not have ambiguous layout")];
     [translatesItem setTitle:OBUnlocalized([pickedView translatesAutoresizingMaskIntoConstraints] ? @"Translates autoresizing mask into constraints" : @"Does not translate autoresizing mask into constraints")];
+	[quiThemeItem setTitle: [NSString stringWithFormat: @"QUI Theme: %@", [pickedView valueForKey: @"quiClass"]]];
     
     NSView *superview = [pickedView superview];
     [pickSuperviewItem setTitle:OBUnlocalized((superview != nil) ? [NSString stringWithFormat:@"Superview: %@…", [superview shortDescription]] : @"No superview")];

@@ -1,4 +1,4 @@
-// Copyright 2010-2018 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -97,7 +97,7 @@ NSString * const OUIInspectorDidEndChangingInspectedObjectsNotification = @"OUII
 
 + (UIColor *)backgroundColor;
 {
-    return [UIColor groupTableViewBackgroundColor];
+    return [UIColor systemGroupedBackgroundColor];
 }
 
 + (UIColor *)disabledLabelTextColor;
@@ -107,7 +107,7 @@ NSString * const OUIInspectorDidEndChangingInspectedObjectsNotification = @"OUII
 
 + (UIColor *)labelTextColor;
 {
-    return [UIColor blackColor];
+    return [UIColor labelColor];
 }
 
 + (UIFont *)labelFont;
@@ -117,12 +117,12 @@ NSString * const OUIInspectorDidEndChangingInspectedObjectsNotification = @"OUII
 
 + (UIColor *)valueTextColor;
 {
-    return [UIColor blackColor];
+    return [UIColor labelColor];
 }
 
 + (UIColor *)indirectValueTextColor;
 {
-    return [UIColor grayColor];
+    return [UIColor systemGrayColor];
 }
 
 - init;

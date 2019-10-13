@@ -1,4 +1,4 @@
-// Copyright 2004-2017 Omni Development, Inc. All rights reserved.
+// Copyright 2004-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -6,6 +6,8 @@
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
 
 #import <OmniFoundation/OFBindingPoint.h>
+
+#import <OmniFoundation/OFBinding.h>
 
 RCS_ID("$Id$");
 
@@ -37,6 +39,11 @@ NS_ASSUME_NONNULL_BEGIN
     [_object release];
     [_keyPath release];
     [super dealloc];
+}
+
+- (OFBindingPoint *)bindingPointByAppendingKey:(NSString *)key;
+{
+    return OFBindingPointMake(_object, OFKeyPathForKeys(_keyPath, key, nil));
 }
 
 - (BOOL)isEqual:(id)object;

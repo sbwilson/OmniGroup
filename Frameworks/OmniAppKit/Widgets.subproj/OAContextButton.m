@@ -1,4 +1,4 @@
-// Copyright 2003-2018 Omni Development, Inc. All rights reserved.
+// Copyright 2003-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -32,12 +32,12 @@ RCS_ID("$Id$");
 
 + (NSImage *)actionImage;
 {
-    return [NSImage imageNamed:@"OAAction" inBundle:OMNI_BUNDLE];
+    return OAImageNamed(@"OAAction", OMNI_BUNDLE);
 }
 
 + (NSImage *)miniActionImage;
 {
-    return [NSImage imageNamed:@"OAMiniAction" inBundle:OMNI_BUNDLE];
+    return OAImageNamed(@"OAMiniAction", OMNI_BUNDLE);
 }
 
 - (id)initWithFrame:(NSRect)frameRect;
@@ -47,7 +47,7 @@ RCS_ID("$Id$");
 
     [self setImagePosition:NSImageOnly];
     [self setBordered:NO];
-    [self setButtonType:NSMomentaryPushInButton];
+    [self setButtonType:NSButtonTypeMomentaryPushIn];
     [self setImage:[OAContextButton actionImage]];
     [self setToolTip:OAContextControlToolTip()];
     
@@ -220,7 +220,7 @@ RCS_ID("$Id$");
     NSTimeInterval timestamp = [NSDate timeIntervalSinceReferenceDate];
     
     // If we post a matching up, the menu hides immediately.
-    [[NSApplication sharedApplication] postEvent:[NSEvent mouseEventWithType:NSEventTypeLeftMouseDown location:buttonMiddle modifierFlags:0 timestamp:timestamp windowNumber:[window windowNumber] context:[window graphicsContext] eventNumber:-1 clickCount:1 pressure:1.0] atStart:NO];
+    [[NSApplication sharedApplication] postEvent:[NSEvent mouseEventWithType:NSEventTypeLeftMouseDown location:buttonMiddle modifierFlags:0 timestamp:timestamp windowNumber:[window windowNumber] context:nil eventNumber:-1 clickCount:1 pressure:1.0] atStart:NO];
     
     return YES;
 }

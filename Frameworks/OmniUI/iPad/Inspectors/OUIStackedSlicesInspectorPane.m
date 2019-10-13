@@ -1,4 +1,4 @@
-// Copyright 2010-2018 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -556,11 +556,10 @@ static void _removeSlice(OUIStackedSlicesInspectorPane *self, OUIStackedSlicesIn
     if (self.inspector.alwaysShowToolbar || ([self.toolbarItems count] > 0)) {
         insets.bottom += self.navigationController.toolbar.frame.size.height;
     }
-    
-    [UIView animateWithDuration:notifier.lastAnimationDuration animations:^{
-        [UIView setAnimationCurve:notifier.lastAnimationCurve];
+
+    [UIView animateWithDuration:0.2 delay:0 options:OUIAnimationOptionFromCurve(notifier.lastAnimationCurve) animations:^{
         view.contentInset = insets;
-    }];
+    } completion:nil];
 }
 
 #pragma mark - OUIInspectorAppearance

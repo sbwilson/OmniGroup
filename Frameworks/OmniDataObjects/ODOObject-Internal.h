@@ -1,11 +1,9 @@
-// Copyright 2008-2018 Omni Development, Inc. All rights reserved.
+// Copyright 2008-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
 // distributed with this project and can also be found at
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
-//
-// $Id$
 
 #import <OmniDataObjects/ODOObject.h>
 #import <OmniDataObjects/ODOObjectID.h>
@@ -27,8 +25,8 @@ NS_ASSUME_NONNULL_BEGIN
     @package
     union {
         // Our implementation is non-ARC and manages these references manually, but make this header importable by ARC.
-        __unsafe_unretained ODOProperty *single;
-        __unsafe_unretained NSMutableArray <ODOProperty *> *multiple;
+        __unsafe_unretained ODOProperty * _Nullable single;
+        __unsafe_unretained NSMutableArray <ODOProperty *> * _Nullable multiple;
     } _propertyBeingCalculated;
 
     struct {

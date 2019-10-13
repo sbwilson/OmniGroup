@@ -1,4 +1,4 @@
-// Copyright 1997-2017 Omni Development, Inc. All rights reserved.
+// Copyright 1997-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -54,7 +54,7 @@ static NSString * const OAPreferenceClientRecordIconNameAppPrefix = @"app:"; // 
         }
     } else {
         NSBundle *bundle = [OFBundledClass bundleForClassNamed:self.className];
-        _iconImage = [NSImage imageNamed:self.iconName inBundle:bundle];
+        _iconImage = OAImageNamed(self.iconName, bundle);
     }
 
 #ifdef DEBUG

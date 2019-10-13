@@ -1,4 +1,4 @@
-// Copyright 2016-2017 Omni Development, Inc. All rights reserved.
+// Copyright 2016-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -14,21 +14,11 @@ public extension SecCertificate {
     
     @nonobjc final
     func publicKey() throws -> SecKey {
-        #if os(OSX)
-            var publicKey : SecKey? = nil;
-            let oserr = SecCertificateCopyPublicKey(self, &publicKey);
-            if let result = publicKey {
-                return result;
-            } else {
-                throw makeError(oserr, inFunction: "SecCertificateCopyPublicKey");
+        guard let pubkey = SecCertificateCopyKey(self) else {
+            // The new API no longer has any kind of error indication (I no longer bother to file RADARs against these APIs). The documentation says "The return reference is NULL if the public key has an encoding issue or uses an unsupported algorithm.", so we'll report this as an unsupported key format.
+            throw makeError(errSecUnsupportedKeyFormat, inFunction: "SecCertificateCopyKey")
             }
-        #else
-            var errbuf : NSError? = nil;
-            guard let publicKey = OFSecCertificateCopyPublicKey(self, &errbuf) else {
-                throw errbuf!;
-            }
-            return publicKey;
-        #endif
+        return pubkey
     }
     
 }
@@ -107,6 +97,39 @@ public enum Keypair {
         case .anonymous(_, _):
             return nil;
         }
+    }
+}
+
+ public struct OFKeyUsage: OptionSet {
+    public let rawValue: Int32
+    public init(rawValue: Int32) {
+        self.rawValue = rawValue
+    }
+    
+    static let sign      = OFKeyUsage(rawValue: kOFKeyUsageSign)     /// compute digital signature or MAC
+    static let verify    = OFKeyUsage(rawValue: kOFKeyUsageVerify)   /// verify digital signature or MAC
+    static let encrypt   = OFKeyUsage(rawValue: kOFKeyUsageEncrypt)  /// encrypt content
+    static let decrypt   = OFKeyUsage(rawValue: kOFKeyUsageDecrypt)  /// decrypt content and validate decryption, if applicable
+    static let wrapKey   = OFKeyUsage(rawValue: kOFKeyUsageWrap)     /// encrypt key
+    static let unwrapKey = OFKeyUsage(rawValue: kOFKeyUsageUnwrap)   /// decrypt key and validate decryption, if applicable
+    static let derive    = OFKeyUsage(rawValue: kOFKeyUsageDerive)   /// perform key agreement or shared-secret derivation
+    
+    static let integrity : OFKeyUsage = [ .sign, .verify ]
+    static let confidentiality : OFKeyUsage = [ .encrypt, .decrypt, .wrapKey, .unwrapKey ]
+    static let publicOperations : OFKeyUsage = [ .verify, .encrypt, .wrapKey ]
+    
+    public func asSecKeyUsage() -> NSMutableArray {
+        let attrs = NSMutableArray()
+        
+        if self.contains(.sign)      { attrs.add(kSecAttrCanSign) }
+        if self.contains(.verify)    { attrs.add(kSecAttrCanVerify) }
+        if self.contains(.encrypt)   { attrs.add(kSecAttrCanEncrypt) }
+        if self.contains(.decrypt)   { attrs.add(kSecAttrCanDecrypt) }
+        if self.contains(.wrapKey)   { attrs.add(kSecAttrCanWrap) }
+        if self.contains(.unwrapKey) { attrs.add(kSecAttrCanUnwrap) }
+        if self.contains(.derive)    { attrs.add(kSecAttrCanDerive) }
+
+        return attrs
     }
 }
 

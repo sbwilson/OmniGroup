@@ -1,4 +1,4 @@
-// Copyright 2000-2017 Omni Development, Inc. All rights reserved.
+// Copyright 2000-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -26,7 +26,7 @@ static NSImage *ChasingArrows = nil;
 {
     OBINITIALIZE;
     
-    ChasingArrows = [NSImage imageNamed:@"OAChasingArrows" inBundle:OMNI_BUNDLE];
+    ChasingArrows = OAImageNamed(@"OAChasingArrows", OMNI_BUNDLE);
 }
 
 // Init and dealloc
@@ -113,7 +113,7 @@ static NSImage *ChasingArrows = nil;
     NSRect bounds = [self bounds];
 
     NSGraphicsContext *currentContext = [NSGraphicsContext currentContext];
-    CGContextRef graphicsContext = [currentContext graphicsPort];
+    CGContextRef graphicsContext = [currentContext CGContext];
     if (angle != 0) {
         CGContextTranslateCTM(graphicsContext, NSWidth(bounds) / 2, NSHeight(bounds) / 2);
         CGContextRotateCTM(graphicsContext, -angle);

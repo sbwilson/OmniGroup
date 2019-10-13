@@ -1,4 +1,4 @@
-// Copyright 2002-2018 Omni Development, Inc. All rights reserved.
+// Copyright 2002-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -129,7 +129,7 @@ static BOOL OAScriptToolbarItemsDisabled = NO;
         OAToolbarWindowController *windowController = (OAToolbarWindowController *)[toolbar delegate];
         OBASSERT([windowController isKindOfClass:[OAToolbarWindowController class]]);
         NSDictionary *localizedToolbarInfo = [windowController localizedToolbarInfoForItem:@"AutomatorWorkflowTemplate"];
-        OBASSERT_NULL(localizedToolbarInfo);
+        OBASSERT(localizedToolbarInfo != nil);
         NSArray *keys = @[@"label", @"paletteLabel", @"toolTip"];
         for (NSString *key in keys) {
             NSString *format = [localizedToolbarInfo objectForKey:key];
@@ -227,6 +227,16 @@ static BOOL OAScriptToolbarItemsDisabled = NO;
     };
     
     NSString *itemPath = [[self pathForItem:toolbarItem] stringByExpandingTildeInPath];
+    if (!itemPath) {
+        NSAlert *alert = [[NSAlert alloc] init];
+        alert.messageText = NSLocalizedStringFromTableInBundle(@"Script Not Found", @"OmniAppKit", OMNI_BUNDLE, @"error title when a script is missing");
+
+        alert.informativeText = [NSString stringWithFormat:NSLocalizedStringFromTableInBundle(@"No script found for the toolbar item with identifier \"%@\".", @"OmniAppKit", OMNI_BUNDLE, @"error message when a script is missing"), toolbarItem.itemIdentifier];
+
+        [alert beginSheetModalForWindow:windowController.window completionHandler:nil];
+        return;
+    }
+
     NSString *typename = [[NSWorkspace sharedWorkspace] typeOfFile:itemPath error:NULL];
 
     // This code only supports 10.8 and later so we always use the sandbox savvy APIs, since they also support unsandboxed applications.

@@ -1,4 +1,4 @@
-// Copyright 2000-2015 Omni Development, Inc. All rights reserved.
+// Copyright 2000-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -23,7 +23,7 @@ RCS_ID("$Id$")
     if (!(self = [super initWithFrame:frameRect]))
         return nil;
 
-    [self setButtonType:NSMomentaryLightButton];
+    [self setButtonType:NSButtonTypeMomentaryLight];
     [self setImagePosition:NSImageOnly];
 
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_controlTintChanged:) name:NSControlTintDidChangeNotification object:nil];
@@ -48,9 +48,9 @@ RCS_ID("$Id$")
 
 - (void)setImageName:(NSString *)anImageName inBundle:(NSBundle *)aBundle;
 {
-    clearImage = [NSImage imageNamed:anImageName inBundle:aBundle];
-    aquaImage = [NSImage imageNamed:[anImageName stringByAppendingString:OAAquaImageTintSuffix] inBundle:aBundle];
-    graphiteImage = [NSImage imageNamed:[anImageName stringByAppendingString:OAGraphiteImageTintSuffix] inBundle:aBundle];
+    clearImage = OAImageNamed(anImageName, aBundle);
+    aquaImage = OAImageNamed([anImageName stringByAppendingString:OAAquaImageTintSuffix], aBundle);
+    graphiteImage = OAImageNamed([anImageName stringByAppendingString:OAGraphiteImageTintSuffix], aBundle);
     
     [self _setButtonImages];
 }

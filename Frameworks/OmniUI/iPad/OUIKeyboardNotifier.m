@@ -7,6 +7,7 @@
 //
 
 #import <OmniUI/OUIKeyboardNotifier.h>
+#import <OmniUI/UIView-OUIExtensions.h>
 
 @import OmniFoundation;
 
@@ -282,6 +283,12 @@ static CGFloat _bottomHeightToAvoidForKeyboardFrameValue(OUIKeyboardNotifier *se
     CGRect intersectionRect = CGRectIntersection(screenBounds, keyboardFrame);
     if (!CGRectIsNull(intersectionRect)) {
         heightToAvoid = CGRectGetHeight(intersectionRect);
+        
+        // maxY of the keyboard frame is maxY of its host window, which may not be equal to maxY of superview. We have to assume that the frame of the keyboard view's window is equal to superview.frame
+        UIView *accessoryToolbarView = self.accessoryToolbarView;
+        UIView *superview = accessoryToolbarView.superview;
+        CGRect convertedFrame = [superview.window convertRect:superview.frame toView:superview];
+        heightToAvoid -= CGRectGetMaxY(superview.window.frame) - CGRectGetMaxY(convertedFrame);
     }
     DEBUG_KEYBOARD("heightToAvoid: %f", heightToAvoid);
     
@@ -354,11 +361,9 @@ static void _updateAccessoryToolbarViewFrame(OUIKeyboardNotifier *self)
         CGRect startFrame = _targetFrameForHeight(superview, accessoryToolbarView, startHeight);
         accessoryToolbarView.frame = startFrame;
     }];
-    [UIView animateWithDuration:[durationNumber doubleValue] animations:^{
-        [UIView setAnimationCurve:[curveNumber intValue]];
-        [UIView setAnimationBeginsFromCurrentState:YES];
+    [UIView animateWithDuration:[durationNumber doubleValue] delay:0 options: OUIAnimationOptionFromCurve([curveNumber intValue]) | UIViewAnimationOptionBeginFromCurrentState animations:^{
         accessoryToolbarView.frame = endFrame;
-    }];
+    } completion:nil];
 }
 
 @end

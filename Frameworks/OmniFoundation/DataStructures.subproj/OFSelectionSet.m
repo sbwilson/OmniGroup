@@ -1,4 +1,4 @@
-// Copyright 2003-2017 Omni Development, Inc. All rights reserved.
+// Copyright 2003-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -136,7 +136,7 @@ static void _addIfMatchesPredicate(const void *value, const void *sequence, void
     [ctx addObjectIfMatchesPredicate:object];
 }
 
-- (NSArray *)copyObjectsSatisfyingPredicateBlock:(OFPredicateBlock)predicate;
+- (NSArray *)copyObjectsSatisfyingPredicateBlock:(NS_NOESCAPE OFPredicateBlock)predicate;
 {
     OBPRECONDITION(predicate);
     

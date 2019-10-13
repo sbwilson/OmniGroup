@@ -167,7 +167,7 @@ static BOOL ofErrorFromOSError(NSError **outError, OSStatus oserr, NSString *fun
                 return OFXMLSigCopyKeyFromDSAKeyValue(keyvalue, outError);
             if ([keytype isEqual:(id)kSecAttrKeyTypeRSA])
                 return OFXMLSigCopyKeyFromRSAKeyValue(keyvalue, outError);
-            if ([keytype isEqual:(id)kSecAttrKeyTypeECDSA]) {
+            if ([keytype isEqual:(id)kSecAttrKeyTypeECDSA] || [keytype isEqual:(id)kSecAttrKeyTypeECSECPrimeRandom]) {
                 int sigorder = -1;
                 SecKeyRef retval = OFXMLSigCopyKeyFromEllipticKeyValue(keyvalue, &sigorder, outError);
                 OBASSERT(sigorder > 0);
@@ -290,9 +290,33 @@ static BOOL ofErrorFromOSError(NSError **outError, OSStatus oserr, NSString *fun
     
     NSLog(@"   Retrieving external reference <%@>", [refURL absoluteString]);
     
-    NSData *remoteData = [NSData dataWithContentsOfURL:refURL options:0 error:outError];
-    if (!remoteData)  // -dataWithContentsOfURL: will have filled *outError for us
+    NSData *remoteData;
+    if ([externalReference isEqualToString:@"http://www.w3.org/Signature/2002/04/xml-stylesheet.b64"] ||
+        [externalReference isEqualToString:@"http://www.w3.org/TR/xml-stylesheet"]) {
+        remoteData = [NSData dataWithContentsOfFile:[[NSBundle bundleForClass:[self class]] pathForResource:@"xml-stylesheet.b64.bz2" ofType:nil]];
+        remoteData = [remoteData decompressedBzip2Data:outError];
+        if (!remoteData) {
+            NSLog(@"Unable to read unit-test sample data??");
+            return NO;
+        }
+        if (![externalReference isEqualToString:@"http://www.w3.org/Signature/2002/04/xml-stylesheet.b64"])
+            remoteData = [[NSData alloc] initWithBase64EncodedData:remoteData options:NSDataBase64DecodingIgnoreUnknownCharacters];
+    } else if ([externalReference isEqualToString:@"http://www.ietf.org/rfc/rfc3161.txt"]) {
+        remoteData = [NSData dataWithContentsOfFile:[[NSBundle bundleForClass:[self class]] pathForResource:@"rfc3161.txt.bz2" ofType:nil]];
+        remoteData = [remoteData decompressedBzip2Data:outError];
+        if (!remoteData) {
+            NSLog(@"Unable to read unit-test sample data??");
+            return NO;
+        }
+    } else {
+        /* We used to fetch external resources here, but then our tests started failing because people (unsurprisingly) made changes to their web sites after fifteen years. So we only "retrieve" the set of resources we expect. */
+        // NSData *remoteData = [NSData dataWithContentsOfURL:refURL options:0 error:outError];
+        // if (!remoteData)  // -dataWithContentsOfURL: will have filled *outError for us
+        //     return NO;
+        if (outError)
+            *outError = [NSError errorWithDomain:OFXMLSignatureErrorDomain code:OFXMLSignatureValidationFailure userInfo:[NSDictionary dictionaryWithObject:[NSString stringWithFormat:@"Unexpected external resource in unit test: \"%@\"", externalReference] forKey:NSLocalizedDescriptionKey]];
         return NO;
+   }
     
 #ifdef DEBUG_XMLSIG_TESTS
     NSLog(@"Retrieved %u bytes from %@", (unsigned int)[remoteData length], refURL);
@@ -749,7 +773,6 @@ after the signature value was computed.  Verification should FAIL.
         FailedForWrongReason(error);
     }
 }
-
 
 - (void)testDSADetached;
 {
@@ -1758,7 +1781,7 @@ static SecKeyRef copyMatchingKeyFromKeychain(SecKeychainRef keychain, NSDictiona
         ADDATTR(kSecKeyKeyType, CSSM_ALGID_RSA);
     } else if ([secKeytype isEqual:(id)kSecAttrKeyTypeDSA]) {
         ADDATTR(kSecKeyKeyType, CSSM_ALGID_DSA);
-    } else if ([secKeytype isEqual:(id)kSecAttrKeyTypeECDSA]) {
+    } else if ([secKeytype isEqual:(id)kSecAttrKeyTypeECDSA] || [secKeytype isEqual:(id)kSecAttrKeyTypeECSECPrimeRandom]) {
         ADDATTR(kSecKeyKeyType, CSSM_ALGID_ECDSA);
     }
     

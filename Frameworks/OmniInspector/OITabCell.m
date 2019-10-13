@@ -1,4 +1,4 @@
-// Copyright 2005-2018 Omni Development, Inc. All rights reserved.
+// Copyright 2005-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -65,8 +65,8 @@ NSString * const TabTitleDidChangeNotification = @"TabTitleDidChange";
 - (void)setIsPinned:(BOOL)newValue;
 {
     // If we get pinned, make sure we are turned on
-    if (newValue && ([self state] != NSOnState)) {
-        [self setState:NSOnState];
+    if (newValue && ([self state] != NSControlStateValueOn)) {
+        [self setState:NSControlStateValueOn];
     }
     
     isPinned = newValue;    // Set our state to On before turning on pinning, so that we're always in a consistent state (can't be pinned and not on)
@@ -103,7 +103,7 @@ NSString * const TabTitleDidChangeNotification = @"TabTitleDidChange";
     [self _drawImageInRect:imageRect inView:controlView];
 
     if (isPinned) {
-        NSImage *image = [NSImage imageNamed:@"OITabLock.pdf" inBundle:OMNI_BUNDLE];
+        NSImage *image = OAImageNamed(@"OITabLock.pdf", OMNI_BUNDLE);
         NSSize imageSize = image.size;
         NSPoint point = NSMakePoint(NSMaxX(cellFrame) - imageSize.width - 3.0f, NSMaxY(cellFrame) - imageSize.height - 2.0f);
         [image drawFlippedInRect:(NSRect){point, imageSize} operation:NSCompositingOperationSourceOver];

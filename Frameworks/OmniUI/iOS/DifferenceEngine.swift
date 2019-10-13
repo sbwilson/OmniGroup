@@ -1,4 +1,4 @@
-// Copyright 2017-2018 Omni Development, Inc. All rights reserved.
+// Copyright 2017-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -593,7 +593,7 @@ private struct WrappedDifferenceComparable<Index: DifferenceIndex, Value: Differ
         
         for oldWrapped in old {
             if !deletedSet.contains(oldWrapped) {
-                guard let setIndex = newSet.index(of: oldWrapped) else { continue }
+                guard let setIndex = newSet.firstIndex(of: oldWrapped) else { continue }
                 let newWrapped = newSet[setIndex]
                 switch newWrapped.diff(from: oldWrapped) {
                 case .needsUpdate:
@@ -815,7 +815,7 @@ public struct SimulatedTableView<Index: DifferenceIndex, Value: DifferenceCompar
             _indexSet = set
         }
         
-        guard let setIndex = set.index(of: wrappedValue) else { return nil }
+        guard let setIndex = set.firstIndex(of: wrappedValue) else { return nil }
         return set[setIndex].index
     }
 

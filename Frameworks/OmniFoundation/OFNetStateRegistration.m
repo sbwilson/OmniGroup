@@ -1,4 +1,4 @@
-// Copyright 2008-2018 Omni Development, Inc. All rights reserved.
+// Copyright 2008-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -274,20 +274,26 @@ NSString * const OFNetStateRegistrationVersionKey = @"v";
     DEBUG_REGISTRATION(1, @"txtRecord now %@", txtRecord);
 
     NSNetService *service = _service;
+    __weak OFNetStateRegistration *weakSelf = self;
     [[NSOperationQueue mainQueue] addOperationWithBlock:^{
-        NSTimeInterval nextAllowedUpdateInterval = _lastUpdateTimeInterval + kCoalesceTimeInterval;
-        NSTimeInterval now = [NSDate timeIntervalSinceReferenceDate];
-        NSTimeInterval delayInterval = (nextAllowedUpdateInterval - now);
-        if (delayInterval > 0) {
-            _delayedUpdateTXTData = [txtData copy];
-            if (!_delayedUpdateTimer) {
-                // Pass the NSNetService we had at the time along rather than reading _service again when this fires.
-                DEBUG_REGISTRATION(1, @"Delaying TXT record update for %g seconds", delayInterval);
-                _delayedUpdateTimer = [NSTimer scheduledTimerWithTimeInterval:delayInterval target:self selector:@selector(_performDelayedTXTDataUpdate:) userInfo:service repeats:NO];
-            }
-        } else
-            _updateTXTRecord(self, service, txtData);
+        [weakSelf _setUpDelayedTXTUpdate:txtData service:service];
     }];
+}
+
+- (void)_setUpDelayedTXTUpdate:(NSData *)txtData service:(NSNetService *)service;
+{
+    NSTimeInterval nextAllowedUpdateInterval = _lastUpdateTimeInterval + kCoalesceTimeInterval;
+    NSTimeInterval now = [NSDate timeIntervalSinceReferenceDate];
+    NSTimeInterval delayInterval = (nextAllowedUpdateInterval - now);
+    if (delayInterval > 0) {
+        _delayedUpdateTXTData = [txtData copy];
+        if (!_delayedUpdateTimer) {
+            // Pass the NSNetService we had at the time along rather than reading _service again when this fires.
+            DEBUG_REGISTRATION(1, @"Delaying TXT record update for %g seconds", delayInterval);
+            _delayedUpdateTimer = [NSTimer scheduledTimerWithTimeInterval:delayInterval target:self selector:@selector(_performDelayedTXTDataUpdate:) userInfo:service repeats:NO];
+        }
+    } else
+        _updateTXTRecord(self, service, txtData);
 }
 
 - (void)_performDelayedTXTDataUpdate:(NSTimer *)timer;

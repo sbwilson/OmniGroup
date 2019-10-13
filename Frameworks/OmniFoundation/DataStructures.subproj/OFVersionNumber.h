@@ -1,11 +1,9 @@
-// Copyright 2004-2018 Omni Development, Inc. All rights reserved.
+// Copyright 2004-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
 // distributed with this project and can also be found at
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
-//
-// $Id$
 
 #import <Foundation/NSObject.h>
 
@@ -14,6 +12,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface OFVersionNumber : NSObject <NSCopying>
 
 + (OFVersionNumber *)mainBundleVersionNumber;
++ (OFVersionNumber *)mainBundleShortVersionNumber;
 + (OFVersionNumber *)userVisibleOperatingSystemVersionNumber;
 
 + (OFVersionNumber *)versionForBundle:(NSBundle *)bundle;
@@ -22,8 +21,10 @@ NS_ASSUME_NONNULL_BEGIN
 #if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
 + (BOOL)isOperatingSystem114OrLater;
 + (BOOL)isOperatingSystem120OrLater;
++ (BOOL)isOperatingSystem130OrLater;
 #else
 + (BOOL)isOperatingSystemMojaveOrLater; // 10.14
++ (BOOL)isOperatingSystemCatalinaOrLater; // 10.15
 + (BOOL)isOperatingSystemLikelyToPanicWithCrayonColorPicker;  // 10.13.6, RADAR# 42359231 <bug:///163187> (Mac-OmniGraffle Crasher: [radar and tsi] System hangs when making changes in Pencil Color Picker [10.13.6] (crayon))
 #endif
 

@@ -1,23 +1,13 @@
-// Copyright 2015 Omni Development, Inc. All rights reserved.
+// Copyright 2015-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
 // distributed with this project and can also be found at
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
-//
-// $Id$
 
 #import <Foundation/NSObject.h>
 
-@interface OAColorSpaceHelper : NSObject
-@property (readwrite, nonatomic, retain) NSString *sha1;
-@property (readwrite, nonatomic, retain) NSColorSpace *colorSpace;
-@end
-
 @interface OAColorSpaceManager : NSObject
-
-@property (readwrite, nonatomic, retain) NSMutableArray *colorSpaceList;
-// A list of OAColorSpaceHelpers
 
 - (NSArray *)propertyListRepresentations;
 - (void)loadPropertyListRepresentations:(NSArray *)array;

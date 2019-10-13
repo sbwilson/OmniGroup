@@ -1,4 +1,4 @@
-// Copyright 2014-2018 Omni Development, Inc. All rights reserved.
+// Copyright 2014-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -64,9 +64,9 @@ RCS_ID("$Id$");
 - (void)OADisclosureButtonCell_commonInit;
 {
     if (_collapsedImage == nil)
-        _collapsedImage = [NSImage imageNamed:@"OADisclosureButtonCollapsed" inBundle:OMNI_BUNDLE];
+        _collapsedImage = OAImageNamed(@"OADisclosureButtonCollapsed", OMNI_BUNDLE);
     if (_expandedImage == nil)
-        _expandedImage = [NSImage imageNamed:@"OADisclosureButtonExpanded" inBundle:OMNI_BUNDLE];
+        _expandedImage = OAImageNamed(@"OADisclosureButtonExpanded", OMNI_BUNDLE);
     [self _updateImageForCurrentState];
 }
 

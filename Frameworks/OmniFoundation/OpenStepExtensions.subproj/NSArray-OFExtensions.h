@@ -1,11 +1,9 @@
-// Copyright 1997-2017 Omni Development, Inc. All rights reserved.
+// Copyright 1997-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
 // distributed with this project and can also be found at
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
-//
-// $Id$
 
 #import <Foundation/NSArray.h>
 #import <Foundation/NSSortDescriptor.h>
@@ -19,9 +17,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface NSArray <__covariant ObjectType> (OFExtensions)
 
-#define COMPARE_BLOCK NSComparisonResult(^)(ObjectType, ObjectType)
-#define PREDICATE_BLOCK BOOL(^)(ObjectType)
-#define MAP_BLOCK id(^)(ObjectType)
+#define COMPARE_BLOCK NSComparisonResult(NS_NOESCAPE ^)(ObjectType, ObjectType)
+#define PREDICATE_BLOCK BOOL(NS_NOESCAPE ^)(ObjectType)
+#define MAP_BLOCK id(NS_NOESCAPE ^)(ObjectType)
 
 /// Builds a new array by calling the valueAtIndex block for 0..<length. Currently always returns an immutable array since we can't do "instancetype<ObjectType>"
 + (NSArray <ObjectType> *)arrayWithCount:(NSUInteger)count valueAtIndex:(ObjectType (^)(NSUInteger))valueAtIndex;

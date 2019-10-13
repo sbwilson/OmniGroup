@@ -1,4 +1,4 @@
-// Copyright 1997-2018 Omni Development, Inc. All rights reserved.
+// Copyright 1997-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -11,6 +11,8 @@
 #import <OmniFoundation/OFNull.h>
 
 #import <Foundation/NSDateFormatter.h>
+
+#include <stdatomic.h>
 
 RCS_ID("$Id$")
 
@@ -277,6 +279,8 @@ static NSDateFormatter *HttpDateFormatter(void) {
 
 static NSDate * _Nullable _initDateFromXMLString(NSDate *self, const char *buf, size_t length)
 {
+    OBAnalyzerNotReached(); // we do some things with atomic_exchange() that clang-sa doesn't like. see comment below
+
     // Since we read forward, we'll catch a early NUL with digit or specific character checks.
     NSInteger year, month, day, hour, minute, second;
     NSTimeInterval fraction;
@@ -350,26 +354,21 @@ static NSDate * _Nullable _initDateFromXMLString(NSDate *self, const char *buf, 
         BAD_INIT;
     }
 
-    static CFCalendarRef gregorianUTCCalendar;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        CFTimeZoneRef utc = CFTimeZoneCreateWithName(kCFAllocatorDefault, CFSTR("UTC"), true);
-        OBASSERT(utc);
-        gregorianUTCCalendar = CFCalendarCreateWithIdentifier(kCFAllocatorDefault, kCFGregorianCalendar);
-        CFCalendarSetTimeZone(gregorianUTCCalendar, utc);
-        CFRelease(utc);
-    });
+    // See _xmlStyleDateStringWithFormat() for discussion of thread-safety issues with CFCalendar.
+    static CFCalendarRef _Atomic gregorianUTCCalendar = NULL;
 
     CFCalendarRef calendar;
-    BOOL releaseCalendar = NO;
+    BOOL calendarIsLocal = NO;
     if (timeZone) {
-        releaseCalendar = YES;
-        calendar = CFCalendarCreateWithIdentifier(kCFAllocatorDefault, kCFGregorianCalendar);
-        CFCalendarSetTimeZone(calendar, timeZone);
-        CFRelease(timeZone);
+        calendarIsLocal = YES;
+        calendar = _xmlStyleDateStringCreateCalendarWithTimeZone(timeZone);
         timeZone = NULL;
     } else {
-        calendar = gregorianUTCCalendar;
+        calendar = atomic_exchange(&gregorianUTCCalendar, NULL);
+        if (calendar == NULL) {
+            CFTimeZoneRef utc = CFTimeZoneCreateWithName(kCFAllocatorDefault, CFSTR("UTC"), true);
+            calendar = _xmlStyleDateStringCreateCalendarWithTimeZone(utc);
+        }
     }
 
     // -dateFromComponents: doesn't return nil for an out-of-range component, it wraps it (even though both it and -isValidDateInCalendar: call down to CFCalendarComposeAbsoluteTime).
@@ -378,8 +377,13 @@ static NSDate * _Nullable _initDateFromXMLString(NSDate *self, const char *buf, 
     CFAbsoluteTime timeInterval;
     Boolean success = CFCalendarComposeAbsoluteTime(calendar, &timeInterval, "yMdHms", year, month, day, hour, minute, second);
 
-    if (releaseCalendar) {
+    if (calendarIsLocal) {
         CFRelease(calendar);
+    } else {
+        CFCalendarRef oldCalendar = atomic_exchange(&gregorianUTCCalendar, calendar);
+        if (oldCalendar != NULL) {
+            CFRelease(oldCalendar);
+        }
     }
     if (!success) {
         BAD_INIT;
@@ -494,33 +498,49 @@ typedef NS_OPTIONS(NSUInteger, OFXMLDateStringOptions) {
     OFXMLDateStringOptionsUTCTimeZone       = 1 << 6, // Trailing 'Z'
 };
 
+static CFCalendarRef _xmlStyleDateStringCreateCalendarWithTimeZone(CFTimeZoneRef CF_CONSUMED timeZone)
+{
+    OBPRECONDITION(timeZone);
+    CFCalendarRef calendar = CFCalendarCreateWithIdentifier(kCFAllocatorDefault, kCFGregorianCalendar);
+    CFCalendarSetTimeZone(calendar, timeZone);
+    CFRelease(timeZone);
+    return calendar;
+}
+
 static NSString *_xmlStyleDateStringWithFormat(NSDate *self, SEL _cmd, OFXMLDateStringOptions options)
 {
+    OBAnalyzerNotReached(); // we do some things with atomic_exchange() that clang-sa doesn't like. see comment below
+    
     DEBUG_XML_STRING(@"%s: input: %@ %f", __PRETTY_FUNCTION__, self, [self timeIntervalSinceReferenceDate]);
 
-    static CFCalendarRef gregorianUTCCalendar;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        CFTimeZoneRef utc = CFTimeZoneCreateWithName(kCFAllocatorDefault, CFSTR("UTC"), true);
-        OBASSERT(utc);
-        gregorianUTCCalendar = CFCalendarCreateWithIdentifier(kCFAllocatorDefault, kCFGregorianCalendar);
-        CFCalendarSetTimeZone(gregorianUTCCalendar, utc);
-        CFRelease(utc);
-    });
+    // <bug:///172980> (iOS-OmniFocus Regression: Needs Repro: Sync writes invalid date stamps in transaction & client file names [XML, ISO 8601])
+    // While NSCalendar is thread-safe, it doesn't look like CFCalendar or its underlying ICU library is inherently thread-safe. When multiple callers attempt to format XML strings simultaneously on different threads using the same cached Gregorian UTC calendar (as can be the case during an OmniFocus sync), there is a chance that CFCalendar absolute time decomposition can return corrupted values from a UCalendar in an unexpected state.
+    // As a result, this function stores the calendar atomically, using atomic_exchange to "check out" the calendar (storing NULL) at the start of the method and another exchange (storing the calendar back, "checking it in") at the end.
+    static CFCalendarRef _Atomic gregorianUTCCalendar = NULL;
 
     CFCalendarRef calendar;
-    BOOL releaseCalendar = NO;
+    BOOL calendarIsLocal = NO;
     if (options & OFXMLDateStringOptionsLocalTimeZone) {
-        releaseCalendar = YES;
-        calendar = CFCalendarCreateWithIdentifier(kCFAllocatorDefault, kCFGregorianCalendar);
-        CFTimeZoneRef timeZone = CFTimeZoneCopySystem();
-        CFCalendarSetTimeZone(calendar, timeZone);
-        CFRelease(timeZone);
+        calendarIsLocal = YES;
+        calendar = _xmlStyleDateStringCreateCalendarWithTimeZone(CFTimeZoneCopySystem());
     } else {
-        calendar = gregorianUTCCalendar;
+        calendar = atomic_exchange(&gregorianUTCCalendar, NULL);
+        if (calendar == NULL) {
+            CFTimeZoneRef utc = CFTimeZoneCreateWithName(kCFAllocatorDefault, CFSTR("UTC"), true);
+            calendar = _xmlStyleDateStringCreateCalendarWithTimeZone(utc);
+        }
     }
 
     NSTimeInterval timeInterval = self.timeIntervalSinceReferenceDate;
+
+    // Figure out the fractional seconds portion. To simplify rounding (particularly in the case of a fractional millisecond that ends in 0.5 like -testRoundingBeforeReferenceDate4), if we have a negative time and non-zero fractional seconds, adjust the base time interval to the beginning of the previous second and adjust the fractional seconds to a positive value to make up for it.
+    double dummy;
+    NSTimeInterval fractionalSeconds = modf(timeInterval, &dummy);
+    if (timeInterval < 0 && fractionalSeconds != -0.0) {
+        timeInterval = floor(timeInterval);
+        fractionalSeconds = 1.0 + fractionalSeconds;
+    }
+
     int year, month, day, hour, minute, second; // CFCalendarDecomposeAbsoluteTime is documented to require int arguments.
     Boolean ok;
     ok = CFCalendarDecomposeAbsoluteTime(calendar, timeInterval, "yMdHms", &year, &month, &day, &hour, &minute, &second);
@@ -528,22 +548,11 @@ static NSString *_xmlStyleDateStringWithFormat(NSDate *self, SEL _cmd, OFXMLDate
 
     DEBUG_XML_STRING(@"components: year:%d month:%d day:%d hour:%d minute:%d second:%d", year, month, day, hour, minute, second);
     
-    // Figure out the fractional seconds portion.
-    unsigned milliseconds;
-    double dummy;
-    NSTimeInterval fractionalSeconds = modf(timeInterval, &dummy);
 
-    if (timeInterval < 0 && fractionalSeconds != -0.0) { // Don't step negative integral second time intervals by one second. See -test1970.
-        OBASSERT(fractionalSeconds < 0.0);
-        DEBUG_XML_STRING(@"fractionalSeconds: %f", fractionalSeconds);
+    OBASSERT(fractionalSeconds >= 0.0);
+    DEBUG_XML_STRING(@"fractionalSeconds: %f", fractionalSeconds);
 
-        milliseconds = 1000 + (unsigned)round(fractionalSeconds * 1000.0);
-    } else {
-        OBASSERT(fractionalSeconds >= 0.0);
-        DEBUG_XML_STRING(@"fractionalSeconds: %f", fractionalSeconds);
-
-        milliseconds = (unsigned)round(fractionalSeconds * 1000.0);
-    }
+    unsigned milliseconds = (int)round(fractionalSeconds * 1000.0);
 
     // If the milliseconds rolled over to the next second due to rounding, deal with it.
     if (milliseconds >= 1000) {
@@ -556,8 +565,13 @@ static NSString *_xmlStyleDateStringWithFormat(NSDate *self, SEL _cmd, OFXMLDate
         OBASSERT(ok); (void)ok;
     }
 
-    if (releaseCalendar) {
+    if (calendarIsLocal) {
         CFRelease(calendar); // Better would be to keep this until the system time zone changes.
+    } else {
+        CFCalendarRef oldCalendar = atomic_exchange(&gregorianUTCCalendar, calendar);
+        if (oldCalendar != NULL) {
+            CFRelease(oldCalendar);
+        }
     }
 
     // +stringWithFormat: is relatively expensive here, since this path gets called a lot in some cases.

@@ -1,4 +1,4 @@
-// Copyright 1997-2017 Omni Development, Inc. All rights reserved.
+// Copyright 1997-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -67,6 +67,10 @@ static NSArray <NSString *> *_replaceType(NSArray <NSString *> *types, NSString 
 
 NSArray <NSString *> *OAFixRequestedPasteboardTypes(NSArray <NSString *> *types)
 {
+    // This function is specifically for avoiding the deprecated types.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+
     types = _replaceType(types, NSStringPboardType, NSPasteboardTypeString);
     types = _replaceType(types, NSRTFPboardType, NSPasteboardTypeRTF);
     types = _replaceType(types, NSRTFDPboardType, NSPasteboardTypeRTFD);
@@ -87,10 +91,11 @@ NSArray <NSString *> *OAFixRequestedPasteboardTypes(NSArray <NSString *> *types)
         NSArray *components = [type componentsSeparatedByString:@"."];
         for (NSString *component in components) {
             OBASSERT([component length] > 0);
-            OBASSERT([component rangeOfCharacterFromSet:NonUTICharacterSet].location == NSNotFound);
+            OBASSERT([component rangeOfCharacterFromSet:NonUTICharacterSet].location == NSNotFound, "type is \"%@\"", type);
         }
     }
 #endif
 
     return types;
+#pragma clang diagnostic pop
 }

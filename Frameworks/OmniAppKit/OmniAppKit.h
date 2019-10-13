@@ -4,17 +4,17 @@
 // terms in the file OmniSourceLicense.html, which should be
 // distributed with this project and can also be found at
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
-//
-// $Id$
 
 #import <OmniAppKit/OAFeatures.h>
 
 #import <OmniAppKit/NSAttributedString-OAExtensions.h>
 #import <OmniAppKit/OAColor-Archiving.h>
 #import <OmniAppKit/OAColor.h>
+#import <OmniAppKit/OAColorCatalog.h>
 #import <OmniAppKit/OAFontDescriptor.h>
 #import <OmniAppKit/OAMoreInfoErrorRecovery.h>
 #import <OmniAppKit/OAParagraphStyle.h>
+#import <OmniAppKit/OASignificantTimeChangeObserver.h>
 #import <OmniAppKit/OAStrings.h>
 #import <OmniAppKit/OATextAttachment.h>
 #import <OmniAppKit/OATextAttributes.h>

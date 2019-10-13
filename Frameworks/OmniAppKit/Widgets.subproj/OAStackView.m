@@ -1,4 +1,4 @@
-// Copyright 1997-2015 Omni Development, Inc. All rights reserved.
+// Copyright 1997-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -14,6 +14,7 @@
 #import <Foundation/NSInvocation.h>
 #import <OmniBase/OmniBase.h>
 #import <OmniAppKit/NSWindow-OAExtensions.h>
+#import <OmniAppKit/NSAnimationContext-OAExtensions.h>
 
 RCS_ID("$Id$")
 
@@ -154,12 +155,7 @@ static NSComparisonResult compareBasedOnArray(id object1, id object2, void *orde
     flags.needsReload = NO;
     flags.needsLayout = YES;
     
-    NSWindow *window = [self window];    
-    BOOL oldAutodisplay = [window isAutodisplay];
-    [window setAutodisplay: NO];
-    [window disableFlushWindow];
-    
-    NS_DURING {
+    OAWithoutAnimation(^{
         NSArray *subviews = [dataSource subviewsForStackView: self];
         if (subviews == nil) {
             subviews = [self _visibleAvailableSubviews];
@@ -202,41 +198,27 @@ static NSComparisonResult compareBasedOnArray(id object1, id object2, void *orde
                 [super addSubview: view];
         }
         [self sortSubviewsUsingFunction:compareBasedOnArray context:subviews];
-    } NS_HANDLER {
-        NSLog(@"Exception ignored during -[OAStackView _loadSubviews]: %@", localException);
-    } NS_ENDHANDLER;
-    
-    [window setAutodisplay: oldAutodisplay];
-    if (oldAutodisplay)
-        [window setViewsNeedDisplay: YES];
-    [window enableFlushWindow];
+    });
 }
 
 /*"
 Goes through the subviews and finds the first subview that is willing to stretch vertically.  This view is then given all of the height that is not taken by the other subviews.
 "*/
-- (void) _layoutSubviews;
+- (void)_layoutSubviews;
 {
-    NSRect subviewFrame;
-
     if (flags.layoutDisabled)
         return;
         
     if (flags.needsReload)
         [self _loadSubviews];
 
-    [self layoutSubtreeIfNeeded];
-
     flags.needsLayout = NO;
-    NSWindow *window = [self window];    
-    NSRect spaceLeft = [self bounds];
-    //NSLog(@"total bounds = %@", NSStringFromRect(spaceLeft));
-    
-    BOOL oldAutodisplay = [window isAutodisplay];
-    [window setAutodisplay: NO];
-    [window disableFlushWindow];
-    
-    NS_DURING {
+
+    OAWithoutAnimation(^{
+        NSRect subviewFrame;
+        NSRect spaceLeft = [self bounds];
+        //NSLog(@"total bounds = %@", NSStringFromRect(spaceLeft));
+
         NSArray *currentSubviews = [self subviews];
 
         NSUInteger viewCount = [currentSubviews count];
@@ -287,17 +269,7 @@ Goes through the subviews and finds the first subview that is willing to stretch
         }
 
         [[NSNotificationCenter defaultCenter] postNotificationName:OAStackViewDidLayoutSubviews object:self];
-        
-    } NS_HANDLER {
-        NSLog(@"Exception ignored during -[OAStackView _layoutSubviews]: %@", localException);
-    } NS_ENDHANDLER;
-    
-    [window setAutodisplay: oldAutodisplay];
-    if (oldAutodisplay)
-        [window setViewsNeedDisplay: YES];
-
-    [self setNeedsDisplay:YES];
-    [window enableFlushWindow];
+    });
 }
 
 - (void)layout;
@@ -308,7 +280,7 @@ Goes through the subviews and finds the first subview that is willing to stretch
 
 - (void)resizeSubviewsWithOldSize:(NSSize)oldSize;
 {
-    [self _layoutSubviews];
+    [self layout];
 }
 
 #pragma mark - NSObject (NSKeyValueObserving)

@@ -1,4 +1,4 @@
-// Copyright 2010-2018 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -415,12 +415,12 @@ static void OUIViewPerformPosingForThreading(void)
     }];
 }
 
-- (id)containingViewMatching:(OFPredicateBlock)predicate;
+- (id)containingViewMatching:(NS_NOESCAPE OFPredicateBlock)predicate;
 {
     return [self enclosingViewMatching:predicate];
 }
 
-- (id)enclosingViewMatching:(OFPredicateBlock)predicate;
+- (id)enclosingViewMatching:(NS_NOESCAPE OFPredicateBlock)predicate;
 {
     if (!predicate) {
         OBASSERT_NOT_REACHED("Treating nil predicate as true... probably not that useful");
@@ -580,6 +580,26 @@ void OUILogViewTree(UIView *root)
 }
 
 #endif
+
+UIViewAnimationOptions OUIAnimationOptionFromCurve(UIViewAnimationCurve curve) {
+    switch (curve) {
+        case UIViewAnimationCurveEaseIn:
+            return UIViewAnimationOptionCurveEaseIn;
+            break;
+        case UIViewAnimationCurveLinear:
+            return UIViewAnimationOptionCurveLinear;
+            break;
+        case UIViewAnimationCurveEaseOut:
+            return UIViewAnimationOptionCurveEaseOut;
+            break;
+        case UIViewAnimationCurveEaseInOut:
+            return UIViewAnimationOptionCurveEaseInOut;
+            break;
+        default:
+            return kNilOptions;
+    }
+    return curve;
+}
 
 // Allows the caller to conditionally leave animations as they were or disable them. Won't ever force animations on.
 void OUIWithAnimationsDisabled(BOOL disabled, void (NS_NOESCAPE ^actions)(void))

@@ -1,4 +1,4 @@
-// Copyright 2011-2017 Omni Development, Inc. All rights reserved.
+// Copyright 2011-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -55,7 +55,7 @@ RCS_ID("$Id$");
     }
     if ([self isEnabled]) {
         // Draw image near top center of its view
-        NSImage *dropDownImage = [NSImage imageNamed:@"OADropDownTriangle" inBundle:OMNI_BUNDLE];
+        NSImage *dropDownImage = OAImageNamed(@"OADropDownTriangle", OMNI_BUNDLE);
         NSSize imageSize = [dropDownImage size];
         CGRect bounds = [self bounds];
         CGRect imageRect;

@@ -1,11 +1,9 @@
-// Copyright 2003-2017 Omni Development, Inc. All rights reserved.
+// Copyright 2003-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
 // distributed with this project and can also be found at
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
-//
-// $Id$
 
 #import <OmniFoundation/OFObject.h>
 #import <Availability.h>
@@ -119,7 +117,7 @@ extern NSColor * __nullable OAColorFromColorRef(CGColorRef c);
 extern CGColorRef __nullable OACreateGrayColorRefFromColor(NSColor *c) CF_RETURNS_RETAINED;
 #endif
 
-typedef NS_ENUM(NSInteger, OAColorSpace) {
+typedef NS_CLOSED_ENUM(NSInteger, OAColorSpace) {
     OAColorSpaceRGB,
     OAColorSpaceWhite, // 0=black, 1=white
     OAColorSpaceCMYK,

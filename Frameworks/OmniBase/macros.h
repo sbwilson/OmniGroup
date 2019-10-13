@@ -1,11 +1,9 @@
-// Copyright 1997-2018 Omni Development, Inc. All rights reserved.
+// Copyright 1997-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
 // distributed with this project and can also be found at
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
-//
-// $Id$
 
 #import <AvailabilityMacros.h>
 #import <Foundation/NSAutoreleasePool.h>
@@ -188,7 +186,7 @@ static inline NSString *OBUnlocalized(NSString *value) __attribute__((annotate("
 #define OB_CHECKED_CAST(CLS_, VALUE_) ({ \
     CLS_ *tmp__ = (CLS_ *)(VALUE_); \
     OBASSERT([tmp__ isKindOfClass:[CLS_ class]], @"Expression %s resulted in instance of %@; expected %@", #VALUE_, OB_STRING_FROM_CLASS_OR_NIL([tmp__ class]), NSStringFromClass([CLS_ class])); \
-    (CLS_ *)(tmp__); \
+    tmp__; \
 })
 
 #define OB_CHECKED_CAST_OR_NIL(CLS_, VALUE_) ({ \
@@ -196,3 +194,13 @@ static inline NSString *OBUnlocalized(NSString *value) __attribute__((annotate("
     (maybeNil__ != nil ? OB_CHECKED_CAST(CLS_, maybeNil__) : nil); \
 })
 
+// Assert that the given value conforms to the specified protocol and return it after casting.
+#define OB_CHECKED_CONFORM(PROTOCOL_, VALUE_) ({ \
+    id <PROTOCOL_> tmp__ = (id <PROTOCOL_>)(VALUE_); \
+    OBASSERT([tmp__ conformsToProtocol:@protocol(PROTOCOL_)], @"Expression %s resulted in instance of %@, which doesn't conform to %s", #VALUE_, OB_STRING_FROM_CLASS_OR_NIL([tmp__ class]), protocol_getName(@protocol(PROTOCOL_))); \
+    tmp__; \
+})
+#define OB_CHECKED_CONFORM_OR_NIL(PROTOCOL_, VALUE_) ({ \
+    id <PROTOCOL_> maybeNil__ = (id <PROTOCOL_>)(VALUE_); \
+    (maybeNil__ != nil ? OB_CHECKED_CONFORM(PROTOCOL_, maybeNil__) : nil); \
+})

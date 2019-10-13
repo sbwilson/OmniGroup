@@ -1,11 +1,9 @@
-// Copyright 2004-2016 Omni Development, Inc. All rights reserved.
+// Copyright 2004-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
 // distributed with this project and can also be found at
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
-//
-// $Id$
 
 #import <OmniFoundation/OFController.h>
 
@@ -29,8 +27,10 @@ NS_ASSUME_NONNULL_BEGIN
 - (IBAction)openApplicationScriptsFolder:(nullable id)sender;
 
 /// returns the the display name of the application without file extension.
-- (NSString *)appName;
-- (NSString *)fullReleaseString;
+- (NSString *)appName NS_DEPRECATED_MAC(10_0, 10_13, "Use the applicationName property instead.");
+@property (nonatomic, readonly) NSString *applicationName;
+@property (nonatomic, readonly) NSString *fullReleaseString;
+
 - (void)getFeedbackAddress:(NSString * _Nullable * _Nonnull)feedbackAddress andSubject:(NSString * _Nullable * _Nonnull)subjectLine;
 - (void)sendFeedbackEmailTo:(nullable NSString *)feedbackAddress subject:(nullable NSString *)subjectLine body:(nullable NSString *)body;
 - (void)sendFeedbackEmailWithBody:(nullable NSString *)body;

@@ -1,4 +1,4 @@
-// Copyright 2003-2018 Omni Development, Inc. All rights reserved.
+// Copyright 2003-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -35,8 +35,8 @@ const static CGFloat horizontalSpaceFromSnuggleView = 2.0f;
 {
     OBINITIALIZE;
     
-    OnImage = [NSImage imageNamed:@"OADefaultSettingIndicatorOn" inBundle:OMNI_BUNDLE];
-    OffImage = [NSImage imageNamed:@"OADefaultSettingIndicatorOff" inBundle:OMNI_BUNDLE];
+    OnImage = OAImageNamed(@"OADefaultSettingIndicatorOn", OMNI_BUNDLE);
+    OffImage = OAImageNamed(@"OADefaultSettingIndicatorOff", OMNI_BUNDLE);
 }
 
 + (OADefaultSettingIndicatorButton *)defaultSettingIndicatorWithIdentifier:(id <NSCopying>)settingIdentifier forView:(NSView *)view delegate:(id)delegate;
@@ -129,7 +129,7 @@ const static CGFloat horizontalSpaceFromSnuggleView = 2.0f;
     if (displaysEvenInDefaultState == displays)
         return;
     _flags.displaysEvenInDefaultState = displays ? 1 : 0;
-    [self setNeedsDisplay];
+    [self setNeedsDisplay:YES];
     [self _showOrHide];
 }
 
@@ -233,7 +233,7 @@ const static CGFloat horizontalSpaceFromSnuggleView = 2.0f;
 
 - (void)_setupButton;
 {
-    [self setButtonType:NSToggleButton];
+    [self setButtonType:NSButtonTypeToggle];
     [[self cell] setType:NSImageCellType];
     [[self cell] setBordered:NO];
     [self setImagePosition:NSImageOnly];

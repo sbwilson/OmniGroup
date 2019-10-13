@@ -1,11 +1,9 @@
-// Copyright 2003-2017 Omni Development, Inc. All rights reserved.
+// Copyright 2003-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
 // distributed with this project and can also be found at
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
-//
-// $Id$
 
 #import <Foundation/NSObject.h>
 
@@ -28,7 +26,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property(nonatomic, readonly) NSArray *allObjects;
 
-- (NSArray *)copyObjectsSatisfyingPredicateBlock:(OFPredicateBlock)predicate;
+- (NSArray *)copyObjectsSatisfyingPredicateBlock:(NS_NOESCAPE OFPredicateBlock)predicate;
 - (NSArray *)copyObjectsSatisfyingPredicate:(NSPredicate *)predicate;
 - (void)removeObjectsSatisfyingPredicate:(NSPredicate *)predicate;
 

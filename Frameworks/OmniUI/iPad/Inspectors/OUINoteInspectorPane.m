@@ -1,4 +1,4 @@
-// Copyright 2011-2017 Omni Development, Inc. All rights reserved.
+// Copyright 2011-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -164,15 +164,13 @@ static const CGFloat EnterFullScreenButtonScrollingActiveAlpha = 0.4;
 - (void)setEnterFullScreenButtonAlpha:(CGFloat)alpha animated:(BOOL)animated;
 {
     if (animated) {
-        [UIView beginAnimations:@"AdjustEnterFullScreenButtonAlpha" context:NULL];
-        [UIView setAnimationBeginsFromCurrentState:YES];
-    }
-    
-    self.enterFullScreenButton.alpha = alpha;
-    self.enterFullScreenBackground.alpha = alpha;
-    
-    if (animated) {
-        [UIView commitAnimations];
+        [UIView animateWithDuration:0.2 delay:0 options:UIViewAnimationOptionBeginFromCurrentState animations:^{
+            self.enterFullScreenButton.alpha = alpha;
+            self.enterFullScreenBackground.alpha = alpha;
+        } completion:nil];
+    } else {
+        self.enterFullScreenButton.alpha = alpha;
+        self.enterFullScreenBackground.alpha = alpha;
     }
 }
 

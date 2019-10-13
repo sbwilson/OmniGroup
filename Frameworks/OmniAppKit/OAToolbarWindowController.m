@@ -1,4 +1,4 @@
-// Copyright 2002-2018 Omni Development, Inc. All rights reserved.
+// Copyright 2002-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -175,8 +175,12 @@ static NSMutableDictionary *helpersByExtension = nil;
     if (stringsFileName == nil) {
         stringsFileName = [NSString stringWithFormat:@"%@Toolbar", [self toolbarConfigurationName]];
     }
-    
+
     [toolbarItemInfo enumerateKeysAndObjectsUsingBlock:^(id key, id object, BOOL *stop) {
+        if ([key isEqualToString:@"hasButton"]) {
+            return;
+        }
+        
         NSString *value = _displayName(bundle, stringsFileName, identifier, key, toolbarItemInfo, NO);
         if (value != nil) {
             [localizedToolbarItemInfo setObject:value forKey:key];
@@ -381,9 +385,9 @@ static void copyProperty(NSToolbarItem *anItem,
         // Yosemite-style toolbar buttons
         NSSize buttonSize = NSMakeSize(44, 32); //Matches Apple's size in Numbers and Pages as of 14 Nov. 2014
         OAToolbarItemButton *button = [[buttonClass alloc] initWithFrame:NSMakeRect(0, 0, buttonSize.width, buttonSize.height)];
-        button.buttonType = NSMomentaryChangeButton;
-        button.bezelStyle = NSTexturedRoundedBezelStyle;
-        button.buttonType = NSMomentaryLightButton;
+        button.buttonType = NSButtonTypeMomentaryChange;
+        button.bezelStyle = NSBezelStyleTexturedRounded;
+        button.buttonType = NSButtonTypeMomentaryLight;
         button.imagePosition = NSImageOnly;
         
         button.toolbarItem = newItem;

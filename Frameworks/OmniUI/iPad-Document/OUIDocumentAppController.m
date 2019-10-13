@@ -1,4 +1,4 @@
-// Copyright 2010-2018 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -242,7 +242,7 @@ static unsigned SyncAgentRunningAccountsContext;
 - (void)closeDocument:(id)sender;
 {
     if ([sender isKindOfClass:[UIKeyCommand class]] && [[UIMenuController sharedMenuController] isMenuVisible]) {
-        [[UIMenuController sharedMenuController] setMenuVisible:NO animated:YES];
+        [[UIMenuController sharedMenuController] hideMenu];
     }
     
     // Update the modification date in case the doc picker is sorting by date and the file save hasn't landed yet.
@@ -301,7 +301,7 @@ static unsigned SyncAgentRunningAccountsContext;
     [viewToSave addSubview:snapshotView];
     
     // Add Closing Spinner
-    UIActivityIndicatorView *closingDocumentIndicatorView = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhiteLarge];
+    UIActivityIndicatorView *closingDocumentIndicatorView = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleLarge];
     closingDocumentIndicatorView.color = viewToSave.window.tintColor;
     CGRect superviewBounds = viewToSave.bounds;
     closingDocumentIndicatorView.center = (CGPoint){
@@ -1120,8 +1120,15 @@ static unsigned SyncAgentRunningAccountsContext;
 
 - (void)addRecentlyOpenedDocumentURL:(NSURL *)url;
 {
-    if ([_externalScopeManager addRecentlyOpenedDocumentURL:url])
-        [self _updateShortcutItems];
+    __weak OUIDocumentAppController *weakSelf = self;
+    [_externalScopeManager addRecentlyOpenedDocumentURL:url completionHandler:^(BOOL success) {
+        if (success) {
+            [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+                __strong OUIDocumentAppController *strongSelf = weakSelf;
+                [strongSelf _updateShortcutItems];
+            }];
+        }
+    }];
 }
 
 - (NSArray <ODSFileItem *> *)recentlyOpenedFileItems;
@@ -2077,7 +2084,7 @@ static NSSet *ViewableFileTypes()
         _documentPicker = [[OUIDocumentPicker alloc] initWithDocumentStore:_documentStore];
         _documentPicker.delegate = self;
         
-        OUILaunchViewController *launchViewController = [[OUILaunchViewController alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhiteLarge color:[self launchActivityIndicatorColor]];
+        OUILaunchViewController *launchViewController = [[OUILaunchViewController alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleLarge color:[self launchActivityIndicatorColor]];
         UINavigationController *launchNavController = [[UINavigationController alloc] initWithRootViewController:launchViewController];
         window.rootViewController = launchNavController;
         [window makeKeyAndVisible];

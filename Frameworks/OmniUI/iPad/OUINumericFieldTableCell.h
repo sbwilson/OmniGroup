@@ -1,11 +1,9 @@
-// Copyright 2010-2017 Omni Development, Inc. All rights reserved.
+// Copyright 2010-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
 // distributed with this project and can also be found at
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
-//
-// $Id$
 
 #import <UIKit/UITableViewCell.h>
 
@@ -18,7 +16,7 @@ extern NSString *const OUINumericFieldTableCellValueKey;
 
 @interface OUINumericFieldTableCell : OUIThemedTableViewCell
 
-+ (instancetype)numericFieldTableCell NS_SWIFT_NAME(numericFieldTableCell());
++ (instancetype)numericFieldTableCell NS_SWIFT_NAME(makeNumericFieldTableCell());
 
 /// Opt-in support for dynamic type. (Defaults to NO until all/most of the places we use this want to opt in.)
 @property (nonatomic) BOOL supportsDynamicType;

@@ -1,4 +1,4 @@
-// Copyright 2006-2018 Omni Development, Inc. All rights reserved.
+// Copyright 2006-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -52,6 +52,7 @@ RCS_ID("$Id$");
     
 }
 
+@property (nonatomic, retain) IBOutlet NSVisualEffectView *visualEffectView;
 @property (nonatomic, retain) IBOutlet OADatePicker *datePicker;
 @property (nonatomic, retain) IBOutlet NSDatePicker *timePicker;
 
@@ -82,7 +83,7 @@ static NSSize calendarImageSize;
 + (void)initialize;
 {
     OBINITIALIZE;
-    calendarImage = [[NSImage imageNamed:@"calendar" inBundle:OMNI_BUNDLE] retain];
+    calendarImage = [OAImageNamed(@"calendar", OMNI_BUNDLE) retain];
     calendarImageSize = [calendarImage size];
 }
 
@@ -103,7 +104,7 @@ static NSSize calendarImageSize;
 + (NSButton *)newCalendarButton;
 { 
     NSButton *button = [[OADatePickerButton alloc] initWithFrame:NSMakeRect(0.0f, 0.0f, calendarImageSize.width, calendarImageSize.height)];
-    [button setButtonType:NSMomentaryPushInButton];
+    [button setButtonType:NSButtonTypeMomentaryPushIn];
     [button setBordered:NO];
     [button setImage:calendarImage];
     [button setImagePosition:NSImageOnly];
@@ -155,6 +156,7 @@ static NSSize calendarImageSize;
     [OFPreference removeObserver:self forPreference:[NSCalendar firstDayOfTheWeekPreference]];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     
+    [_visualEffectView release];
     [_datePickerObjectValue release];
     [_boundObject release];
     [_boundObjectKeyPath release];
@@ -291,6 +293,21 @@ static NSSize calendarImageSize;
         [_control performSelector:_dateUpdatedAction withObject:_datePickerObjectValue];
     }
 }
+
+#pragma mark -
+#pragma mark NSWindowController
+
+- (void)windowDidLoad;
+{
+    [super windowDidLoad];
+    
+    if ([OFVersionNumber isOperatingSystemMojaveOrLater]) {
+        self.visualEffectView.material = NSVisualEffectMaterialMenu;
+    } else {
+        self.visualEffectView.material = NSVisualEffectMaterialAppearanceBased;
+    }
+}
+
 
 #pragma mark -
 #pragma mark NSObject (NSWindowNotifications)
@@ -438,10 +455,21 @@ static NSSize calendarImageSize;
     
     NSRect popupWindowFrame = [popupWindow frame];
     NSRect targetWindowRect = [emergeFromView convertRect:viewRect toView:nil];
-    NSPoint viewRectCenter = [emergeFromWindow convertRectToScreen:NSMakeRect(NSMidX(targetWindowRect), NSMidY(targetWindowRect), 0.0f, 0.0f)].origin;
-    NSPoint windowOrigin = [emergeFromWindow convertRectToScreen:NSMakeRect(NSMidX(targetWindowRect), NSMinY(targetWindowRect), 0.0f, 0.0f)].origin;
-    windowOrigin.x -= (CGFloat)floor(NSWidth(popupWindowFrame) / 2.0f);
-    windowOrigin.y -= 2.0f;
+    NSPoint viewRectCenter;
+    NSPoint windowOrigin;
+   
+    if (NSEqualRects(viewRect, emergeFromView.bounds)) {
+        viewRectCenter = [emergeFromWindow convertRectToScreen:NSMakeRect(NSMaxX(targetWindowRect), NSMidY(targetWindowRect), 0.0f, 0.0f)].origin;
+        windowOrigin = [emergeFromWindow convertRectToScreen:NSMakeRect(NSMaxX(targetWindowRect), NSMinY(targetWindowRect), 0.0f, 0.0f)].origin;
+
+        windowOrigin.x -= NSWidth(popupWindowFrame);
+    } else {
+        viewRectCenter = [emergeFromWindow convertRectToScreen:NSMakeRect(NSMidX(targetWindowRect), NSMidY(targetWindowRect), 0.0f, 0.0f)].origin;
+        windowOrigin = [emergeFromWindow convertRectToScreen:NSMakeRect(NSMidX(targetWindowRect), NSMinY(targetWindowRect), 0.0f, 0.0f)].origin;
+
+        windowOrigin.x -= (CGFloat)floor(NSWidth(popupWindowFrame) / 2.0f);
+        windowOrigin.y -= 2.0f;
+    }
     
     NSScreen *screen = [OAWindowCascade screenForPoint:viewRectCenter];
     NSRect visibleFrame = [screen visibleFrame];

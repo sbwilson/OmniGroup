@@ -1,4 +1,4 @@
-// Copyright 2017 The Omni Group. All rights reserved.
+// Copyright 2017-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
@@ -54,7 +54,7 @@ public final class OUILanguagePicker: UITableViewController {
         let cell = UITableViewCell(style: .default, reuseIdentifier: "header")
         cell.textLabel?.text = NSLocalizedString("ouiLanguagePicker.language", tableName: "OmniUIDocument", bundle: OmniUIDocumentBundle, value: "Language", comment: "Language section title")
         cell.textLabel?.textAlignment = .center
-        cell.backgroundColor = UIColor.groupTableViewBackground
+        cell.backgroundColor = UIColor.systemGroupedBackground
         return cell
     }
 

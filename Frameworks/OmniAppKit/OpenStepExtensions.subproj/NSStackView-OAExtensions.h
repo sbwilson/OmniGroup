@@ -1,11 +1,9 @@
-// Copyright 2016 Omni Development, Inc. All rights reserved.
+// Copyright 2016-2019 Omni Development, Inc. All rights reserved.
 //
 // This software may only be used and reproduced according to the
 // terms in the file OmniSourceLicense.html, which should be
 // distributed with this project and can also be found at
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
-//
-// $Id$
 
 #import <AppKit/NSStackView.h>
 #import <OmniAppKit/NSView-OAExtensions.h>
@@ -49,6 +47,13 @@ NS_ASSUME_NONNULL_BEGIN
  @param animated YES if the subviews should be animated in/out.
  */
 - (void)setUnhiddenSubviews:(NSArray <NSView *> *)unhiddenSubviews animated:(BOOL)animated;
+
+@end
+
+
+@interface NSStackView (OAExtentions)
+
+- (void)removeAllArrangedSubviews;
 
 @end
 

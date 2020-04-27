@@ -932,7 +932,7 @@ class OFCMSFileWrapper {
                                 ])
                     }
                     var memberOptions : OFCMSOptions = []
-                    if let optionality = try reader.getAttributeValue(fileOptionalAttr), (optionality as NSString).boolValue {
+					if let optionality = try reader.getAttributeValue(fileOptionalAttr), (optionality as NSString).boolValue() {
                         memberOptions.formUnion(OFCMSOptions.fileIsOptional)
                     }
                     files.append(PackageIndex.FileEntry(realName: memberName, storedName: memberLocation, options: memberOptions))

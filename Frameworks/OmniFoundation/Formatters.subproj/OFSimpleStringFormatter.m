@@ -80,7 +80,7 @@ RCS_ID("$Id$")
     NSInteger version = [coder versionForClassName:NSStringFromClass([self class])];
     switch (version) {
         case 0:
-            [coder decodeValueOfObjCType:@encode(unsigned int) at:&maxLength];
+			[coder decodeValueOfObjCType:@encode(unsigned int) at:&maxLength size: sizeof(unsigned int)];
             break;
 
         default:

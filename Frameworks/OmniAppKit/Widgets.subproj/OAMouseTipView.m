@@ -231,12 +231,12 @@ static NSParagraphStyle *mousetipParagrphStyle;
     NSRange lineRange = NSMakeRange(0,0);
     
     CGFloat centerX = containerSize.width/2;
-    CGFloat totalHeight = 0;
+//    CGFloat totalHeight = 0;
     NSRect lineFrag;
     
     while(1) {
         lineFrag = [layoutManager lineFragmentUsedRectForGlyphAtIndex:lineRange.location effectiveRange:&lineRange];
-        totalHeight += lineFrag.size.height;
+//        totalHeight += lineFrag.size.height;
         
         NSInteger charIndex = [layoutManager characterIndexForGlyphAtIndex:lineRange.location];
         

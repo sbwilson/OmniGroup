@@ -6,6 +6,7 @@
 // <http://www.omnigroup.com/developer/sourcecode/sourcelicense/>.
 
 #import <OmniAppKit/NSFileManager-OAExtensions.h>
+#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 
 RCS_ID("$Id$")
 
@@ -41,15 +42,17 @@ RCS_ID("$Id$")
     
     for(NSString *childName in enumerable) {
         NSString *childPath = [path stringByAppendingPathComponent:childName];
-        NSString *childType = [ws typeOfFile:childPath error:errOut];
+        NSString *childTypeName = [ws typeOfFile:childPath error:errOut];
+		UTType * childType = [UTType typeWithIdentifier: childTypeName];
         if (!childType) {
             if (errOut)
                 return nil;
             else
                 continue;
         }
-        for(NSString *someDesiredType in someUTIs) {
-            if ([ws type:childType conformsToType:someDesiredType]) {
+        for( UTType * someDesiredType in someUTIs) {
+//            if ([ws type:childType conformsToType:someDesiredType]) {
+			if( [childType conformsToType: someDesiredType] )
                 [filteredChildren addObject:fullPath ? childPath : childName];
                 break;
             }

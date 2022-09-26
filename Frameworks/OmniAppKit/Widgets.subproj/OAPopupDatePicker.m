@@ -304,7 +304,7 @@ static NSSize calendarImageSize;
     if ([OFVersionNumber isOperatingSystemMojaveOrLater]) {
         self.visualEffectView.material = NSVisualEffectMaterialMenu;
     } else {
-        self.visualEffectView.material = NSVisualEffectMaterialAppearanceBased;
+		self.visualEffectView.material = NSVisualEffectMaterialWindowBackground; // NSVisualEffectMaterialAppearanceBased;
     }
 }
 
